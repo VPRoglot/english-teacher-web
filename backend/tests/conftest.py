@@ -22,6 +22,7 @@ def alembic_config(database_url: str) -> Config:
     cfg = Config(str(BACKEND_DIR / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
     cfg.set_main_option("sqlalchemy.url", database_url)
+    cfg.attributes["configure_logger"] = False  # не перетирать логирование тестов
     return cfg
 
 

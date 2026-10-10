@@ -44,6 +44,8 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106"]
+# Имена доменных исключений зафиксированы спецификацией (NotFound, Conflict, ...).
+"app/core/errors.py" = ["N818"]
 
 [tool.mypy]
 strict = true

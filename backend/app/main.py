@@ -5,8 +5,10 @@ from fastapi import FastAPI
 
 from app.core import health
 from app.core.config import Settings, get_settings
+from app.core.db import create_db_engine, create_sessionmaker
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
+from app.core.redis import create_redis
 from app.core.request_id import RequestIdMiddleware
 
 
@@ -16,7 +18,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        yield
+        # Ресурсы создаются без подключения: приложение стартует, даже если БД/Redis недоступны.
+        app.state.engine = create_db_engine(settings)
+        app.state.sessionmaker = create_sessionmaker(app.state.engine)
+        app.state.redis = create_redis(settings)
+        try:
+            yield
+        finally:
+            await app.state.engine.dispose()
+            await app.state.redis.aclose()
 
     app = FastAPI(
         title="English Tutor API",

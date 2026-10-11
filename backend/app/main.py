@@ -17,6 +17,7 @@ from app.core.redis import create_redis
 from app.core.request_id import RequestIdMiddleware
 from app.core.tasks import BrokerTaskQueue, create_broker
 from app.families import admin_router, cabinet_router
+from app.leads import admin_router as leads_admin_router
 from app.leads import public_router as leads_public_router
 from app.leads.captcha import DisabledCaptchaVerifier, YandexCaptchaVerifier
 from app.site_content import admin_router as site_admin_router
@@ -89,4 +90,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(site_admin_router.router, prefix="/api")
     app.include_router(site_public_router.router, prefix="/api")
     app.include_router(leads_public_router.router, prefix="/api")
+    app.include_router(leads_admin_router.router, prefix="/api")
     return app

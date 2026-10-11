@@ -295,6 +295,167 @@ export const CreateFamilyInvitationResponse = zod.object({
 })
 
 /**
+ * @summary List Leads
+ */
+export const listLeadsQueryQOneMax = 200;
+
+export const listLeadsQueryLimitDefault = 50;
+export const listLeadsQueryLimitMax = 200;
+
+export const listLeadsQueryOffsetDefault = 0;
+export const listLeadsQueryOffsetMin = 0;
+
+
+
+export const ListLeadsQueryParams = zod.object({
+  "status": zod.union([zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected']),zod.null()]).optional(),
+  "q": zod.union([zod.string().max(listLeadsQueryQOneMax),zod.null()]).optional(),
+  "limit": zod.int().min(1).max(listLeadsQueryLimitMax).default(listLeadsQueryLimitDefault),
+  "offset": zod.int().min(listLeadsQueryOffsetMin).default(listLeadsQueryOffsetDefault)
+})
+
+export const ListLeadsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "child_age": zod.int(),
+  "child_name": zod.string(),
+  "contact_method": zod.enum(['telegram', 'whatsapp', 'phone']),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "id": zod.uuid(),
+  "messenger_handle": zod.union([zod.string(),zod.null()]),
+  "parent_name": zod.string(),
+  "phone": zod.string(),
+  "status": zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected'])
+})),
+  "total": zod.int()
+})
+
+/**
+ * @summary Get Lead
+ */
+export const GetLeadParams = zod.object({
+  "lead_id": zod.uuid()
+})
+
+export const GetLeadResponse = zod.object({
+  "child_age": zod.int(),
+  "child_name": zod.string(),
+  "consent_at": zod.iso.datetime({"offset":true}),
+  "contact_method": zod.enum(['telegram', 'whatsapp', 'phone']),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "family_id": zod.union([zod.uuid(),zod.null()]),
+  "goal": zod.union([zod.string(),zod.null()]),
+  "history": zod.array(zod.object({
+  "changed_at": zod.iso.datetime({"offset":true}),
+  "comment": zod.union([zod.string(),zod.null()]),
+  "from_status": zod.union([zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected']),zod.null()]),
+  "to_status": zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected'])
+})),
+  "id": zod.uuid(),
+  "messenger_handle": zod.union([zod.string(),zod.null()]),
+  "notified_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "parent_name": zod.string(),
+  "phone": zod.string(),
+  "preferred_time": zod.union([zod.string(),zod.null()]),
+  "reject_reason": zod.union([zod.string(),zod.null()]),
+  "status": zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected']),
+  "tutor_comment": zod.union([zod.string(),zod.null()]),
+  "updated_at": zod.iso.datetime({"offset":true}),
+  "utm_campaign": zod.union([zod.string(),zod.null()]),
+  "utm_medium": zod.union([zod.string(),zod.null()]),
+  "utm_source": zod.union([zod.string(),zod.null()])
+})
+
+/**
+ * @summary Update Lead
+ */
+export const UpdateLeadParams = zod.object({
+  "lead_id": zod.uuid()
+})
+
+export const updateLeadBodyCommentOneMax = 500;
+
+export const updateLeadBodyRejectReasonOneMax = 500;
+
+export const updateLeadBodyTutorCommentOneMax = 2000;
+
+
+
+export const UpdateLeadBody = zod.object({
+  "comment": zod.union([zod.string().max(updateLeadBodyCommentOneMax),zod.null()]).optional(),
+  "reject_reason": zod.union([zod.string().min(1).max(updateLeadBodyRejectReasonOneMax),zod.null()]).optional(),
+  "status": zod.union([zod.enum(['contacted', 'rejected']),zod.null()]).optional(),
+  "tutor_comment": zod.union([zod.string().max(updateLeadBodyTutorCommentOneMax),zod.null()]).optional()
+}).describe('Ручное изменение заявки: статус (`contacted`/`rejected`), причина отказа, заметка.')
+
+export const UpdateLeadResponse = zod.object({
+  "child_age": zod.int(),
+  "child_name": zod.string(),
+  "consent_at": zod.iso.datetime({"offset":true}),
+  "contact_method": zod.enum(['telegram', 'whatsapp', 'phone']),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "family_id": zod.union([zod.uuid(),zod.null()]),
+  "goal": zod.union([zod.string(),zod.null()]),
+  "history": zod.array(zod.object({
+  "changed_at": zod.iso.datetime({"offset":true}),
+  "comment": zod.union([zod.string(),zod.null()]),
+  "from_status": zod.union([zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected']),zod.null()]),
+  "to_status": zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected'])
+})),
+  "id": zod.uuid(),
+  "messenger_handle": zod.union([zod.string(),zod.null()]),
+  "notified_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "parent_name": zod.string(),
+  "phone": zod.string(),
+  "preferred_time": zod.union([zod.string(),zod.null()]),
+  "reject_reason": zod.union([zod.string(),zod.null()]),
+  "status": zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected']),
+  "tutor_comment": zod.union([zod.string(),zod.null()]),
+  "updated_at": zod.iso.datetime({"offset":true}),
+  "utm_campaign": zod.union([zod.string(),zod.null()]),
+  "utm_medium": zod.union([zod.string(),zod.null()]),
+  "utm_source": zod.union([zod.string(),zod.null()])
+})
+
+/**
+ * @summary Convert Lead
+ */
+export const ConvertLeadParams = zod.object({
+  "lead_id": zod.uuid()
+})
+
+export const convertLeadBodyChildDefaultMeetingUrlOneMax = 2083;
+
+export const convertLeadBodyChildFullNameMax = 200;
+
+export const convertLeadBodyFamilyNameMax = 200;
+
+export const convertLeadBodyParentFullNameMax = 200;
+
+
+
+export const ConvertLeadBody = zod.object({
+  "child": zod.object({
+  "birth_year": zod.union([zod.int(),zod.null()]).optional(),
+  "default_meeting_url": zod.union([zod.url().min(1).max(convertLeadBodyChildDefaultMeetingUrlOneMax),zod.null()]).optional(),
+  "english_level": zod.union([zod.enum(['A1', 'A2', 'B1', 'B2', 'C1']),zod.null()]).optional(),
+  "full_name": zod.string().min(1).max(convertLeadBodyChildFullNameMax)
+}),
+  "family_name": zod.string().min(1).max(convertLeadBodyFamilyNameMax),
+  "parent": zod.object({
+  "full_name": zod.string().min(1).max(convertLeadBodyParentFullNameMax),
+  "phone": zod.string()
+})
+})
+
+export const ConvertLeadResponse = zod.object({
+  "family_id": zod.uuid(),
+  "invitation": zod.object({
+  "expires_at": zod.iso.datetime({"offset":true}),
+  "url": zod.string()
+})
+})
+
+/**
  * @summary Upload Media
  */
 export const UploadMediaBody = zod.object({

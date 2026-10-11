@@ -10,7 +10,8 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 
-import app.auth.models  # noqa: F401  (регистрирует модели в Base.metadata)
+import app.auth.models
+import app.families.models  # noqa: F401  (регистрируют модели в Base.metadata)
 from app.core.db import Base
 from tests.conftest import alembic_config
 

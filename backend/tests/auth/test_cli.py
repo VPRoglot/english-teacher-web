@@ -37,7 +37,7 @@ def cli_env(migrated_db: str, redis_url: str, monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setenv("REDIS_URL", redis_url)
     get_settings.cache_clear()
     yield migrated_db
-    asyncio.run(_execute(migrated_db, "TRUNCATE users"))
+    asyncio.run(_execute(migrated_db, "TRUNCATE users CASCADE"))
     get_settings.cache_clear()
 
 

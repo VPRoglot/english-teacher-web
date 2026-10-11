@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
@@ -39,11 +39,12 @@ function stubApi(routes: Record<string, Handler>) {
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <ResetPassword />
     </QueryClientProvider>,
   );
+  return { ...view, client };
 }
 
 async function fillAndSubmit(password = "correct-horse-1", repeat = password) {
@@ -73,6 +74,32 @@ test("сброс: успех показывает «Пароль изменён�
   expect(screen.getByRole("link", { name: "Войти" })).toHaveAttribute("href", "/login");
   const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
   expect(JSON.parse(post?.[1]?.body as string)).toEqual({ password: "correct-horse-1" });
+});
+
+test("сброс: экран успеха переживает повторный запрос погашенного токена", async () => {
+  let consumed = false;
+  stubApi({
+    [RESET_URL]: (init) => {
+      if (init?.method === "POST") {
+        consumed = true;
+        return new Response(null, { status: 204 });
+      }
+      return consumed ? errorResponse(404, "reset_invalid", "Ссылка недействительна") : info();
+    },
+  });
+  const { client } = renderPage();
+  await fillAndSubmit();
+  expect(await screen.findByText("Пароль изменён")).toBeInTheDocument();
+
+  await act(() => client.refetchQueries());
+  expect(client.getQueryCache().getAll()[0]?.state.status).toBe("error");
+  await act(() => new Promise((resolve) => setTimeout(resolve, 20))); // даём React перерисоваться
+  const gets = fetchMock.mock.calls.filter(([, init]) => init?.method !== "POST");
+  expect(gets).toHaveLength(2); // повторный запрос действительно ушёл и получил 404
+
+  expect(screen.getByText("Пароль изменён")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Войти" })).toHaveAttribute("href", "/login");
+  expect(screen.queryByText(/недействительна/)).not.toBeInTheDocument();
 });
 
 test("сброс: недействительная ссылка", async () => {

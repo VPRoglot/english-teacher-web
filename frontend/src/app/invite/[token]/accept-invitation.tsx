@@ -11,6 +11,7 @@ import type { InvitationInfo } from "@/api/generated/model";
 import { PasswordField } from "@/components/password-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -41,23 +42,21 @@ type AcceptValues = z.infer<typeof schema>;
 
 const API_FIELDS = ["email", "password", "full_name", "phone", "consent"] as const;
 
-function Notice({ title, children }: { title: string; children?: React.ReactNode }) {
-  return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle className="text-xl">{title}</CardTitle>
-      </CardHeader>
-      {children && <CardContent>{children}</CardContent>}
-    </Card>
-  );
-}
-
 export function AcceptInvitation() {
   const { token } = useParams<{ token: string }>();
+  // Приглашение одноразовое: повторный запрос (фокус, сеть) не нужен и мог бы снести форму.
   const invitation = useGetInvitation(token, {
-    query: { meta: { skipAuthRedirect: true }, retry: false },
+    query: {
+      meta: { skipAuthRedirect: true },
+      retry: false,
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
   });
 
+  // Уже загруженные данные важнее поздней ошибки: введённые значения не должны пропадать.
+  if (invitation.data) return <InvitationForm token={token} invitation={invitation.data} />;
   if (invitation.isPending) return null;
   if (invitation.error instanceof ApiError && invitation.error.code === "invitation_invalid") {
     return (
@@ -68,14 +67,11 @@ export function AcceptInvitation() {
       </Notice>
     );
   }
-  if (invitation.isError) {
-    return (
-      <Notice title="Не удалось открыть приглашение">
-        <p className="text-sm text-muted-foreground">{errorMessage(invitation.error)}</p>
-      </Notice>
-    );
-  }
-  return <InvitationForm token={token} invitation={invitation.data} />;
+  return (
+    <Notice title="Не удалось открыть приглашение">
+      <p className="text-sm text-muted-foreground">{errorMessage(invitation.error)}</p>
+    </Notice>
+  );
 }
 
 function InvitationForm({ token, invitation }: { token: string; invitation: InvitationInfo }) {

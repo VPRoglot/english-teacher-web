@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
@@ -59,11 +59,12 @@ function stubApi(routes: Record<string, Handler>) {
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <AcceptInvitation />
     </QueryClientProvider>,
   );
+  return { ...view, client };
 }
 
 async function fillCredentials(password = "correct-horse-1", repeat = password) {
@@ -95,6 +96,26 @@ test("недействительное приглашение показывае
     ),
   ).toBeInTheDocument();
   expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+});
+
+test("неудачный повторный запрос приглашения не сносит форму и введённые данные", async () => {
+  let failing = false;
+  stubApi({
+    [INVITATION_URL]: () =>
+      failing ? errorResponse(500, "internal_error", "Сбой сервера") : jsonResponse(200, invitation()),
+  });
+  const { client } = renderPage();
+  await fillCredentials();
+
+  failing = true;
+  await act(() => client.refetchQueries());
+  expect(client.getQueryCache().getAll()[0]?.state.status).toBe("error");
+  await act(() => new Promise((resolve) => setTimeout(resolve, 20))); // даём React перерисоваться
+  expect(fetchMock).toHaveBeenCalledTimes(2); // повторный запрос действительно ушёл и упал
+
+  expect(screen.getByLabelText("Email")).toHaveValue("ivan@example.com");
+  expect(screen.getByLabelText("Пароль")).toHaveValue("correct-horse-1");
+  expect(screen.queryByText("Сбой сервера")).not.toBeInTheDocument();
 });
 
 test("предзаполняет ФИО и телефон", async () => {

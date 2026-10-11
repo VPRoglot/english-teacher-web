@@ -11,6 +11,7 @@ import { useGetPasswordReset, useResetPassword } from "@/api/generated/endpoints
 import { PasswordField } from "@/components/password-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Notice } from "@/components/notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api-fetch";
@@ -28,21 +29,21 @@ const schema = z
 
 type ResetValues = z.infer<typeof schema>;
 
-function Notice({ title, children }: { title: string; children?: React.ReactNode }) {
-  return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle className="text-xl">{title}</CardTitle>
-      </CardHeader>
-      {children && <CardContent>{children}</CardContent>}
-    </Card>
-  );
-}
-
 export function ResetPassword() {
   const { token } = useParams<{ token: string }>();
-  const info = useGetPasswordReset(token, { query: { meta: { skipAuthRedirect: true }, retry: false } });
+  // Токен одноразовый: после смены пароля повторный запрос вернул бы 404, поэтому не перезапрашиваем.
+  const info = useGetPasswordReset(token, {
+    query: {
+      meta: { skipAuthRedirect: true },
+      retry: false,
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+  });
 
+  // Уже загруженные данные важнее поздней ошибки: форма и экран успеха не должны исчезать.
+  if (info.data) return <ResetForm token={token} login={info.data.login} />;
   if (info.isPending) return null;
   if (info.error instanceof ApiError && info.error.code === "reset_invalid") {
     return (
@@ -53,14 +54,11 @@ export function ResetPassword() {
       </Notice>
     );
   }
-  if (info.isError) {
-    return (
-      <Notice title="Не удалось открыть ссылку">
-        <p className="text-sm text-muted-foreground">{errorMessage(info.error)}</p>
-      </Notice>
-    );
-  }
-  return <ResetForm token={token} login={info.data.login} />;
+  return (
+    <Notice title="Не удалось открыть ссылку">
+      <p className="text-sm text-muted-foreground">{errorMessage(info.error)}</p>
+    </Notice>
+  );
 }
 
 function ResetForm({ token, login }: { token: string; login: string }) {

@@ -53,3 +53,22 @@ export function applyApiErrors<T extends FieldValues>(
 
   return error.message;
 }
+
+const PASSWORD_POLICY_CODES = new Set([
+  "password_too_short",
+  "password_too_long",
+  "password_too_common",
+]);
+
+/**
+ * Ошибки политики пароля приходят без `details.field` — кладём их на поле `password`.
+ * Возвращает `true`, если ошибка обработана; иначе её нужно отдать в `applyApiErrors`.
+ */
+export function applyPasswordPolicyError<T extends FieldValues & { password: string }>(
+  error: unknown,
+  setError: UseFormSetError<T>,
+): boolean {
+  if (!(error instanceof ApiError) || !PASSWORD_POLICY_CODES.has(error.code)) return false;
+  setError("password" as Path<T>, { message: error.message });
+  return true;
+}

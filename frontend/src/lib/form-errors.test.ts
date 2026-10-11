@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 
 import { ApiError } from "./api-fetch";
-import { applyApiErrors, errorMessage } from "./form-errors";
+import { applyApiErrors, applyPasswordPolicyError, errorMessage } from "./form-errors";
 
 type Form = { email: string; password: string; current_password: string };
 
@@ -47,6 +47,21 @@ test("не ApiError → общий текст по умолчанию", () => {
   expect(applyApiErrors<Form>(new Error("boom"), setError, ["email"])).toBe(
     "Что-то пошло не так. Попробуйте ещё раз.",
   );
+});
+
+test("ошибка политики пароля ложится на поле password", () => {
+  const setError = vi.fn();
+  const err = new ApiError(422, "password_too_common", "Слишком простой пароль");
+  expect(applyPasswordPolicyError<Form>(err, setError)).toBe(true);
+  expect(setError).toHaveBeenCalledWith("password", { message: "Слишком простой пароль" });
+});
+
+test("прочие ошибки политикой пароля не обрабатываются", () => {
+  const setError = vi.fn();
+  const taken = new ApiError(409, "email_taken", "Занят");
+  expect(applyPasswordPolicyError<Form>(taken, setError)).toBe(false);
+  expect(applyPasswordPolicyError<Form>(new Error("boom"), setError)).toBe(false);
+  expect(setError).not.toHaveBeenCalled();
 });
 
 test("errorMessage", () => {

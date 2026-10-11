@@ -20,7 +20,7 @@ export function HeroSection({ hero }: { hero: HeroPublic }) {
             height={hero.photo.height}
             alt={hero.name}
             unoptimized
-            priority
+            preload
             className="mx-auto h-auto max-h-[28rem] w-auto max-w-full rounded-2xl object-cover shadow-sm md:justify-self-end"
           />
         )}

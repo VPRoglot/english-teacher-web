@@ -24,5 +24,12 @@ export async function getSite(): Promise<PublicSite> {
   if (!response.ok) {
     throw new Error(`GET /api/public/site → ${response.status}`);
   }
-  return GetPublicSiteResponse.parse(await response.json());
+  const parsed = GetPublicSiteResponse.safeParse(await response.json());
+  if (!parsed.success) {
+    // Только пути и коды ошибок: значения из ответа в лог не попадают.
+    const issues = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.code}`);
+    console.error("GET /api/public/site: ответ не соответствует схеме", issues);
+    throw parsed.error;
+  }
+  return parsed.data;
 }

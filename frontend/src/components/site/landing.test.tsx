@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 
 import type { PublicSite } from "@/api/generated/model";
 import { siteFixture } from "@/test/site-fixture";
@@ -43,6 +43,18 @@ test("hero without photo renders no image", () => {
   const site: PublicSite = { ...siteFixture, hero: { ...siteFixture.hero, photo: null } };
   render(<Landing site={site} />);
   expect(screen.queryByRole("img")).toBeNull();
+});
+
+test("duplicate credentials are all rendered without key warnings", () => {
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  const site: PublicSite = {
+    ...siteFixture,
+    about: { ...siteFixture.about, credentials: ["Диплом", "Диплом"] },
+  };
+  render(<Landing site={site} />);
+  expect(screen.getAllByText("Диплом")).toHaveLength(2);
+  expect(consoleError).not.toHaveBeenCalled();
+  consoleError.mockRestore();
 });
 
 test("service shows duration, format and free price", () => {

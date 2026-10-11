@@ -17,8 +17,9 @@ export function AboutSection({ about }: { about: AboutPublic }) {
             <Markdown>{about.text}</Markdown>
             {about.credentials.length > 0 && (
               <ul className="space-y-2">
-                {about.credentials.map((credential) => (
-                  <li key={credential} className="flex gap-2">
+                {about.credentials.map((credential, index) => (
+                  // Повторы допустимы, поэтому ключ — позиция (список статичен).
+                  <li key={index} className="flex gap-2">
                     <CircleCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
                     <span>{credential}</span>
                   </li>

@@ -14,6 +14,22 @@ test("renders markdown but never raw HTML or javascript: links", () => {
   expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
 });
 
+test("external images are not rendered", () => {
+  const { container } = render(<Markdown>{"до ![подпись](http://e.com/a.png) после"}</Markdown>);
+  expect(container.querySelector("img")).toBeNull();
+  expect(container).toHaveTextContent("до после");
+});
+
+test("markdown h1 and h2 render as h3 so the page keeps a single h1", () => {
+  const { container } = render(<Markdown>{"# Заголовок\n\n## Подзаголовок\n\n### Малый"}</Markdown>);
+  expect(container.querySelector("h1, h2")).toBeNull();
+  expect([...container.querySelectorAll("h3")].map((h) => h.textContent)).toEqual([
+    "Заголовок",
+    "Подзаголовок",
+    "Малый",
+  ]);
+});
+
 test("external links open safely", () => {
   const { container } = render(<Markdown>{"[сайт](https://example.com)"}</Markdown>);
   const link = container.querySelector("a");

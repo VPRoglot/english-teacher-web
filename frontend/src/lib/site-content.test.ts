@@ -30,10 +30,22 @@ test("throws on error status", async () => {
   await expect(getSite()).rejects.toThrow("GET /api/public/site → 500");
 });
 
-test("throws on unexpected shape", async () => {
+test("throws on unexpected shape and logs issue paths without data values", async () => {
   vi.stubEnv("API_INTERNAL_URL", "http://api.test");
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ hero: {} })));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ hero: { name: 12345, secret: "TOP-SECRET-VALUE" } })),
+  );
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
   await expect(getSite()).rejects.toThrow();
+
+  expect(consoleError).toHaveBeenCalledOnce();
+  const logged = JSON.stringify(consoleError.mock.calls[0]);
+  expect(logged).toContain("hero.name");
+  expect(logged).not.toContain("TOP-SECRET-VALUE");
+  expect(logged).not.toContain("12345");
+  consoleError.mockRestore();
 });
 
 test("throws when API_INTERNAL_URL is missing", async () => {

@@ -19,13 +19,20 @@ test("policy names the operator, retention, Telegram and contacts", () => {
   );
 });
 
-test("policy falls back to the site form when there are no contacts", () => {
+test("policy does not claim there are no third parties while Telegram gets notifications", () => {
+  render(<PrivacyPolicy operatorName="Анна Смирнова" contacts={siteFixture.contacts} />);
+  expect(screen.queryByText(/третьим лицам не передаются/)).not.toBeInTheDocument();
+  expect(screen.getByText(/не продаются и не передаются третьим лицам/)).toBeInTheDocument();
+  expect(screen.getByText(/доставляется\s+репетитору через Telegram/)).toBeInTheDocument();
+});
+
+test("policy points to the site contacts when none are published", () => {
   render(
     <PrivacyPolicy
       operatorName="Анна Смирнова"
       contacts={{ telegram: null, whatsapp: null, phone: null, email: null, working_hours_text: null }}
     />,
   );
-  expect(screen.getByText(/через форму на сайте/)).toBeInTheDocument();
+  expect(screen.getByText(/по контактам, указанным на сайте/)).toBeInTheDocument();
   expect(screen.queryByRole("link", { name: /@|anna/ })).not.toBeInTheDocument();
 });

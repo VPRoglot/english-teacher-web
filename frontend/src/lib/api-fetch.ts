@@ -42,18 +42,68 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-/** Mutator для orval: cookie того же origin, JSON, ошибки → ApiError. */
-export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const CSRF_URL = "/api/auth/csrf";
+const CSRF_COOKIE = "csrf_token";
+const CSRF_HEADER = "X-CSRF-Token";
+
+function readCsrfCookie(): string | null {
+  for (const part of document.cookie.split(";")) {
+    const [name, ...value] = part.trim().split("=");
+    if (name === CSRF_COOKIE) return decodeURIComponent(value.join("="));
+  }
+  return null;
+}
+
+function isAbort(error: unknown, init: RequestInit): boolean {
+  return (
+    init.signal?.aborted === true || (error as { name?: unknown } | null)?.name === "AbortError"
+  );
+}
+
+/** fetch с единым разбором сбоев: отмена пробрасывается как есть, остальное → network_error. */
+async function send(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, credentials: "same-origin" });
+  } catch (error) {
+    if (isAbort(error, init)) throw error;
+    throw new ApiError(0, "network_error", "Нет соединения с сервером");
+  }
+}
+
+function unknownError(response: Response, requestId: string | null): ApiError {
+  return new ApiError(
+    response.status,
+    "unknown_error",
+    `Сервер вернул ошибку ${response.status}`,
+    {},
+    requestId,
+  );
+}
+
+/** Запрашивает новый CSRF-токен: backend выставляет cookie `csrf_token`. */
+async function refreshCsrfToken(signal: AbortSignal | null | undefined): Promise<string | null> {
+  const response = await send(CSRF_URL, { method: "GET", signal });
+  if (!response.ok) throw unknownError(response, response.headers.get("X-Request-ID"));
+  return readCsrfCookie();
+}
+
+async function request<T>(
+  url: string,
+  init: RequestInit,
+  retryOnCsrfFailure: boolean,
+): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
 
-  let response: Response;
-  try {
-    response = await fetch(url, { ...init, headers, credentials: "same-origin" });
-  } catch {
-    throw new ApiError(0, "network_error", "Нет соединения с сервером");
+  const method = (init.method ?? "GET").toUpperCase();
+  if (!SAFE_METHODS.has(method)) {
+    // Без токена сервер ответит csrf_failed — это обработает единственный повтор ниже.
+    const token = readCsrfCookie() ?? (await refreshCsrfToken(init.signal));
+    if (token !== null) headers.set(CSRF_HEADER, token);
   }
 
+  const response = await send(url, { ...init, headers });
   const requestId = response.headers.get("X-Request-ID");
   if (response.status === 204) return undefined as T;
 
@@ -62,13 +112,21 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
 
   if (isErrorBody(body)) {
     const { code, message, details } = body.error;
+    if (retryOnCsrfFailure && response.status === 403 && code === "csrf_failed") {
+      await refreshCsrfToken(init.signal);
+      return request<T>(url, init, false);
+    }
     throw new ApiError(response.status, code, message, details ?? {}, requestId);
   }
-  throw new ApiError(
-    response.status,
-    "unknown_error",
-    `Сервер вернул ошибку ${response.status}`,
-    {},
-    requestId,
-  );
+  throw unknownError(response, requestId);
 }
+
+/** Mutator для orval: cookie того же origin, JSON, CSRF для небезопасных методов, ошибки → ApiError. */
+export function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
+  return request<T>(url, init, true);
+}
+
+/** orval подставляет эти типы в `TError`/`TBody` сгенерированных хуков. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- сигнатура задана orval
+export type ErrorType<E> = ApiError;
+export type BodyType<B> = B;

@@ -25,6 +25,7 @@ import type {
 } from '../../model';
 
 import { apiFetch } from '../../../../lib/api-fetch';
+import type { ErrorType } from '../../../../lib/api-fetch';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
@@ -79,7 +80,7 @@ export const getHealthQueryKey = () => {
     }
 
 
-export const getHealthQueryOptions = <TData = Awaited<ReturnType<typeof health>>, TError = ErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getHealthQueryOptions = <TData = Awaited<ReturnType<typeof health>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -98,10 +99,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type HealthQueryResult = NonNullable<Awaited<ReturnType<typeof health>>>
-export type HealthQueryError = ErrorResponse
+export type HealthQueryError = ErrorType<ErrorResponse>
 
 
-export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ErrorResponse>(
+export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ErrorType<ErrorResponse>>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof health>>,
@@ -111,7 +112,7 @@ export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = E
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ErrorResponse>(
+export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof health>>,
@@ -121,7 +122,7 @@ export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = E
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ErrorResponse>(
+export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -129,7 +130,7 @@ export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = E
  * @summary Health
  */
 
-export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ErrorResponse>(
+export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -180,7 +181,7 @@ export const getReadyQueryKey = () => {
     }
 
 
-export const getReadyQueryOptions = <TData = Awaited<ReturnType<typeof ready>>, TError = ErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ready>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getReadyQueryOptions = <TData = Awaited<ReturnType<typeof ready>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ready>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -199,10 +200,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ReadyQueryResult = NonNullable<Awaited<ReturnType<typeof ready>>>
-export type ReadyQueryError = ErrorResponse
+export type ReadyQueryError = ErrorType<ErrorResponse>
 
 
-export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = ErrorResponse>(
+export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = ErrorType<ErrorResponse>>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ready>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof ready>>,
@@ -212,7 +213,7 @@ export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = Err
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = ErrorResponse>(
+export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ready>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof ready>>,
@@ -222,7 +223,7 @@ export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = Err
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = ErrorResponse>(
+export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ready>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -230,7 +231,7 @@ export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = Err
  * @summary Ready
  */
 
-export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = ErrorResponse>(
+export function useReady<TData = Awaited<ReturnType<typeof ready>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ready>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

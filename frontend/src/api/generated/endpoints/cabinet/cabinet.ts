@@ -30,6 +30,7 @@ import type {
 } from '../../model';
 
 import { apiFetch } from '../../../../lib/api-fetch';
+import type { ErrorType , BodyType } from '../../../../lib/api-fetch';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
@@ -84,7 +85,7 @@ export const getListMyChildrenQueryKey = () => {
     }
 
 
-export const getListMyChildrenQueryOptions = <TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChildren>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getListMyChildrenQueryOptions = <TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChildren>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -103,10 +104,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListMyChildrenQueryResult = NonNullable<Awaited<ReturnType<typeof listMyChildren>>>
-export type ListMyChildrenQueryError = ErrorResponse
+export type ListMyChildrenQueryError = ErrorType<ErrorResponse>
 
 
-export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorResponse>(
+export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorType<ErrorResponse>>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChildren>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listMyChildren>>,
@@ -116,7 +117,7 @@ export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildr
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorResponse>(
+export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChildren>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listMyChildren>>,
@@ -126,7 +127,7 @@ export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildr
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorResponse>(
+export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChildren>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -134,7 +135,7 @@ export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildr
  * @summary List My Children
  */
 
-export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorResponse>(
+export function useListMyChildren<TData = Awaited<ReturnType<typeof listMyChildren>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChildren>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -194,7 +195,7 @@ return apiFetch<CabinetChild>(getSetMyChildAccountUrl(childId),
 
 export const getSetMyChildAccountMutationKey = () => ['setMyChildAccount'] as const;
 
-export const getSetMyChildAccountMutationOptions = <TError = ErrorResponse,
+export const getSetMyChildAccountMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMyChildAccount>>, TError,SetMyChildAccountMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof setMyChildAccount>>, TError,SetMyChildAccountMutationVariables, TContext> => {
 
@@ -222,14 +223,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SetMyChildAccountMutationResult = NonNullable<Awaited<ReturnType<typeof setMyChildAccount>>>
-    export type SetMyChildAccountMutationBody = ChildAccountSet
-    export type SetMyChildAccountMutationError = ErrorResponse
-    export type SetMyChildAccountMutationVariables = {childId: string;data: ChildAccountSet}
+    export type SetMyChildAccountMutationBody = BodyType<ChildAccountSet>
+    export type SetMyChildAccountMutationError = ErrorType<ErrorResponse>
+    export type SetMyChildAccountMutationVariables = {childId: string;data: BodyType<ChildAccountSet>}
 
     /**
  * @summary Set My Child Account
  */
-export const useSetMyChildAccount = <TError = ErrorResponse,
+export const useSetMyChildAccount = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMyChildAccount>>, TError,SetMyChildAccountMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof setMyChildAccount>>,

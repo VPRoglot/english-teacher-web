@@ -10,6 +10,7 @@ function stubFetch(response: Response) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  document.cookie = "csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
 });
 
 test("возвращает JSON при 2xx", async () => {
@@ -64,4 +65,88 @@ test("передаёт cookie того же origin и просит JSON", async 
   const init = f.mock.calls[0][1] as RequestInit;
   expect(init.credentials).toBe("same-origin");
   expect(new Headers(init.headers).get("Accept")).toBe("application/json");
+});
+
+function csrfFailedResponse() {
+  return new Response(JSON.stringify({ error: { code: "csrf_failed", message: "CSRF" } }), {
+    status: 403,
+  });
+}
+
+test("POST добавляет CSRF-заголовок из cookie", async () => {
+  document.cookie = "csrf_token=tok123";
+  const f = stubFetch(new Response("{}", { status: 200 }));
+  await apiFetch("/api/x", { method: "POST" });
+  expect(new Headers((f.mock.calls[0][1] as RequestInit).headers).get("X-CSRF-Token")).toBe(
+    "tok123",
+  );
+});
+
+test("GET не требует CSRF-токена", async () => {
+  const f = stubFetch(new Response("{}", { status: 200 }));
+  await apiFetch("/api/x");
+  expect(f).toHaveBeenCalledTimes(1);
+  expect(new Headers((f.mock.calls[0][1] as RequestInit).headers).has("X-CSRF-Token")).toBe(false);
+});
+
+test("без cookie сначала получает токен", async () => {
+  const f = vi.fn().mockImplementation((url: string) => {
+    if (url === "/api/auth/csrf") {
+      document.cookie = "csrf_token=fresh";
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+    return Promise.resolve(new Response("{}", { status: 200 }));
+  });
+  vi.stubGlobal("fetch", f);
+  await apiFetch("/api/x", { method: "POST" });
+  expect(f).toHaveBeenCalledTimes(2);
+  expect(f.mock.calls[0][0]).toBe("/api/auth/csrf");
+  expect((f.mock.calls[0][1] as RequestInit).credentials).toBe("same-origin");
+  expect(new Headers((f.mock.calls[1][1] as RequestInit).headers).get("X-CSRF-Token")).toBe(
+    "fresh",
+  );
+});
+
+test("csrf_failed → обновить токен и повторить один раз", async () => {
+  document.cookie = "csrf_token=stale";
+  const f = vi.fn().mockImplementation((url: string) => {
+    if (url === "/api/auth/csrf") {
+      document.cookie = "csrf_token=renewed";
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+    return Promise.resolve(
+      document.cookie.includes("renewed")
+        ? new Response("{}", { status: 200 })
+        : csrfFailedResponse(),
+    );
+  });
+  vi.stubGlobal("fetch", f);
+  await expect(apiFetch("/api/x", { method: "POST" })).resolves.toEqual({});
+  expect(f).toHaveBeenCalledTimes(3);
+  expect(new Headers((f.mock.calls[2][1] as RequestInit).headers).get("X-CSRF-Token")).toBe(
+    "renewed",
+  );
+});
+
+test("csrf_failed повторяется только один раз", async () => {
+  document.cookie = "csrf_token=stale";
+  const f = vi.fn().mockImplementation((url: string) => {
+    if (url === "/api/auth/csrf") return Promise.resolve(new Response(null, { status: 204 }));
+    return Promise.resolve(csrfFailedResponse());
+  });
+  vi.stubGlobal("fetch", f);
+  await expect(apiFetch("/api/x", { method: "POST" })).rejects.toMatchObject({
+    status: 403,
+    code: "csrf_failed",
+  });
+  expect(f).toHaveBeenCalledTimes(3);
+});
+
+test("отмена запроса не превращается в network_error", async () => {
+  const ctrl = new AbortController();
+  ctrl.abort();
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("aborted", "AbortError")));
+  await expect(apiFetch("/api/x", { signal: ctrl.signal })).rejects.toMatchObject({
+    name: "AbortError",
+  });
 });

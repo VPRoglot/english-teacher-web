@@ -35,6 +35,7 @@ import type {
 } from '../../model';
 
 import { apiFetch } from '../../../../lib/api-fetch';
+import type { ErrorType , BodyType } from '../../../../lib/api-fetch';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
@@ -90,7 +91,7 @@ export const getGetCsrfQueryKey = () => {
     }
 
 
-export const getGetCsrfQueryOptions = <TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCsrf>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetCsrfQueryOptions = <TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCsrf>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -109,10 +110,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetCsrfQueryResult = NonNullable<Awaited<ReturnType<typeof getCsrf>>>
-export type GetCsrfQueryError = ErrorResponse
+export type GetCsrfQueryError = ErrorType<ErrorResponse>
 
 
-export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorResponse>(
+export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorType<ErrorResponse>>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCsrf>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getCsrf>>,
@@ -122,7 +123,7 @@ export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError =
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorResponse>(
+export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCsrf>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getCsrf>>,
@@ -132,7 +133,7 @@ export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError =
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorResponse>(
+export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCsrf>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -140,7 +141,7 @@ export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError =
  * @summary Get Csrf
  */
 
-export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorResponse>(
+export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCsrf>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -190,7 +191,7 @@ export const getGetInvitationQueryKey = (token: string,) => {
     }
 
 
-export const getGetInvitationQueryOptions = <TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetInvitationQueryOptions = <TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorType<ErrorResponse>>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -209,10 +210,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetInvitationQueryResult = NonNullable<Awaited<ReturnType<typeof getInvitation>>>
-export type GetInvitationQueryError = ErrorResponse
+export type GetInvitationQueryError = ErrorType<ErrorResponse>
 
 
-export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(
+export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorType<ErrorResponse>>(
  token: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getInvitation>>,
@@ -222,7 +223,7 @@ export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(
+export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorType<ErrorResponse>>(
  token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getInvitation>>,
@@ -232,7 +233,7 @@ export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(
+export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorType<ErrorResponse>>(
  token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -240,7 +241,7 @@ export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation
  * @summary Get Invitation
  */
 
-export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(
+export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorType<ErrorResponse>>(
  token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -300,7 +301,7 @@ return apiFetch<MeResponse>(getAcceptInvitationUrl(token),
 
 export const getAcceptInvitationMutationKey = () => ['acceptInvitation'] as const;
 
-export const getAcceptInvitationMutationOptions = <TError = ErrorResponse,
+export const getAcceptInvitationMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext> => {
 
@@ -328,14 +329,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type AcceptInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof acceptInvitation>>>
-    export type AcceptInvitationMutationBody = AcceptInvitationRequest
-    export type AcceptInvitationMutationError = ErrorResponse
-    export type AcceptInvitationMutationVariables = {token: string;data: AcceptInvitationRequest}
+    export type AcceptInvitationMutationBody = BodyType<AcceptInvitationRequest>
+    export type AcceptInvitationMutationError = ErrorType<ErrorResponse>
+    export type AcceptInvitationMutationVariables = {token: string;data: BodyType<AcceptInvitationRequest>}
 
     /**
  * @summary Accept Invitation
  */
-export const useAcceptInvitation = <TError = ErrorResponse,
+export const useAcceptInvitation = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof acceptInvitation>>,
@@ -387,7 +388,7 @@ return apiFetch<MeResponse>(getLoginUrl(),
 
 export const getLoginMutationKey = () => ['login'] as const;
 
-export const getLoginMutationOptions = <TError = ErrorResponse,
+export const getLoginMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,LoginMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,LoginMutationVariables, TContext> => {
 
@@ -415,14 +416,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type LoginMutationResult = NonNullable<Awaited<ReturnType<typeof login>>>
-    export type LoginMutationBody = LoginRequest
-    export type LoginMutationError = ErrorResponse
-    export type LoginMutationVariables = {data: LoginRequest}
+    export type LoginMutationBody = BodyType<LoginRequest>
+    export type LoginMutationError = ErrorType<ErrorResponse>
+    export type LoginMutationVariables = {data: BodyType<LoginRequest>}
 
     /**
  * @summary Login
  */
-export const useLogin = <TError = ErrorResponse,
+export const useLogin = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,LoginMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof login>>,
@@ -460,7 +461,7 @@ export const logout = async ( options?: Parameters<typeof apiFetch>[1]): Promise
 
 export const getLogoutMutationKey = () => ['logout'] as const;
 
-export const getLogoutMutationOptions = <TError = ErrorResponse,
+export const getLogoutMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext> => {
 
@@ -489,13 +490,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type LogoutMutationResult = NonNullable<Awaited<ReturnType<typeof logout>>>
 
-    export type LogoutMutationError = ErrorResponse
+    export type LogoutMutationError = ErrorType<ErrorResponse>
 
 
     /**
  * @summary Logout
  */
-export const useLogout = <TError = ErrorResponse,
+export const useLogout = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof logout>>,
@@ -538,7 +539,7 @@ export const getGetMeQueryKey = () => {
     }
 
 
-export const getGetMeQueryOptions = <TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetMeQueryOptions = <TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -557,10 +558,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>
-export type GetMeQueryError = ErrorResponse
+export type GetMeQueryError = ErrorType<ErrorResponse>
 
 
-export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>(
+export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMe>>,
@@ -570,7 +571,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>(
+export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMe>>,
@@ -580,7 +581,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>(
+export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -588,7 +589,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
  * @summary Get Me
  */
 
-export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>(
+export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -647,7 +648,7 @@ return apiFetch<void>(getChangePasswordUrl(),
 
 export const getChangePasswordMutationKey = () => ['changePassword'] as const;
 
-export const getChangePasswordMutationOptions = <TError = ErrorResponse,
+export const getChangePasswordMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext> => {
 
@@ -675,14 +676,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ChangePasswordMutationResult = NonNullable<Awaited<ReturnType<typeof changePassword>>>
-    export type ChangePasswordMutationBody = ChangePasswordRequest
-    export type ChangePasswordMutationError = ErrorResponse
-    export type ChangePasswordMutationVariables = {data: ChangePasswordRequest}
+    export type ChangePasswordMutationBody = BodyType<ChangePasswordRequest>
+    export type ChangePasswordMutationError = ErrorType<ErrorResponse>
+    export type ChangePasswordMutationVariables = {data: BodyType<ChangePasswordRequest>}
 
     /**
  * @summary Change Password
  */
-export const useChangePassword = <TError = ErrorResponse,
+export const useChangePassword = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof changePassword>>,
@@ -725,7 +726,7 @@ export const getGetPasswordResetQueryKey = (token: string,) => {
     }
 
 
-export const getGetPasswordResetQueryOptions = <TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetPasswordResetQueryOptions = <TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorType<ErrorResponse>>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -744,10 +745,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetPasswordResetQueryResult = NonNullable<Awaited<ReturnType<typeof getPasswordReset>>>
-export type GetPasswordResetQueryError = ErrorResponse
+export type GetPasswordResetQueryError = ErrorType<ErrorResponse>
 
 
-export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(
+export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorType<ErrorResponse>>(
  token: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getPasswordReset>>,
@@ -757,7 +758,7 @@ export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswor
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(
+export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorType<ErrorResponse>>(
  token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getPasswordReset>>,
@@ -767,7 +768,7 @@ export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswor
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(
+export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorType<ErrorResponse>>(
  token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -775,7 +776,7 @@ export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswor
  * @summary Get Password Reset
  */
 
-export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(
+export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorType<ErrorResponse>>(
  token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -835,7 +836,7 @@ return apiFetch<void>(getResetPasswordUrl(token),
 
 export const getResetPasswordMutationKey = () => ['resetPassword'] as const;
 
-export const getResetPasswordMutationOptions = <TError = ErrorResponse,
+export const getResetPasswordMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext> => {
 
@@ -863,14 +864,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ResetPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof resetPassword>>>
-    export type ResetPasswordMutationBody = ResetPasswordRequest
-    export type ResetPasswordMutationError = ErrorResponse
-    export type ResetPasswordMutationVariables = {token: string;data: ResetPasswordRequest}
+    export type ResetPasswordMutationBody = BodyType<ResetPasswordRequest>
+    export type ResetPasswordMutationError = ErrorType<ErrorResponse>
+    export type ResetPasswordMutationVariables = {token: string;data: BodyType<ResetPasswordRequest>}
 
     /**
  * @summary Reset Password
  */
-export const useResetPassword = <TError = ErrorResponse,
+export const useResetPassword = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof resetPassword>>,

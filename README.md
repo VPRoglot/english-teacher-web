@@ -33,7 +33,7 @@ just web                      # frontend на http://localhost:3000, /api про
 | `just dev-full` | то же + production-сборка frontend в контейнере на :3000 |
 | `just migrate` | применить миграции Alembic |
 | `just create-tutor <email>` | создать учётную запись репетитора (одна на систему) |
-| `just api` | backend вне Docker (хосты в `.env` → `localhost`) |
+| `just api` | backend вне Docker; localhost-хосты — в `backend/.env` (см. `.env.example`) |
 | `just web` | Next.js dev-сервер |
 | `just gen-api` | OpenAPI из backend → типизированный клиент `frontend/src/api/generated` |
 | `just test` / `just test-backend` / `just test-frontend` | тесты |

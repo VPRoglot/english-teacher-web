@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import field_validator
@@ -6,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(extra="ignore")  # файлы .env — см. ENV_FILES
 
     app_env: Literal["dev", "test", "prod"] = "dev"
     database_url: str
@@ -29,6 +30,12 @@ class Settings(BaseSettings):
         return value
 
 
+# Корневой .env (общий с docker compose), затем .env текущей папки — он переопределяет первый.
+# Для backend вне Docker (`just api`, cwd = backend/) localhost-хосты кладут в backend/.env.
+# В контейнере корень — "/", файла /.env нет, настройки приходят из окружения.
+ENV_FILES: tuple[Path, ...] = (Path(__file__).resolve().parents[3] / ".env", Path(".env"))
+
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings(_env_file=ENV_FILES)

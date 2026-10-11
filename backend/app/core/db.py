@@ -1,8 +1,9 @@
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
+from typing import Annotated
 
-from fastapi import Request
+from fastapi import Depends, Request
 from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -60,3 +61,8 @@ async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
         except Exception:
             await session.rollback()
             raise
+
+
+# scope="function": коммит выполняется до отправки ответа — упавший коммит даёт 500, а не 2xx.
+# Эндпоинты используют только DbSession, а не Depends(get_db_session) напрямую.
+DbSession = Annotated[AsyncSession, Depends(get_db_session, scope="function")]

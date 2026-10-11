@@ -24,7 +24,7 @@ migrate:
 create-tutor email:
     {{compose}} run --rm api python -m app.cli create-tutor --email {{email}}
 
-# backend вне Docker (нужны postgres/redis из `just dev` и localhost-хосты в .env)
+# backend вне Docker (нужны postgres/redis из `just dev` и localhost-хосты в backend/.env)
 api:
     uv --directory backend run uvicorn app.main:create_app --factory --reload --port 8000
 

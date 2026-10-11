@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any, ClassVar
 
 from fastapi import FastAPI, Request
@@ -51,6 +52,15 @@ class ValidationFailed(AppError):
 
 
 _HTTP_CODES = {404: "not_found", 405: "method_not_allowed"}
+_HTTP_MESSAGES = {404: "Не найдено", 405: "Метод не поддерживается"}
+
+
+def _http_message(exc: StarletteHTTPException) -> str:
+    """Свой текст `detail` сохраняется; стандартная английская фраза Starlette — нет."""
+    default_phrase = HTTPStatus(exc.status_code).phrase
+    if isinstance(exc.detail, str) and exc.detail != default_phrase:
+        return exc.detail
+    return _HTTP_MESSAGES.get(exc.status_code, "Ошибка запроса")
 
 
 def error_body(code: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -73,5 +83,5 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = _HTTP_CODES.get(exc.status_code, "http_error")
-        message = exc.detail if isinstance(exc.detail, str) else "Ошибка запроса"
-        return JSONResponse(error_body(code, message), exc.status_code, headers=exc.headers)
+        body = error_body(code, _http_message(exc))
+        return JSONResponse(body, exc.status_code, headers=exc.headers)

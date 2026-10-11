@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
-from app.core.config import Settings
+from app.core import config
+from app.core.config import Settings, get_settings
 
 
 def test_settings_require_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -9,6 +12,39 @@ def test_settings_require_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
+
+
+def test_env_files_are_repo_root_then_cwd() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    assert config.ENV_FILES == (repo_root / ".env", Path(".env"))
+
+
+def test_get_settings_reads_root_env_and_cwd_env_overrides_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in ("DATABASE_URL", "REDIS_URL", "LOG_LEVEL"):
+        monkeypatch.delenv(name, raising=False)
+    root_env = tmp_path / "root.env"
+    root_env.write_text(
+        "DATABASE_URL=postgresql+asyncpg://u:p@postgres:5432/db\n"
+        "REDIS_URL=redis://redis:6379/0\nLOG_LEVEL=WARNING\n",
+        encoding="utf-8",
+    )
+    workdir = tmp_path / "backend"
+    workdir.mkdir()
+    (workdir / ".env").write_text(
+        "DATABASE_URL=postgresql+asyncpg://u:p@localhost:5432/db\n", encoding="utf-8"
+    )
+    monkeypatch.chdir(workdir)
+    monkeypatch.setattr(config, "ENV_FILES", (root_env, Path(".env")))
+    get_settings.cache_clear()
+    try:
+        s = get_settings()
+    finally:
+        get_settings.cache_clear()
+    assert s.database_url == "postgresql+asyncpg://u:p@localhost:5432/db"
+    assert s.redis_url == "redis://redis:6379/0"
+    assert s.log_level == "WARNING"
 
 
 def test_settings_reject_sync_driver() -> None:

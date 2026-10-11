@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 from asgi_lifespan import LifespanManager
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
 
@@ -27,6 +27,11 @@ async def raise_not_found() -> None:
 @routes.get("/conflict")
 async def raise_conflict() -> None:
     raise Conflict("Уже есть", code="tutor_already_exists")
+
+
+@routes.get("/teapot")
+async def teapot() -> None:
+    raise HTTPException(status_code=418, detail="Я чайник")
 
 
 @routes.post("/items")
@@ -76,10 +81,18 @@ async def test_unknown_route_uses_error_format(tclient: AsyncClient) -> None:
     r = await tclient.get("/api/nope")
     assert r.status_code == 404
     assert r.json()["error"]["code"] == "not_found"
+    assert r.json()["error"]["message"] == "Не найдено"
 
 
 async def test_wrong_method_uses_error_format(tclient: AsyncClient) -> None:
     r = await tclient.delete("/api/health")
     assert r.status_code == 405
     assert r.json()["error"]["code"] == "method_not_allowed"
+    assert r.json()["error"]["message"] == "Метод не поддерживается"
     assert "GET" in r.headers["allow"]
+
+
+async def test_custom_http_exception_detail_is_kept(tclient: AsyncClient) -> None:
+    r = await tclient.get("/api/_t/teapot")
+    assert r.status_code == 418
+    assert r.json()["error"] == {"code": "http_error", "message": "Я чайник", "details": {}}

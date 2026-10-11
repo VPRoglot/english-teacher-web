@@ -1,6 +1,65 @@
 {
   "components": {
     "schemas": {
+      "AcceptInvitationRequest": {
+        "properties": {
+          "consent": {
+            "const": true,
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "email": {
+            "maxLength": 254,
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          },
+          "phone": {
+            "pattern": "^\\+?[0-9\\s()-]{6,32}$",
+            "title": "Phone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "full_name",
+          "phone",
+          "consent"
+        ],
+        "title": "AcceptInvitationRequest",
+        "type": "object"
+      },
+      "ChangePasswordRequest": {
+        "properties": {
+          "current_password": {
+            "maxLength": 128,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 128,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest",
+        "type": "object"
+      },
       "ChildSummary": {
         "properties": {
           "full_name": {
@@ -74,6 +133,49 @@
           "name"
         ],
         "title": "FamilySummary",
+        "type": "object"
+      },
+      "InvitationInfo": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "family_name": {
+            "title": "Family Name",
+            "type": "string"
+          },
+          "prefill_full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefill Full Name"
+          },
+          "prefill_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefill Phone"
+          }
+        },
+        "required": [
+          "family_name",
+          "expires_at",
+          "prefill_full_name",
+          "prefill_phone"
+        ],
+        "title": "InvitationInfo",
         "type": "object"
       },
       "LoginRequest": {
@@ -164,6 +266,39 @@
         "title": "MeResponse",
         "type": "object"
       },
+      "PasswordResetInfo": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "login": {
+            "title": "Login",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expires_at",
+          "login"
+        ],
+        "title": "PasswordResetInfo",
+        "type": "object"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "ResetPasswordRequest",
+        "type": "object"
+      },
       "UserRole": {
         "enum": [
           "tutor",
@@ -201,6 +336,100 @@
           }
         },
         "summary": "Get Csrf",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/invitations/{token}": {
+      "get": {
+        "operationId": "get_invitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Invitation",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/invitations/{token}/accept": {
+      "post": {
+        "operationId": "accept_invitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Accept Invitation",
         "tags": [
           "auth"
         ]
@@ -297,6 +526,125 @@
           }
         },
         "summary": "Get Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "operationId": "change_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Change Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/password-resets/{token}": {
+      "get": {
+        "operationId": "get_password_reset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Password Reset",
+        "tags": [
+          "auth"
+        ]
+      },
+      "post": {
+        "operationId": "reset_password",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Reset Password",
         "tags": [
           "auth"
         ]

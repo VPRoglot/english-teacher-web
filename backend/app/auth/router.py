@@ -2,7 +2,15 @@ from fastapi import APIRouter, Request, Response
 
 from app.auth import service
 from app.auth.deps import CurrentUser
-from app.auth.schemas import LoginRequest, MeResponse
+from app.auth.schemas import (
+    AcceptInvitationRequest,
+    ChangePasswordRequest,
+    InvitationInfo,
+    LoginRequest,
+    MeResponse,
+    PasswordResetInfo,
+    ResetPasswordRequest,
+)
 from app.auth.sessions import (
     SESSION_COOKIE,
     SessionStoreDep,
@@ -76,3 +84,65 @@ async def logout(request: Request, store: SessionStoreDep) -> Response:
 @router.get("/me")
 async def get_me(user: CurrentUser, session: DbSession) -> MeResponse:
     return await service.build_me(session, user)
+
+
+@router.get("/invitations/{token}")
+async def get_invitation(token: str, session: DbSession) -> InvitationInfo:
+    invitation = await service.get_valid_invitation(session, token)
+    return await service.build_invitation_info(session, invitation)
+
+
+@router.post("/invitations/{token}/accept", status_code=201)
+async def accept_invitation(
+    token: str,
+    body: AcceptInvitationRequest,
+    request: Request,
+    response: Response,
+    session: DbSession,
+    store: SessionStoreDep,
+) -> MeResponse:
+    user = await service.accept_invitation(session, token=token, data=body)
+    me = await service.build_me(session, user)
+    # Как при входе: сессия из cookie запроса отзывается, выдаётся новая.
+    old_token = request.cookies.get(SESSION_COOKIE)
+    if old_token:
+        await store.delete(old_token)
+    session_token = await store.create(user.id, user.role)
+    set_session_cookie(response, session_token, user.role, request.app.state.settings)
+    return me
+
+
+@router.get("/password-resets/{token}")
+async def get_password_reset(token: str, session: DbSession) -> PasswordResetInfo:
+    reset = await service.get_valid_password_reset(session, token)
+    return await service.build_password_reset_info(session, reset)
+
+
+@router.post("/password-resets/{token}", status_code=204, response_class=Response)
+async def reset_password(
+    token: str, body: ResetPasswordRequest, session: DbSession, store: SessionStoreDep
+) -> Response:
+    await service.reset_password(session, token=token, password=body.password, sessions=store)
+    return Response(status_code=204)
+
+
+@router.post("/password", status_code=204, response_class=Response)
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    user: CurrentUser,
+    session: DbSession,
+    store: SessionStoreDep,
+) -> Response:
+    await service.change_password(
+        session,
+        user=user,
+        current_password=body.current_password,
+        new_password=body.new_password,
+        sessions=store,
+    )
+    # Все сессии, включая текущую, уже удалены; текущему устройству выдаётся свежая.
+    token = await store.create(user.id, user.role)
+    response = Response(status_code=204)
+    set_session_cookie(response, token, user.role, request.app.state.settings)
+    return response

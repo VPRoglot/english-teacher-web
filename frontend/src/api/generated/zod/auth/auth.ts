@@ -14,6 +14,60 @@ import * as zod from 'zod';
 export const GetCsrfResponse = zod.void()
 
 /**
+ * @summary Get Invitation
+ */
+export const GetInvitationParams = zod.object({
+  "token": zod.string()
+})
+
+export const GetInvitationResponse = zod.object({
+  "expires_at": zod.iso.datetime({"offset":true}),
+  "family_name": zod.string(),
+  "prefill_full_name": zod.union([zod.string(),zod.null()]),
+  "prefill_phone": zod.union([zod.string(),zod.null()])
+})
+
+/**
+ * @summary Accept Invitation
+ */
+export const AcceptInvitationParams = zod.object({
+  "token": zod.string()
+})
+
+export const acceptInvitationBodyEmailMax = 254;
+
+export const acceptInvitationBodyFullNameMax = 200;
+
+export const acceptInvitationBodyPasswordMax = 128;
+
+export const acceptInvitationBodyPhoneRegExp = new RegExp('^\\+?[0-9\\s()-]{6,32}$');
+
+
+export const AcceptInvitationBody = zod.object({
+  "consent": zod.literal(true).meta({ title: 'Consent' }),
+  "email": zod.string().max(acceptInvitationBodyEmailMax),
+  "full_name": zod.string().min(1).max(acceptInvitationBodyFullNameMax),
+  "password": zod.string().max(acceptInvitationBodyPasswordMax),
+  "phone": zod.string().regex(acceptInvitationBodyPhoneRegExp)
+})
+
+export const AcceptInvitationResponse = zod.object({
+  "children": zod.array(zod.object({
+  "full_name": zod.string(),
+  "id": zod.uuid()
+})),
+  "display_name": zod.string(),
+  "email": zod.union([zod.string(),zod.null()]),
+  "family": zod.union([zod.object({
+  "id": zod.uuid(),
+  "name": zod.string()
+}),zod.null()]),
+  "id": zod.uuid(),
+  "role": zod.enum(['tutor', 'parent', 'child']),
+  "username": zod.union([zod.string(),zod.null()])
+})
+
+/**
  * @summary Login
  */
 export const loginBodyLoginMax = 254;
@@ -66,4 +120,49 @@ export const GetMeResponse = zod.object({
   "role": zod.enum(['tutor', 'parent', 'child']),
   "username": zod.union([zod.string(),zod.null()])
 })
+
+/**
+ * @summary Change Password
+ */
+export const changePasswordBodyCurrentPasswordMax = 128;
+
+export const changePasswordBodyNewPasswordMax = 128;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "current_password": zod.string().max(changePasswordBodyCurrentPasswordMax),
+  "new_password": zod.string().max(changePasswordBodyNewPasswordMax)
+})
+
+export const ChangePasswordResponse = zod.void()
+
+/**
+ * @summary Get Password Reset
+ */
+export const GetPasswordResetParams = zod.object({
+  "token": zod.string()
+})
+
+export const GetPasswordResetResponse = zod.object({
+  "expires_at": zod.iso.datetime({"offset":true}),
+  "login": zod.string()
+})
+
+/**
+ * @summary Reset Password
+ */
+export const ResetPasswordParams = zod.object({
+  "token": zod.string()
+})
+
+export const resetPasswordBodyPasswordMax = 128;
+
+
+
+export const ResetPasswordBody = zod.object({
+  "password": zod.string().max(resetPasswordBodyPasswordMax)
+})
+
+export const ResetPasswordResponse = zod.void()
 

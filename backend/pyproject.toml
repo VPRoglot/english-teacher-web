@@ -59,5 +59,8 @@ asyncio_default_test_loop_scope = "session"
 addopts = "--cov=app --cov-report=term-missing"
 testpaths = ["tests"]
 
+[tool.coverage.run]
+concurrency = ["greenlet", "thread"]
+
 [tool.coverage.report]
 fail_under = 85

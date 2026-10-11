@@ -24,9 +24,14 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcceptInvitationRequest,
+  ChangePasswordRequest,
   ErrorResponse,
+  InvitationInfo,
   LoginRequest,
-  MeResponse
+  MeResponse,
+  PasswordResetInfo,
+  ResetPasswordRequest
 } from '../../model';
 
 import { apiFetch } from '../../../../lib/api-fetch';
@@ -152,7 +157,195 @@ export function useGetCsrf<TData = Awaited<ReturnType<typeof getCsrf>>, TError =
 
 
 
-export const getLoginUrl = () => {
+export const getGetInvitationUrl = (token: string,) => {
+
+
+
+
+  return `/api/auth/invitations/${token}`
+}
+
+/**
+ * @summary Get Invitation
+ */
+export const getInvitation = async (token: string, options?: Parameters<typeof apiFetch>[1]): Promise<InvitationInfo> => {
+
+  return apiFetch<InvitationInfo>(getGetInvitationUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInvitationQueryKey = (token: string,) => {
+    return [
+    `/api/auth/invitations/${token}`
+    ] as const;
+    }
+
+
+export const getGetInvitationQueryOptions = <TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitationQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitation>>> = ({ signal }) => getInvitation(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInvitationQueryResult = NonNullable<Awaited<ReturnType<typeof getInvitation>>>
+export type GetInvitationQueryError = ErrorResponse
+
+
+export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(
+ token: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitation>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitation>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Invitation
+ */
+
+export function useGetInvitation<TData = Awaited<ReturnType<typeof getInvitation>>, TError = ErrorResponse>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetInvitationQueryOptions(token,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getAcceptInvitationUrl = (token: string,) => {
+
+
+
+
+  return `/api/auth/invitations/${token}/accept`
+}
+
+/**
+ * @summary Accept Invitation
+ */
+export const acceptInvitation = async (token: string,
+    acceptInvitationRequest: AcceptInvitationRequest, options?: Parameters<typeof apiFetch>[1]): Promise<MeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<MeResponse>(getAcceptInvitationUrl(token),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(acceptInvitationRequest)
+  }
+);}
+
+
+
+
+
+export const getAcceptInvitationMutationKey = () => ['acceptInvitation'] as const;
+
+export const getAcceptInvitationMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext> => {
+
+const mutationKey = getAcceptInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptInvitation>>, AcceptInvitationMutationVariables> = (props) => {
+          const {token,data} = props ?? {};
+
+          return  acceptInvitation(token,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof acceptInvitation>>>
+    export type AcceptInvitationMutationBody = AcceptInvitationRequest
+    export type AcceptInvitationMutationError = ErrorResponse
+    export type AcceptInvitationMutationVariables = {token: string;data: AcceptInvitationRequest}
+
+    /**
+ * @summary Accept Invitation
+ */
+export const useAcceptInvitation = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof acceptInvitation>>,
+        TError,
+        AcceptInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAcceptInvitationMutationOptions(options), queryClient);
+    }
+    export const getLoginUrl = () => {
 
 
 
@@ -412,3 +605,278 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
 
 
 
+export const getChangePasswordUrl = () => {
+
+
+
+
+  return `/api/auth/password`
+}
+
+/**
+ * @summary Change Password
+ */
+export const changePassword = async (changePasswordRequest: ChangePasswordRequest, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<void>(getChangePasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(changePasswordRequest)
+  }
+);}
+
+
+
+
+
+export const getChangePasswordMutationKey = () => ['changePassword'] as const;
+
+export const getChangePasswordMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext> => {
+
+const mutationKey = getChangePasswordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changePassword>>, ChangePasswordMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  changePassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangePasswordMutationResult = NonNullable<Awaited<ReturnType<typeof changePassword>>>
+    export type ChangePasswordMutationBody = ChangePasswordRequest
+    export type ChangePasswordMutationError = ErrorResponse
+    export type ChangePasswordMutationVariables = {data: ChangePasswordRequest}
+
+    /**
+ * @summary Change Password
+ */
+export const useChangePassword = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,ChangePasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof changePassword>>,
+        TError,
+        ChangePasswordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getChangePasswordMutationOptions(options), queryClient);
+    }
+    export const getGetPasswordResetUrl = (token: string,) => {
+
+
+
+
+  return `/api/auth/password-resets/${token}`
+}
+
+/**
+ * @summary Get Password Reset
+ */
+export const getPasswordReset = async (token: string, options?: Parameters<typeof apiFetch>[1]): Promise<PasswordResetInfo> => {
+
+  return apiFetch<PasswordResetInfo>(getGetPasswordResetUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPasswordResetQueryKey = (token: string,) => {
+    return [
+    `/api/auth/password-resets/${token}`
+    ] as const;
+    }
+
+
+export const getGetPasswordResetQueryOptions = <TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPasswordResetQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPasswordReset>>> = ({ signal }) => getPasswordReset(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPasswordResetQueryResult = NonNullable<Awaited<ReturnType<typeof getPasswordReset>>>
+export type GetPasswordResetQueryError = ErrorResponse
+
+
+export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(
+ token: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPasswordReset>>,
+          TError,
+          Awaited<ReturnType<typeof getPasswordReset>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPasswordReset>>,
+          TError,
+          Awaited<ReturnType<typeof getPasswordReset>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Password Reset
+ */
+
+export function useGetPasswordReset<TData = Awaited<ReturnType<typeof getPasswordReset>>, TError = ErrorResponse>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPasswordReset>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPasswordResetQueryOptions(token,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getResetPasswordUrl = (token: string,) => {
+
+
+
+
+  return `/api/auth/password-resets/${token}`
+}
+
+/**
+ * @summary Reset Password
+ */
+export const resetPassword = async (token: string,
+    resetPasswordRequest: ResetPasswordRequest, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<void>(getResetPasswordUrl(token),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(resetPasswordRequest)
+  }
+);}
+
+
+
+
+
+export const getResetPasswordMutationKey = () => ['resetPassword'] as const;
+
+export const getResetPasswordMutationOptions = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext> => {
+
+const mutationKey = getResetPasswordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetPassword>>, ResetPasswordMutationVariables> = (props) => {
+          const {token,data} = props ?? {};
+
+          return  resetPassword(token,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof resetPassword>>>
+    export type ResetPasswordMutationBody = ResetPasswordRequest
+    export type ResetPasswordMutationError = ErrorResponse
+    export type ResetPasswordMutationVariables = {token: string;data: ResetPasswordRequest}
+
+    /**
+ * @summary Reset Password
+ */
+export const useResetPassword = <TError = ErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,ResetPasswordMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resetPassword>>,
+        TError,
+        ResetPasswordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResetPasswordMutationOptions(options), queryClient);
+    }

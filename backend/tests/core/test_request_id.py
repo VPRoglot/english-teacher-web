@@ -96,3 +96,23 @@ async def test_unhandled_exception_is_logged(
     entry = next(line for line in lines if line.get("event") == "unhandled_error")
     assert entry["request_id"] == "req-2"
     assert "RuntimeError: boom" in entry["exception"]
+
+
+@pytest.mark.parametrize(
+    ("path", "logged"),
+    [
+        ("/api/auth/invitations/SECRET-token_1", "/api/auth/invitations/***"),
+        ("/api/auth/invitations/SECRET-token_1/accept", "/api/auth/invitations/***/accept"),
+        ("/api/auth/password-resets/SECRET-token_1", "/api/auth/password-resets/***"),
+    ],
+)
+async def test_access_log_hides_one_time_tokens(
+    client: AsyncClient, capsys: pytest.CaptureFixture[str], path: str, logged: str
+) -> None:
+    configure_logging("INFO", json=True)
+    await client.get(path)
+    lines = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.strip()]
+    # httpx пишет собственный лог клиента с полным URL — проверяется только лог приложения.
+    entry = next(line for line in lines if line.get("event") == "http_request")
+    assert entry["path"] == logged
+    assert "SECRET" not in json.dumps(entry)

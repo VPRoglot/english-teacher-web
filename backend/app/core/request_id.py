@@ -17,11 +17,18 @@ _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
 # Пробы Docker/мониторинга дёргают эти пути постоянно — на INFO это шум.
 _QUIET_PATHS = frozenset({"/api/health", "/api/health/ready"})
 
+# Одноразовые токены из ссылок не должны попадать в логи.
+_TOKEN_PATH = re.compile(r"^(/api/auth/(?:invitations|password-resets)/)[^/]+")
+
 log = structlog.get_logger("app.http")
 
 
 def get_request_id() -> str | None:
     return _request_id.get()
+
+
+def _loggable_path(path: str) -> str:
+    return _TOKEN_PATH.sub(r"\1***", path)
 
 
 def _incoming_id(scope: Scope) -> str | None:
@@ -72,7 +79,7 @@ class RequestIdMiddleware:
             access_log(
                 "http_request",
                 method=scope["method"],
-                path=scope["path"],
+                path=_loggable_path(scope["path"]),
                 status=status,
                 duration_ms=round((time.perf_counter() - started) * 1000, 2),
             )

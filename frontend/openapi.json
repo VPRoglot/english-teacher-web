@@ -2026,6 +2026,25 @@
         "title": "ReviewsPublic",
         "type": "object"
       },
+      "ScheduleSettings": {
+        "description": "Настройки расписания, которые нужны и репетитору, и кабинету семьи.",
+        "properties": {
+          "cancel_policy_hours": {
+            "title": "Cancel Policy Hours",
+            "type": "integer"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timezone",
+          "cancel_policy_hours"
+        ],
+        "title": "ScheduleSettings",
+        "type": "object"
+      },
       "ServiceItem": {
         "additionalProperties": false,
         "properties": {
@@ -2126,6 +2145,28 @@
           "media"
         ],
         "title": "SiteBlocksAdmin",
+        "type": "object"
+      },
+      "TutorSettingsUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "cancel_policy_hours": {
+            "maximum": 168.0,
+            "minimum": 0.0,
+            "title": "Cancel Policy Hours",
+            "type": "integer"
+          },
+          "timezone": {
+            "maxLength": 64,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timezone",
+          "cancel_policy_hours"
+        ],
+        "title": "TutorSettingsUpdate",
         "type": "object"
       },
       "UserRole": {
@@ -2846,6 +2887,76 @@
           }
         },
         "summary": "Upload Media",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "operationId": "get_tutor_settings_admin",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Tutor Settings Admin",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "update_tutor_settings_admin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TutorSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update Tutor Settings Admin",
         "tags": [
           "admin"
         ]
@@ -3699,6 +3810,37 @@
           }
         },
         "summary": "Set My Child Account",
+        "tags": [
+          "cabinet"
+        ]
+      }
+    },
+    "/api/me/schedule-settings": {
+      "get": {
+        "operationId": "get_schedule_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Schedule Settings",
         "tags": [
           "cabinet"
         ]

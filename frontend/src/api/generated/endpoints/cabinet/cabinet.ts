@@ -26,7 +26,8 @@ import type {
 import type {
   CabinetChild,
   ChildAccountSet,
-  ErrorResponse
+  ErrorResponse,
+  ScheduleSettings
 } from '../../model';
 
 import { apiFetch } from '../../../../lib/api-fetch';
@@ -240,3 +241,103 @@ export const useSetMyChildAccount = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getSetMyChildAccountMutationOptions(options), queryClient);
     }
+    export const getGetScheduleSettingsUrl = () => {
+
+
+
+
+  return `/api/me/schedule-settings`
+}
+
+/**
+ * @summary Get Schedule Settings
+ */
+export const getScheduleSettings = async ( options?: Parameters<typeof apiFetch>[1]): Promise<ScheduleSettings> => {
+
+  return apiFetch<ScheduleSettings>(getGetScheduleSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetScheduleSettingsQueryKey = () => {
+    return [
+    `/api/me/schedule-settings`
+    ] as const;
+    }
+
+
+export const getGetScheduleSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getScheduleSettings>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetScheduleSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScheduleSettings>>> = ({ signal }) => getScheduleSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScheduleSettings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetScheduleSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getScheduleSettings>>>
+export type GetScheduleSettingsQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetScheduleSettings<TData = Awaited<ReturnType<typeof getScheduleSettings>>, TError = ErrorType<ErrorResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleSettings>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getScheduleSettings>>,
+          TError,
+          Awaited<ReturnType<typeof getScheduleSettings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetScheduleSettings<TData = Awaited<ReturnType<typeof getScheduleSettings>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleSettings>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getScheduleSettings>>,
+          TError,
+          Awaited<ReturnType<typeof getScheduleSettings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetScheduleSettings<TData = Awaited<ReturnType<typeof getScheduleSettings>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Schedule Settings
+ */
+
+export function useGetScheduleSettings<TData = Awaited<ReturnType<typeof getScheduleSettings>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getScheduleSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetScheduleSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+

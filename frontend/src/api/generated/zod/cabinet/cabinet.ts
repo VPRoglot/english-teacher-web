@@ -47,3 +47,11 @@ export const SetMyChildAccountResponse = zod.object({
   "username": zod.union([zod.string(),zod.null()])
 })
 
+/**
+ * @summary Get Schedule Settings
+ */
+export const GetScheduleSettingsResponse = zod.object({
+  "cancel_policy_hours": zod.int(),
+  "timezone": zod.string()
+}).describe('Настройки расписания, которые нужны и репетитору, и кабинету семьи.')
+

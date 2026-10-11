@@ -472,6 +472,34 @@ export const UploadMediaResponse = zod.object({
 })
 
 /**
+ * @summary Get Tutor Settings Admin
+ */
+export const GetTutorSettingsAdminResponse = zod.object({
+  "cancel_policy_hours": zod.int(),
+  "timezone": zod.string()
+}).describe('Настройки расписания, которые нужны и репетитору, и кабинету семьи.')
+
+/**
+ * @summary Update Tutor Settings Admin
+ */
+export const updateTutorSettingsAdminBodyCancelPolicyHoursMin = 0;
+export const updateTutorSettingsAdminBodyCancelPolicyHoursMax = 168;
+
+export const updateTutorSettingsAdminBodyTimezoneMax = 64;
+
+
+
+export const UpdateTutorSettingsAdminBody = zod.object({
+  "cancel_policy_hours": zod.int().min(updateTutorSettingsAdminBodyCancelPolicyHoursMin).max(updateTutorSettingsAdminBodyCancelPolicyHoursMax),
+  "timezone": zod.string().max(updateTutorSettingsAdminBodyTimezoneMax)
+})
+
+export const UpdateTutorSettingsAdminResponse = zod.object({
+  "cancel_policy_hours": zod.int(),
+  "timezone": zod.string()
+}).describe('Настройки расписания, которые нужны и репетитору, и кабинету семьи.')
+
+/**
  * @summary Get Site Blocks
  */
 export const getSiteBlocksResponseAboutCredentialsItemMax = 200;

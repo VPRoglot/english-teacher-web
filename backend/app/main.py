@@ -20,6 +20,8 @@ from app.families import admin_router, cabinet_router
 from app.leads import admin_router as leads_admin_router
 from app.leads import public_router as leads_public_router
 from app.leads.captcha import DisabledCaptchaVerifier, YandexCaptchaVerifier
+from app.lessons import admin_router as lessons_admin_router
+from app.lessons import cabinet_router as lessons_cabinet_router
 from app.site_content import admin_router as site_admin_router
 from app.site_content import public_router as site_public_router
 from app.site_content.storage import S3MediaStorage
@@ -91,4 +93,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(site_public_router.router, prefix="/api")
     app.include_router(leads_public_router.router, prefix="/api")
     app.include_router(leads_admin_router.router, prefix="/api")
+    app.include_router(lessons_admin_router.router, prefix="/api")
+    app.include_router(lessons_cabinet_router.router, prefix="/api")
     return app

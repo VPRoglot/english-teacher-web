@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 import app.auth.models
 import app.families.models
 import app.leads.models
+import app.lessons.models
 import app.site_content.models  # noqa: F401  (регистрируют модели в Base.metadata)
 from app.core.db import Base
 from tests.conftest import alembic_config

@@ -9,6 +9,7 @@ import { errorMessage } from "@/lib/form-errors";
 
 const NAV: NavItem[] = [
   { href: "/admin", label: "Обзор" },
+  { href: "/admin/leads", label: "Заявки" },
   { href: "/admin/families", label: "Семьи" },
   { href: "/admin/site", label: "Сайт" },
 ];

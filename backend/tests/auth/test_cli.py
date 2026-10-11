@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import create_async_engine
 from typer.testing import CliRunner
 
@@ -71,6 +72,37 @@ def test_cli_second_tutor_fails(cli_env: str) -> None:
     assert second.exit_code == 1
     assert "Репетитор уже создан" in second.output
     assert len(asyncio.run(_users(cli_env))) == 1
+
+
+def test_cli_invalid_email_fails_before_password_prompt(cli_env: str) -> None:
+    r = CliRunner().invoke(cli, ["create-tutor", "--email", "not-an-email"])  # без input
+    assert r.exit_code == 1
+    assert "Некорректный email" in r.output
+    assert "Пароль" not in r.output
+
+
+def test_cli_database_unreachable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@127.0.0.1:1/x")
+    monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:1/0")
+    get_settings.cache_clear()
+    r = CliRunner().invoke(
+        cli, ["create-tutor", "--email", "t@x.ru", "--password-stdin"], input="Strong-pass-1\n"
+    )
+    get_settings.cache_clear()
+    assert r.exit_code == 1
+    assert "Не удалось подключиться к базе данных" in r.output
+
+
+def test_cli_integrity_error_means_tutor_already_created(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def race(email: str, password: str) -> str:
+        raise IntegrityError("INSERT INTO users", {}, Exception("uq_users_single_tutor"))
+
+    monkeypatch.setattr("app.cli._create_tutor", race)
+    r = CliRunner().invoke(
+        cli, ["create-tutor", "--email", "t@x.ru", "--password-stdin"], input="Strong-pass-1\n"
+    )
+    assert r.exit_code == 1
+    assert "Репетитор уже создан" in r.output
 
 
 def test_export_openapi(tmp_path: Path) -> None:

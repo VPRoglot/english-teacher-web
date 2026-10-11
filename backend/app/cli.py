@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from sqlalchemy.exc import IntegrityError, InterfaceError, OperationalError
 
+from app.auth.identity import normalize_email
 from app.auth.service import create_tutor
 from app.core.config import Settings, get_settings
 from app.core.db import create_db_engine, create_sessionmaker
@@ -34,6 +36,11 @@ def create_tutor_command(
     ] = False,
 ) -> None:
     """Создать учётную запись репетитора (она может быть только одна)."""
+    try:
+        normalize_email(email)  # неверный email — до запроса пароля
+    except AppError as exc:
+        typer.echo(exc.message, err=True)
+        raise typer.Exit(1) from exc
     if password_stdin:
         password = sys.stdin.readline().rstrip("\r\n")
     else:
@@ -42,6 +49,12 @@ def create_tutor_command(
         created = asyncio.run(_create_tutor(email, password))
     except AppError as exc:
         typer.echo(exc.message, err=True)
+        raise typer.Exit(1) from exc
+    except IntegrityError as exc:  # гонка: второй репетитор создан параллельно
+        typer.echo("Репетитор уже создан", err=True)
+        raise typer.Exit(1) from exc
+    except (OSError, OperationalError, InterfaceError) as exc:
+        typer.echo("Не удалось подключиться к базе данных: проверьте DATABASE_URL", err=True)
         raise typer.Exit(1) from exc
     typer.echo(f"Репетитор создан: {created}")
 

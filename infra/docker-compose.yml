@@ -74,9 +74,12 @@ services:
     image: english-tutor-frontend:${IMAGE_TAG:-dev}
     build:
       context: ../frontend
-    env_file: ../.env
+    # Без env_file: web не должен получать секреты backend (DATABASE_URL, пароли, ключи S3).
+    # Значения подставляет compose из .env (`--env-file .env`).
     environment:
       API_INTERNAL_URL: http://api:8000
+      SITE_URL: ${SITE_URL}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
     depends_on:
       api:
         condition: service_healthy

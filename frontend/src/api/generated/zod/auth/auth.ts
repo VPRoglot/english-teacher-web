@@ -13,3 +13,57 @@ import * as zod from 'zod';
  */
 export const GetCsrfResponse = zod.void()
 
+/**
+ * @summary Login
+ */
+export const loginBodyLoginMax = 254;
+
+export const loginBodyPasswordMax = 128;
+
+
+
+export const LoginBody = zod.object({
+  "login": zod.string().min(1).max(loginBodyLoginMax),
+  "password": zod.string().min(1).max(loginBodyPasswordMax)
+})
+
+export const LoginResponse = zod.object({
+  "children": zod.array(zod.object({
+  "full_name": zod.string(),
+  "id": zod.uuid()
+})),
+  "display_name": zod.string(),
+  "email": zod.union([zod.string(),zod.null()]),
+  "family": zod.union([zod.object({
+  "id": zod.uuid(),
+  "name": zod.string()
+}),zod.null()]),
+  "id": zod.uuid(),
+  "role": zod.enum(['tutor', 'parent', 'child']),
+  "username": zod.union([zod.string(),zod.null()])
+})
+
+/**
+ * @summary Logout
+ */
+export const LogoutResponse = zod.void()
+
+/**
+ * @summary Get Me
+ */
+export const GetMeResponse = zod.object({
+  "children": zod.array(zod.object({
+  "full_name": zod.string(),
+  "id": zod.uuid()
+})),
+  "display_name": zod.string(),
+  "email": zod.union([zod.string(),zod.null()]),
+  "family": zod.union([zod.object({
+  "id": zod.uuid(),
+  "name": zod.string()
+}),zod.null()]),
+  "id": zod.uuid(),
+  "role": zod.enum(['tutor', 'parent', 'child']),
+  "username": zod.union([zod.string(),zod.null()])
+})
+

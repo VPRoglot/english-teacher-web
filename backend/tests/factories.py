@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User, UserRole
@@ -88,3 +89,9 @@ async def make_child(
     session.add(child)
     await session.flush()
     return child
+
+
+async def login(client: AsyncClient, login: str, password: str = TEST_PASSWORD) -> Response:
+    response = await client.post("/api/auth/login", json={"login": login, "password": password})
+    assert response.status_code == 200, response.text
+    return response

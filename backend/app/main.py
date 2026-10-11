@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.auth import router as auth_router
 from app.core import csrf, health
 from app.core.config import Settings, get_settings
 from app.core.csrf import CsrfMiddleware
@@ -44,4 +45,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router, prefix="/api")
     app.include_router(csrf.router, prefix="/api")
+    app.include_router(auth_router.router, prefix="/api")
     return app

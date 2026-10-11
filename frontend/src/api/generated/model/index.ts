@@ -5,7 +5,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './childSummary';
 export * from './errorDetail';
 export * from './errorDetailDetails';
 export * from './errorResponse';
+export * from './familySummary';
 export * from './health200';
+export * from './loginRequest';
+export * from './meResponse';
+export * from './userRole';

@@ -6,20 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { errorMessage } from "@/lib/form-errors";
-
-const MOSCOW_FORMAT = new Intl.DateTimeFormat("ru-RU", {
-  timeZone: "Europe/Moscow",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-/** `dd.MM.yyyy HH:mm` по московскому времени (ru-RU разделяет дату и время запятой). */
-function formatMoscow(iso: string): string {
-  return MOSCOW_FORMAT.format(new Date(iso)).replace(",", "");
-}
+import { formatMoscow } from "@/lib/format";
 
 export function CopyLinkCard({
   url,

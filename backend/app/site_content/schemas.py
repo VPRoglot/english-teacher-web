@@ -14,8 +14,10 @@ PHONE_ERROR = "Укажите телефон в формате +7 999 123-45-67"
 _TELEGRAM_PREFIXES = ("https://t.me/", "http://t.me/", "t.me/", "@")
 _TELEGRAM_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 _PHONE_SEPARATORS = re.compile(r"[\s\-()]")
-_PHONE_RE = re.compile(r"^\+?\d{10,15}$")
-_RU_TRUNK_RE = re.compile(r"^8(\d{10})$")
+_PHONE_RE = re.compile(r"\+?[0-9]{10,15}")
+_RU_TRUNK_RE = re.compile(r"8([0-9]{10})")  # 8XXXXXXXXXX
+_RU_MOBILE_RE = re.compile(r"9[0-9]{9}")  # без кода страны: 999 123-45-67
+_BARE_TEN_DIGITS_RE = re.compile(r"[0-9]{10}")
 
 
 def _text(max_length: int, *, min_length: int = 1) -> Any:
@@ -120,6 +122,10 @@ class ContactsBlock(_Block):
         number = _PHONE_SEPARATORS.sub("", value)
         if trunk := _RU_TRUNK_RE.fullmatch(number):
             number = f"+7{trunk.group(1)}"
+        elif _RU_MOBILE_RE.fullmatch(number):
+            number = f"+7{number}"
+        elif _BARE_TEN_DIGITS_RE.fullmatch(number):
+            raise ValueError(PHONE_ERROR)  # десять цифр без «+» — не российский мобильный
         if not _PHONE_RE.fullmatch(number):
             raise ValueError(PHONE_ERROR)
         return "+" + number.removeprefix("+")

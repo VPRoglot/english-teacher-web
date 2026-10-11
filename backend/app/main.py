@@ -19,6 +19,7 @@ from app.families import admin_router, cabinet_router
 from app.site_content import admin_router as site_admin_router
 from app.site_content import public_router as site_public_router
 from app.site_content.storage import S3MediaStorage
+from app.site_content.upload_limit import UploadLimitMiddleware
 
 log = structlog.get_logger("app.main")
 _BROKER_STARTUP_TIMEOUT = 5  # секунд
@@ -63,6 +64,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_error_handlers(app)
     # Последний добавленный — внешний: request id остаётся самым внешним слоем.
     app.add_middleware(CsrfMiddleware)
+    app.add_middleware(UploadLimitMiddleware)  # снаружи CSRF и авторизации
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router, prefix="/api")
     app.include_router(csrf.router, prefix="/api")

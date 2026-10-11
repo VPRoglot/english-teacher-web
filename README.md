@@ -90,11 +90,11 @@ S3_ENDPOINT_URL=http://localhost:9000
 - **Адрес Next для worker.** `REVALIDATE_URL` задаёт Docker Compose: в production `http://web:3000/api/revalidate`, в dev — `http://host.docker.internal:3000/api/revalidate`, потому что `just web` запускает Next на хосте.
 - **Секрет.** `REVALIDATE_SECRET` должен быть **одинаковым у backend и web** (не короче 16 символов): worker отправляет его как `Authorization: Bearer ...`, Next сверяет. В dev значение уже совпадает в `.env` и `frontend/.env.development`; в production задайте случайную строку, например `openssl rand -hex 32`.
 
-**Фото.** Загрузка в `/admin/site` проходит через backend: тип определяется по содержимому (только JPEG, PNG, WebP), размер не больше 5 МБ, EXIF удаляется, длинная сторона уменьшается до 2000 px. Файл кладётся в S3-совместимое хранилище по ключу `site/{uuid}.{jpg|png|webp}`, на странице он отдаётся по `/media/...`. Ограничение размера тела запроса до буферизации — задача nginx (план 7); приложение дополнительно отклоняет файлы больше 5 МБ.
+**Фото.** Загрузка в `/admin/site` проходит через backend: тип определяется по содержимому (только JPEG, PNG, WebP), размер не больше 5 МБ, EXIF удаляется, длинная сторона уменьшается до 2000 px. Файл кладётся в S3-совместимое хранилище по ключу `site/{uuid}.{jpg|png|webp}`, на странице он отдаётся по `/media/...`. Ограничение размера тела запроса до буферизации — задача nginx (план 7); приложение и само отсекает слишком большую загрузку до разбора multipart (`UploadLimitMiddleware`: 413 при `Content-Length` или потоке больше 5 МБ + 1 МиБ запаса) и дополнительно отклоняет файлы больше 5 МБ.
 
 **MinIO в разработке.** `just dev` поднимает MinIO и одноразовый `minio-init`: он создаёт бакет (`S3_BUCKET`) и включает анонимное чтение, так фото отдаются на лендинге. Образы — Chainguard (`cgr.dev/chainguard/minio`, `cgr.dev/chainguard/minio-client`), потому что официальные образы minio недоступны для скачивания. Консоль: http://localhost:9001 (логин и пароль — `S3_ACCESS_KEY` и `S3_SECRET_KEY` из `.env`), S3 API — `http://localhost:9000`. В dev Next проксирует `/media` на MinIO (`MEDIA_PROXY_URL`), в production `/media` проксирует nginx. Вместо MinIO можно указать настоящий AWS S3: удалите строку `S3_ENDPOINT_URL` и задайте `S3_ADDRESSING_STYLE=virtual`.
 
-**Переменные окружения.** Все описаны комментариями в `.env.example`.
+**Переменные окружения.** Все описаны комментариями в `.env.example`. Контейнер `web` не читает `.env` целиком (в нём секреты backend): Compose передаёт ему только `API_INTERNAL_URL`, `SITE_URL` и `REVALIDATE_SECRET`, подставляя значения из `.env`.
 
 | Где | Переменные |
 |---|---|

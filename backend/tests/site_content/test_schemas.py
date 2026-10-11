@@ -121,6 +121,9 @@ def test_contacts_normalizes_telegram(raw: str, expected: str | None) -> None:
         ("+7 999 123 45 67", "+79991234567"),
         ("+44 20 7946 0958", "+442079460958"),
         ("79991234567", "+79991234567"),
+        ("999 123-45-67", "+79991234567"),
+        ("9991234567", "+79991234567"),
+        ("(999) 123-45-67", "+79991234567"),
     ],
 )
 def test_contacts_normalizes_phone_and_whatsapp(raw: str, expected: str) -> None:
@@ -140,6 +143,11 @@ def test_contacts_blank_values_become_none() -> None:
         ("telegram", "ann", "Укажите имя пользователя Telegram, например @anna_english"),
         ("telegram", "anna english", "Укажите имя пользователя Telegram, например @anna_english"),
         ("phone", "12345", "Укажите телефон в формате"),
+        ("phone", "4951234567", "Укажите телефон в формате"),
+        ("whatsapp", "495 123-45-67", "Укажите телефон в формате"),
+        ("phone", "+٧٩٩٩١٢٣٤٥٦٧", "Укажите телефон в формате"),
+        ("phone", "٩٩٩١٢٣٤٥٦٧", "Укажите телефон в формате"),
+        ("telegram", "anna_englis٣", "Укажите имя пользователя Telegram"),
         ("whatsapp", "abc", "Укажите телефон в формате"),
         ("email", "not-an-email", "email"),
     ],

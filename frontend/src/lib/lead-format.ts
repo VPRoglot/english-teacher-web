@@ -8,6 +8,17 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   rejected: "Отказ",
 };
 
+export const LEAD_STATUS_BADGE_VARIANTS: Record<
+  LeadStatus,
+  "default" | "secondary" | "outline" | "destructive"
+> = {
+  new: "default",
+  contacted: "secondary",
+  trial_scheduled: "outline",
+  converted: "secondary",
+  rejected: "destructive",
+};
+
 export const CONTACT_METHOD_LABELS: Record<ContactMethod, string> = {
   telegram: "Telegram",
   whatsapp: "WhatsApp",

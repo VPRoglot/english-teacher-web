@@ -21,7 +21,12 @@ import {
 } from "@/components/ui/table";
 import { errorMessage } from "@/lib/form-errors";
 import { formatMoscow } from "@/lib/format";
-import { CONTACT_METHOD_LABELS, LEAD_STATUS_LABELS, leadContactHref } from "@/lib/lead-format";
+import {
+  CONTACT_METHOD_LABELS,
+  LEAD_STATUS_BADGE_VARIANTS,
+  LEAD_STATUS_LABELS,
+  leadContactHref,
+} from "@/lib/lead-format";
 
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -30,14 +35,6 @@ const ALL_STATUSES = "all";
 const STATUS_FILTER_LABELS: Record<string, string> = {
   [ALL_STATUSES]: "Все",
   ...LEAD_STATUS_LABELS,
-};
-
-const STATUS_BADGE_VARIANTS: Record<LeadStatus, "default" | "secondary" | "outline" | "destructive"> = {
-  new: "default",
-  contacted: "secondary",
-  trial_scheduled: "outline",
-  converted: "secondary",
-  rejected: "destructive",
 };
 
 type Filters = { status: LeadStatus | null; q: string; page: number };
@@ -71,7 +68,7 @@ function LeadRow({ lead }: { lead: LeadListItem }) {
         </a>
       </TableCell>
       <TableCell>
-        <Badge variant={STATUS_BADGE_VARIANTS[lead.status]}>{LEAD_STATUS_LABELS[lead.status]}</Badge>
+        <Badge variant={LEAD_STATUS_BADGE_VARIANTS[lead.status]}>{LEAD_STATUS_LABELS[lead.status]}</Badge>
       </TableCell>
     </TableRow>
   );

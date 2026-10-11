@@ -1,4 +1,3 @@
-import re
 import uuid
 from collections.abc import Mapping
 from typing import Annotated, Any
@@ -7,12 +6,10 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, 
 
 from app.core.config import Settings
 from app.core.phone import normalize_phone
+from app.core.telegram import TELEGRAM_HANDLE_RE, strip_telegram_handle
 from app.site_content.models import BlockKey
 
 TELEGRAM_ERROR = "Укажите имя пользователя Telegram, например @anna_english"
-
-_TELEGRAM_PREFIXES = ("https://t.me/", "http://t.me/", "t.me/", "@")
-_TELEGRAM_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 
 
 def _text(max_length: int, *, min_length: int = 1) -> Any:
@@ -101,11 +98,8 @@ class ContactsBlock(_Block):
     def _normalize_telegram(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        username = value.strip()
-        for prefix in _TELEGRAM_PREFIXES:
-            if username.startswith(prefix):
-                username = username.removeprefix(prefix)
-        if not _TELEGRAM_RE.fullmatch(username):
+        username = strip_telegram_handle(value)
+        if not TELEGRAM_HANDLE_RE.fullmatch(username):
             raise ValueError(TELEGRAM_ERROR)
         return username
 

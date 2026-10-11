@@ -30,7 +30,7 @@ async def test_telegram_posts_plain_text_without_parse_mode() -> None:
     assert json.loads(requests[0].content) == {
         "chat_id": CHAT_ID,
         "text": "<b>Анна</b> *_[x](y)",
-        "disable_web_page_preview": True,
+        "link_preview_options": {"is_disabled": True},
     }
 
 

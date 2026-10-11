@@ -35,7 +35,7 @@ async def test_list_filters_by_status_and_searches(
         parent_name="Анна",
         child_name="Маша",
         phone="+79990001122",
-        messenger_handle="@masha_tg",
+        messenger_handle="masha_tg",
         created_at=now,
     )
 
@@ -71,9 +71,24 @@ async def test_list_filters_by_status_and_searches(
     by_handle = (await tutor_client.get("/api/admin/leads", params={"q": "masha_tg"})).json()
     assert [i["id"] for i in by_handle["items"]] == [str(phoned.id)]
 
+    by_at_handle = (await tutor_client.get("/api/admin/leads", params={"q": "@masha_tg"})).json()
+    assert [i["id"] for i in by_at_handle["items"]] == [str(phoned.id)]
+
     by_phone = (await tutor_client.get("/api/admin/leads", params={"q": "0001122"})).json()
     assert [i["id"] for i in by_phone["items"]] == [str(phoned.id)]
     assert by_phone["total"] == 1
+
+
+@pytest.mark.parametrize("q", ["8 999 123", "+7 999 123", "999123"])
+async def test_phone_search_matches_with_leading_eight(
+    tutor_client: AsyncClient, db_session: AsyncSession, q: str
+) -> None:
+    lead = await make_lead(db_session, phone="+79991234567")
+    await make_lead(db_session, parent_name="Другая", phone="+78005553535")
+
+    body = (await tutor_client.get("/api/admin/leads", params={"q": q})).json()
+
+    assert [i["id"] for i in body["items"]] == [str(lead.id)]
 
 
 async def test_search_ignores_wildcards_and_short_digit_strings(
@@ -253,6 +268,19 @@ async def test_tutor_comment_can_be_set_and_cleared(
 
     too_long = await tutor_client.patch(url, json={"tutor_comment": "x" * 2001})
     assert too_long.status_code == 422
+
+
+async def test_comment_without_status_is_422(
+    tutor_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    lead = await make_lead(db_session)
+
+    r = await tutor_client.patch(f"/api/admin/leads/{lead.id}", json={"comment": "Позвонила"})
+
+    assert r.status_code == 422
+    (field,) = r.json()["error"]["details"]["fields"]
+    assert field["loc"] == ["body", "comment"]
+    assert field["message"] == "Комментарий сохраняется только вместе со сменой статуса"
 
 
 async def test_patch_unknown_lead_is_404(tutor_client: AsyncClient) -> None:

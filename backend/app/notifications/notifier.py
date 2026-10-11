@@ -24,7 +24,11 @@ class TelegramNotifier(Notifier):
 
     async def send(self, text: str) -> None:
         # Без parse_mode: данные заявки приходят от посетителей и уходят обычным текстом.
-        payload = {"chat_id": self._chat_id, "text": text, "disable_web_page_preview": True}
+        payload = {
+            "chat_id": self._chat_id,
+            "text": text,
+            "link_preview_options": {"is_disabled": True},
+        }
         try:
             response = await self._client.post(
                 f"{TELEGRAM_API}/bot{self._token}/sendMessage", json=payload

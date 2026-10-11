@@ -28,35 +28,39 @@ def test_message_contains_name_age_contact_and_link() -> None:
             child_name="Маша",
             child_age=9,
             contact_method=ContactMethod.TELEGRAM,
-            messenger_handle="anna",
+            messenger_handle="anna_en",
             phone="+79991234567",
         ),
         URL,
     )
-    assert "Родитель: Анна" in text and "Ребёнок: Маша, 9 лет" in text
-    assert "Связь: Telegram @anna · +79991234567" in text and text.endswith(URL)
-    assert "Цель" not in text
+    assert "Родитель: Анна" in text and "Возраст ребёнка: 9 лет" in text
+    assert "Связь: Telegram @anna_en · +79991234567" in text and text.endswith(URL)
 
 
-def test_message_full_layout() -> None:
+def test_message_full_layout_has_only_what_the_spec_allows() -> None:
     text = format_lead_message(
         make_lead(goal="Подготовка к школе", preferred_time="вечером, после 17:00"), URL
     )
     assert text == (
         "Новая заявка на пробное занятие\n"
         "Родитель: Анна\n"
-        "Ребёнок: Маша, 9 лет\n"
+        "Возраст ребёнка: 9 лет\n"
         "Связь: Telegram · +79991234567\n"
-        "Цель: Подготовка к школе\n"
-        "Удобное время: вечером, после 17:00\n"
         f"{URL}"
     )
+    # Имя ребёнка, цель и время остаются в админке и не уходят в Telegram.
+    assert "Маша" not in text and "школе" not in text and "17:00" not in text
 
 
-def test_message_omits_empty_optional_lines() -> None:
-    text = format_lead_message(make_lead(goal="", preferred_time=None), URL)
-    assert "Цель" not in text and "Удобное время" not in text
-    assert "\n\n" not in text
+def test_message_handle_is_prefixed_with_a_single_at() -> None:
+    text = format_lead_message(make_lead(messenger_handle="olga_test"), URL)
+    assert "Связь: Telegram @olga_test · " in text and "@@" not in text
+
+
+def test_message_prints_non_matching_handle_as_is() -> None:
+    text = format_lead_message(make_lead(messenger_handle="olga test"), URL)
+    assert "Связь: Telegram olga test · " in text
+    assert "@" not in text
 
 
 def test_message_without_handle_has_no_at_sign() -> None:
@@ -95,7 +99,7 @@ def test_years_declension(age: int, word: str) -> None:
 
 
 def test_message_is_plain_text_and_truncated() -> None:
-    text = format_lead_message(make_lead(parent_name="<b>Анна</b> *_[x](y)", goal="я" * 5000), "u")
+    text = format_lead_message(make_lead(parent_name="<b>Анна</b> *_[x](y)" + "я" * 5000), "u")
     assert "<b>Анна</b> *_[x](y)" in text
     assert len(text) <= MAX_MESSAGE_LENGTH and text.endswith("…")
 
@@ -148,6 +152,21 @@ async def test_already_notified_lead_is_skipped(
     assert len(notifier.sent) == 1
     assert [(e["event"], e["log_level"], e["reason"]) for e in logs] == [
         ("lead_notification_skipped", "info", "already_notified")
+    ]
+
+
+async def test_disabled_notifier_leaves_lead_unnotified(
+    context: Context, db_lead: Lead, db_session: AsyncSession
+) -> None:
+    context.state.notifier = DisabledNotifier()
+
+    with structlog.testing.capture_logs() as logs:
+        await notify_new_lead(str(db_lead.id), context)
+
+    await db_session.refresh(db_lead)
+    assert db_lead.notified_at is None
+    assert [(e["event"], e["log_level"], e["reason"]) for e in logs] == [
+        ("lead_notification_skipped", "warning", "disabled")
     ]
 
 

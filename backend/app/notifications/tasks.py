@@ -7,8 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import AsyncBroker, Context, TaskiqDepends
 
+from app.core.telegram import TELEGRAM_HANDLE_RE
 from app.leads.models import ContactMethod, Lead
 from app.leads.service import NOTIFY_NEW_LEAD_TASK
+from app.notifications.notifier import DisabledNotifier
 
 log = structlog.get_logger("app.notifications")
 
@@ -35,21 +37,23 @@ def _years(n: int) -> str:
 
 
 def format_lead_message(lead: Lead, admin_url: str) -> str:
-    """Текст для репетитора: обычный текст (без разметки), не длиннее лимита Telegram."""
+    """Текст для репетитора: обычный текст (без разметки), не длиннее лимита Telegram.
+
+    Только то, что разрешает спека (4.5 п.1) и политика конфиденциальности: имя родителя,
+    возраст ребёнка, способ связи с контактом и ссылка на заявку.
+    """
     contact = _CONTACT_METHOD_LABELS[lead.contact_method]
     if lead.contact_method is ContactMethod.TELEGRAM and lead.messenger_handle:
-        contact = f"{contact} @{lead.messenger_handle}"
+        handle = lead.messenger_handle
+        # «@» только перед настоящим именем пользователя; произвольный ввод печатается как есть.
+        contact += f" @{handle}" if TELEGRAM_HANDLE_RE.fullmatch(handle) else f" {handle}"
     lines = [
         "Новая заявка на пробное занятие",
         f"Родитель: {lead.parent_name}",
-        f"Ребёнок: {lead.child_name}, {lead.child_age} {_years(lead.child_age)}",
+        f"Возраст ребёнка: {lead.child_age} {_years(lead.child_age)}",
         f"Связь: {contact} · {lead.phone}",
+        admin_url,
     ]
-    if lead.goal:
-        lines.append(f"Цель: {lead.goal}")
-    if lead.preferred_time:
-        lines.append(f"Удобное время: {lead.preferred_time}")
-    lines.append(admin_url)
     text = "\n".join(lines)
     if len(text) > MAX_MESSAGE_LENGTH:
         text = text[: MAX_MESSAGE_LENGTH - 1] + "…"
@@ -71,6 +75,10 @@ async def notify_new_lead(lead_id: str, context: Annotated[Context, TaskiqDepend
             return
         if lead.notified_at is not None:
             log.info("lead_notification_skipped", lead_id=lead_id, reason="already_notified")
+            return
+        if isinstance(state.notifier, DisabledNotifier):
+            # Telegram не настроен: заявка остаётся недоставленной и видна только в админке.
+            log.warning("lead_notification_skipped", lead_id=lead_id, reason="disabled")
             return
         admin_url = f"{state.public_base_url}/admin/leads/{lead.id}"
         await state.notifier.send(format_lead_message(lead, admin_url))

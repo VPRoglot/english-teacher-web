@@ -14,11 +14,13 @@ from pydantic_core import PydanticCustomError
 
 from app.auth.schemas import LinkResponse
 from app.core.phone import PHONE_ERROR, normalize_phone
+from app.core.telegram import strip_telegram_handle
 from app.families.schemas import ChildCreate, FamilyName
 from app.leads.models import ContactMethod, LeadStatus
 
 CONSENT_ERROR = "Нужно согласие на обработку персональных данных"
 REJECT_REASON_ERROR = "Укажите причину отказа"
+COMMENT_WITHOUT_STATUS_ERROR = "Комментарий сохраняется только вместе со сменой статуса"
 
 _Text100 = Annotated[str, StringConstraints(max_length=100)]
 
@@ -58,6 +60,12 @@ class LeadCreate(BaseModel):
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
+    @field_validator("messenger_handle", mode="after")
+    @classmethod
+    def _strip_handle(cls, value: str | None) -> str | None:
+        # Без проверки формата: нестандартный ввод не должен стоить нам заявки.
+        return (strip_telegram_handle(value) or None) if value is not None else None
 
     @field_validator("phone", mode="after")
     @classmethod
@@ -140,6 +148,15 @@ class LeadUpdate(BaseModel):
         default=None, validate_default=True
     )
     tutor_comment: Annotated[str, StringConstraints(max_length=2000)] | None = None
+
+    @field_validator("comment", mode="after")
+    @classmethod
+    def _comment_needs_status(cls, value: str | None, info: ValidationInfo) -> str | None:
+        if "status" not in info.data:  # статус сам не прошёл проверку — его ошибка уже есть
+            return value
+        if value is not None and info.data["status"] is None:
+            raise PydanticCustomError("comment_without_status", COMMENT_WITHOUT_STATUS_ERROR)
+        return value
 
     @field_validator("reject_reason", mode="after")
     @classmethod

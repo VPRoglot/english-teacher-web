@@ -106,11 +106,15 @@ async def list_leads(
         matches = [
             Lead.parent_name.ilike(pattern, escape="\\"),
             Lead.child_name.ilike(pattern, escape="\\"),
-            Lead.messenger_handle.ilike(pattern, escape="\\"),
+            # В базе ник хранится без «@», а в поиск его вводят как в Telegram.
+            Lead.messenger_handle.ilike(_like_pattern(text.removeprefix("@") or text), escape="\\"),
         ]
         digits = re.sub(r"\D", "", text)
         if len(digits) >= _MIN_PHONE_SEARCH_DIGITS:
             matches.append(Lead.phone.ilike(f"%{digits}%"))  # в phone только «+» и цифры
+            if digits.startswith("8") and len(digits) > _MIN_PHONE_SEARCH_DIGITS:
+                # «8 999 …» — это «+7 999 …»: телефон хранится в международном виде.
+                matches.append(Lead.phone.ilike(f"%7{digits[1:]}%"))
         conditions.append(or_(*matches))
 
     total = await session.scalar(select(func.count()).select_from(Lead).where(*conditions))

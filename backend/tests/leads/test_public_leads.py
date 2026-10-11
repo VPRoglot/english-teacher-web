@@ -4,10 +4,12 @@ import pytest
 import structlog
 from fastapi import FastAPI
 from httpx import AsyncClient
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.redis import get_redis
 from app.core.tasks import get_task_queue
 from app.leads.models import Lead
 from tests.conftest import FakeTaskQueue
@@ -48,6 +50,48 @@ async def test_optional_fields_are_saved_and_blank_handle_becomes_null(
     assert lead.messenger_handle is None
     assert (lead.goal, lead.preferred_time) == ("Подготовка к экзамену", "вечером")
     assert (lead.utm_medium, lead.utm_campaign) == ("cpc", "autumn")
+
+
+@pytest.mark.parametrize(
+    ("raw", "stored"),
+    [
+        ("@olga_test", "olga_test"),
+        ("https://t.me/olga_test", "olga_test"),
+        ("t.me/olga_test", "olga_test"),
+        ("olga test", "olga test"),  # нестандартный ввод не теряет заявку
+        ("@", None),
+    ],
+)
+async def test_messenger_handle_is_normalized(
+    client: AsyncClient, db_session: AsyncSession, raw: str, stored: str | None
+) -> None:
+    assert (await client.post(URL, json=valid_lead(messenger_handle=raw))).status_code == 201
+    lead = (await db_session.execute(select(Lead))).scalar_one()
+    assert lead.messenger_handle == stored
+
+
+async def test_rate_limiter_outage_does_not_lose_the_lead(
+    app: FastAPI,
+    client: AsyncClient,
+    db_session: AsyncSession,
+    task_queue: FakeTaskQueue,
+) -> None:
+    class DownRedis:
+        def pipeline(self, *args: Any, **kwargs: Any) -> Any:
+            raise RedisConnectionError("redis недоступен")
+
+        async def get(self, *args: Any, **kwargs: Any) -> Any:
+            raise RedisConnectionError("redis недоступен")
+
+    app.dependency_overrides[get_redis] = lambda: DownRedis()
+    with structlog.testing.capture_logs() as logs:
+        r = await client.post(URL, json=valid_lead())
+    assert r.status_code == 201 and r.json() == {"accepted": True}
+    assert await _count(db_session) == 1
+    assert len(task_queue.calls) == 1
+    unavailable = [e for e in logs if e["event"] == "lead_rate_limit_unavailable"]
+    assert len(unavailable) == 1 and unavailable[0]["log_level"] == "warning"
+    assert unavailable[0]["exc_info"] is True
 
 
 async def test_captcha_receives_token_and_client_ip(

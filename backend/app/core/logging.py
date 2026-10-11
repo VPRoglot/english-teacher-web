@@ -44,3 +44,6 @@ def configure_logging(level: str, json: bool) -> None:
         logging.getLogger(name).handlers = []
         logging.getLogger(name).propagate = True
     logging.getLogger("uvicorn.access").disabled = True
+    # httpx пишет на уровне INFO полный URL запроса, а в URL Telegram Bot API лежит токен бота.
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)

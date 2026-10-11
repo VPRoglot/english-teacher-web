@@ -36,7 +36,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.sessionmaker = create_sessionmaker(app.state.engine)
         app.state.redis = create_redis(settings)
         app.state.broker = broker = create_broker(settings)
-        app.state.task_queue = BrokerTaskQueue(broker)
+        app.state.task_queue = BrokerTaskQueue(
+            broker, timeout_seconds=settings.task_enqueue_timeout_seconds
+        )
         app.state.media_storage = S3MediaStorage(settings)  # без сети: клиент создаётся на запрос
         try:
             # startup() брокера идёт в Redis (создаёт consumer group): если Redis недоступен,

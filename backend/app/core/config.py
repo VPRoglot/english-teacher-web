@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     app_env: Literal["dev", "test", "prod"] = "dev"
     database_url: str
     redis_url: str
+    # Потолок постановки задачи в очередь: зависший Redis не должен вешать ответ API.
+    task_enqueue_timeout_seconds: float = 2.0
     log_level: str = "INFO"
     log_json: bool = True
     session_cookie_secure: bool = True

@@ -1,9 +1,19 @@
+import asyncio
 from itertools import pairwise
 from typing import Annotated, Any
 
+import pytest
 import structlog
-from taskiq import Context, InMemoryBroker, TaskiqDepends, TaskiqMiddleware
+from sqlalchemy import text
+from taskiq import (
+    BrokerMessage,
+    Context,
+    InMemoryBroker,
+    TaskiqDepends,
+    TaskiqMiddleware,
+)
 from taskiq.middlewares import SmartRetryMiddleware
+from taskiq_redis import RedisStreamBroker
 
 from app.core.config import Settings
 from app.core.request_id import _request_id, get_request_id
@@ -14,6 +24,8 @@ from app.core.tasks import (
     create_broker,
     task_middlewares,
 )
+from app.tasks import setup_worker
+from tests.conftest import make_settings
 
 
 async def test_enqueue_kicks_task_by_name_with_request_id_label() -> None:
@@ -28,7 +40,7 @@ async def test_enqueue_kicks_task_by_name_with_request_id_label() -> None:
     await broker.startup()
     token = _request_id.set("rid-1")
     try:
-        await BrokerTaskQueue(broker).enqueue("test.probe", x=1)
+        await BrokerTaskQueue(broker, timeout_seconds=5).enqueue("test.probe", x=1)
         await broker.wait_all()
     finally:
         _request_id.reset(token)
@@ -46,7 +58,7 @@ async def test_enqueue_without_request_id_sends_no_label() -> None:
     broker.register_task(probe, task_name="test.probe")
     await broker.startup()
     try:
-        await BrokerTaskQueue(broker).enqueue("test.probe")
+        await BrokerTaskQueue(broker, timeout_seconds=5).enqueue("test.probe")
         await broker.wait_all()
     finally:
         await broker.shutdown()
@@ -66,7 +78,7 @@ async def test_middleware_binds_request_id_and_task_name_while_task_runs() -> No
     try:
         token = _request_id.set("rid-2")
         try:
-            await BrokerTaskQueue(broker).enqueue("test.probe")
+            await BrokerTaskQueue(broker, timeout_seconds=5).enqueue("test.probe")
         finally:
             _request_id.reset(token)
         await broker.wait_all()
@@ -89,7 +101,7 @@ async def _run_failing_task(*middlewares: TaskiqMiddleware) -> int:
     broker.register_task(always_fails, task_name="test.fails", retry_on_error=True)
     await broker.startup()
     try:
-        await BrokerTaskQueue(broker).enqueue("test.fails")
+        await BrokerTaskQueue(broker, timeout_seconds=5).enqueue("test.fails")
         for _ in range(10):  # каждый повтор — новая задача, wait_all ждёт только запущенные
             await broker.wait_all()
     finally:
@@ -126,3 +138,47 @@ def test_broker_retries_five_times(settings: Settings) -> None:
     broker = create_broker(settings)
     retry = [m for m in broker.middlewares if isinstance(m, SmartRetryMiddleware)]
     assert len(retry) == 1 and retry[0].default_retry_count == 5
+
+
+async def test_enqueue_times_out_when_broker_hangs() -> None:
+    class HangingBroker(InMemoryBroker):
+        async def kick(self, message: BrokerMessage) -> None:
+            await asyncio.sleep(3600)
+
+    queue = BrokerTaskQueue(HangingBroker(), timeout_seconds=0.05)
+    with pytest.raises(TimeoutError):
+        await queue.enqueue("test.probe")
+
+
+def test_broker_caps_stream_length_and_reads_group_from_start(settings: Settings) -> None:
+    broker = create_broker(settings)
+    assert isinstance(broker, RedisStreamBroker)
+    assert broker.maxlen == 10_000
+    assert broker.approximate is True
+    assert broker.consumer_id == "0"  # id, с которого создаётся consumer group
+
+
+def test_broker_connection_timeouts_exceed_xread_block(settings: Settings) -> None:
+    broker = create_broker(settings)
+    assert isinstance(broker, RedisStreamBroker)
+    kwargs = broker.connection_pool.connection_kwargs
+    assert kwargs["socket_timeout"] == 5
+    assert kwargs["socket_connect_timeout"] == 5
+    assert kwargs["socket_timeout"] > broker.block / 1000  # xread блокируется на 2 с
+
+
+async def test_worker_state_has_sessionmaker(settings: Settings) -> None:
+    broker = setup_worker(InMemoryBroker(), settings)
+    await broker.startup()
+    try:
+        async with broker.state.sessionmaker() as session:
+            assert (await session.execute(text("select 1"))).scalar_one() == 1
+    finally:
+        await broker.shutdown()
+
+
+async def test_worker_startup_does_not_connect_to_db() -> None:
+    unreachable = make_settings(database_url="postgresql+asyncpg://u:p@127.0.0.1:1/x")
+    broker = setup_worker(InMemoryBroker(), unreachable)
+    await broker.startup()  # движок ленивый: без БД worker всё равно стартует
+    await broker.shutdown()

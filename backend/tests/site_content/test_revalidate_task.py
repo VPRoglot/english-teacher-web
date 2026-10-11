@@ -71,7 +71,7 @@ async def test_worker_runs_revalidate_task(settings: Settings) -> None:
     setup_worker(broker, settings, transport=transport)
     await broker.startup()
     try:
-        await BrokerTaskQueue(broker).enqueue(REVALIDATE_SITE_TASK)
+        await BrokerTaskQueue(broker, timeout_seconds=5).enqueue(REVALIDATE_SITE_TASK)
         await broker.wait_all()
     finally:
         await broker.shutdown()
@@ -85,7 +85,7 @@ async def _run_with_retries(settings: Settings, transport: httpx.MockTransport) 
     setup_worker(broker, settings, transport=transport)
     await broker.startup()
     try:
-        await BrokerTaskQueue(broker).enqueue(REVALIDATE_SITE_TASK)
+        await BrokerTaskQueue(broker, timeout_seconds=5).enqueue(REVALIDATE_SITE_TASK)
         for _ in range(10):  # каждый повтор — новая задача, wait_all ждёт только уже запущенные
             await broker.wait_all()
     finally:

@@ -118,3 +118,7 @@ def test_s3_credentials_are_required(name: str, monkeypatch: pytest.MonkeyPatch)
         monkeypatch.setenv(env_name, value)
     with pytest.raises(ValidationError, match=name.lower()):
         Settings(_env_file=None)
+
+
+def test_task_enqueue_timeout_default() -> None:
+    assert make_settings().task_enqueue_timeout_seconds == 2.0

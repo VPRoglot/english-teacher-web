@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { Landing } from "@/components/site/landing";
+import { buildJsonLd, buildMetadata, jsonLdScript } from "@/lib/seo";
+import { serverEnv } from "@/lib/server-env";
 import { getSite } from "@/lib/site-content";
+
+export async function generateMetadata(): Promise<Metadata> {
+  // Данные и env — только во время запроса: сборка не ходит в API.
+  await connection();
+  return buildMetadata(await getSite(), serverEnv("SITE_URL"));
+}
 
 export default function Home() {
   return (
@@ -13,9 +22,17 @@ export default function Home() {
 }
 
 async function LandingContent() {
-  // Данные и env — только во время запроса: сборка не ходит в API.
   await connection();
-  return <Landing site={await getSite()} />;
+  const site = await getSite();
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(buildJsonLd(site, serverEnv("SITE_URL"))) }}
+      />
+      <Landing site={site} />
+    </>
+  );
 }
 
 function LandingSkeleton() {

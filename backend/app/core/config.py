@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     redis_url: str
     log_level: str = "INFO"
     log_json: bool = True
+    session_cookie_secure: bool = True
+    public_base_url: str = "http://localhost:3000"
+
+    @field_validator("public_base_url")
+    @classmethod
+    def _strip_trailing_slash(cls, value: str) -> str:
+        return value.rstrip("/")
 
     @field_validator("database_url")
     @classmethod

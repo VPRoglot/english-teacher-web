@@ -7,6 +7,7 @@ from alembic.config import Config
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from testcontainers.community.postgres import PostgresContainer
 from testcontainers.community.redis import RedisContainer
@@ -44,6 +45,13 @@ def migrated_db(postgres_url: str) -> str:
     return postgres_url
 
 
+@pytest.fixture(scope="session")
+async def redis(redis_url: str) -> AsyncIterator[Redis]:
+    client = Redis.from_url(redis_url, decode_responses=True)
+    yield client
+    await client.aclose()
+
+
 @pytest.fixture
 def settings(postgres_url: str, redis_url: str) -> Settings:
     return Settings(
@@ -77,7 +85,8 @@ async def db_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
 
 
 @pytest.fixture
-def app(settings: Settings, db_session: AsyncSession) -> FastAPI:
+async def app(settings: Settings, db_session: AsyncSession, redis: Redis) -> FastAPI:
+    await redis.flushdb()  # rate limit и сессии не текут между тестами
     application = create_app(settings)
 
     async def _session() -> AsyncIterator[AsyncSession]:

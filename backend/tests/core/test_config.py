@@ -47,6 +47,24 @@ def test_get_settings_reads_root_env_and_cwd_env_overrides_it(
     assert s.log_level == "WARNING"
 
 
+def test_session_settings_defaults() -> None:
+    s = Settings(
+        _env_file=None, database_url="postgresql+asyncpg://u:p@h/db", redis_url="redis://h"
+    )
+    assert s.session_cookie_secure is True
+    assert s.public_base_url == "http://localhost:3000"
+
+
+def test_public_base_url_trailing_slash_stripped() -> None:
+    s = Settings(
+        _env_file=None,
+        database_url="postgresql+asyncpg://u:p@h/db",
+        redis_url="redis://h",
+        public_base_url="https://x.ru/",
+    )
+    assert s.public_base_url == "https://x.ru"
+
+
 def test_settings_reject_sync_driver() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, database_url="postgresql://u:p@h/db", redis_url="redis://h")

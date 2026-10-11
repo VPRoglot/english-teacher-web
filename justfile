@@ -32,6 +32,21 @@ lint-backend:
     uv --directory backend run ruff format --check .
     uv --directory backend run mypy
 
+test-frontend:
+    pnpm --dir frontend test
+
+lint-frontend:
+    pnpm --dir frontend lint
+    pnpm --dir frontend typecheck
+
+test: test-backend test-frontend
+
+lint: lint-backend lint-frontend
+
+# frontend на http://localhost:3000; /api проксируется на backend (frontend/.env.development)
+web:
+    pnpm --dir frontend dev
+
 fmt:
     uv --directory backend run ruff check --fix .
     uv --directory backend run ruff format .

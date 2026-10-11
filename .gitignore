@@ -20,6 +20,7 @@ test-results/
 .env
 .env.*
 !.env.example
+!frontend/.env.development
 
 # IDE / OS
 .idea/

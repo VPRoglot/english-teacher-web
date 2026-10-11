@@ -16,6 +16,11 @@ HEX32 = re.compile(r"[0-9a-f]{32}")
 routes = APIRouter(prefix="/api/_t")
 
 
+@routes.get("/ok")
+async def ok() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @routes.get("/boom")
 async def boom() -> None:
     raise RuntimeError("boom")
@@ -61,17 +66,26 @@ async def test_unhandled_exception_returns_500_with_request_id(tclient: AsyncCli
 
 
 async def test_access_log_contains_request_id(
-    client: AsyncClient, capsys: pytest.CaptureFixture[str]
+    tclient: AsyncClient, capsys: pytest.CaptureFixture[str]
 ) -> None:
     configure_logging("INFO", json=True)
-    await client.get("/api/health", headers={"X-Request-ID": "log-1"})
+    await tclient.get("/api/_t/ok", headers={"X-Request-ID": "log-1"})
     lines = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.strip()]
     entry = next(line for line in lines if line.get("event") == "http_request")
     assert entry["request_id"] == "log-1"
     assert entry["status"] == 200
-    assert entry["path"] == "/api/health"
+    assert entry["path"] == "/api/_t/ok"
     assert entry["method"] == "GET"
     assert isinstance(entry["duration_ms"], float)
+
+
+@pytest.mark.parametrize("path", ["/api/health", "/api/health/ready"])
+async def test_health_access_log_is_debug(
+    client: AsyncClient, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    configure_logging("INFO", json=True)
+    await client.get(path)
+    assert "http_request" not in capsys.readouterr().out
 
 
 async def test_unhandled_exception_is_logged(

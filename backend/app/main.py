@@ -33,6 +33,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url=None if settings.app_env == "prod" else "/api/docs",
         redoc_url=None,
         openapi_url="/api/openapi.json",
+        generate_unique_id_function=lambda route: route.name,
         lifespan=lifespan,
     )
     app.state.settings = settings

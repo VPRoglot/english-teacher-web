@@ -14,6 +14,9 @@ REQUEST_ID_HEADER = "X-Request-ID"
 _VALID_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
 _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
 
+# Пробы Docker/мониторинга дёргают эти пути постоянно — на INFO это шум.
+_QUIET_PATHS = frozenset({"/api/health", "/api/health/ready"})
+
 log = structlog.get_logger("app.http")
 
 
@@ -65,7 +68,8 @@ class RequestIdMiddleware:
                 raise
             await self._send_internal_error(send, rid)
         finally:
-            log.info(
+            access_log = log.debug if scope["path"] in _QUIET_PATHS else log.info
+            access_log(
                 "http_request",
                 method=scope["method"],
                 path=scope["path"],

@@ -8,7 +8,9 @@ from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-router = APIRouter(tags=["health"])
+from app.core.errors import API_ERROR_RESPONSES
+
+router = APIRouter(tags=["health"], responses=API_ERROR_RESPONSES)
 log = structlog.get_logger("app.health")
 
 CHECK_TIMEOUT_SECONDS = 2

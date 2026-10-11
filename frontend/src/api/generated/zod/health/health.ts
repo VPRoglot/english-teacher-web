@@ -10,11 +10,11 @@ import * as zod from 'zod';
 /**
  * @summary Health
  */
-export const HealthApiHealthGetResponse = zod.record(zod.string(), zod.string())
+export const HealthResponse = zod.record(zod.string(), zod.string())
 
 /**
  * Готовность для Docker и мониторинга; намеренно вне общего формата ошибок.
  * @summary Ready
  */
-export const ReadyApiHealthReadyGetResponse = zod.unknown()
+export const ReadyResponse = zod.unknown()
 

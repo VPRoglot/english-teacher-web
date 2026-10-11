@@ -1,4 +1,45 @@
 {
+  "components": {
+    "schemas": {
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorDetail",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки; описывает ответы `error_body` в OpenAPI.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      }
+    }
+  },
   "info": {
     "title": "English Tutor API",
     "version": "0.1.0"
@@ -7,7 +48,7 @@
   "paths": {
     "/api/health": {
       "get": {
-        "operationId": "health_api_health_get",
+        "operationId": "health",
         "responses": {
           "200": {
             "content": {
@@ -16,12 +57,22 @@
                   "additionalProperties": {
                     "type": "string"
                   },
-                  "title": "Response Health Api Health Get",
+                  "title": "Response Health",
                   "type": "object"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
           }
         },
         "summary": "Health",
@@ -33,7 +84,7 @@
     "/api/health/ready": {
       "get": {
         "description": "Готовность для Docker и мониторинга; намеренно вне общего формата ошибок.",
-        "operationId": "ready_api_health_ready_get",
+        "operationId": "ready",
         "responses": {
           "200": {
             "content": {
@@ -42,6 +93,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
           }
         },
         "summary": "Ready",

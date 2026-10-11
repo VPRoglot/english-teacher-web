@@ -4,6 +4,7 @@ from typing import Any, ClassVar
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
@@ -61,6 +62,25 @@ def _http_message(exc: StarletteHTTPException) -> str:
     if isinstance(exc.detail, str) and exc.detail != default_phrase:
         return exc.detail
     return _HTTP_MESSAGES.get(exc.status_code, "Ошибка запроса")
+
+
+class ErrorDetail(BaseModel):
+    code: str
+    message: str
+    details: dict[str, Any] = {}
+
+
+class ErrorResponse(BaseModel):
+    """Единый формат ошибки; описывает ответы `error_body` в OpenAPI."""
+
+    error: ErrorDetail
+
+
+# Передаётся в `APIRouter(responses=...)`: FastAPI не добавляет `HTTPValidationError`,
+# если среди ответов уже есть 4XX.
+API_ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
+    "4XX": {"model": ErrorResponse, "description": "Ошибка в едином формате"}
+}
 
 
 def error_body(code: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:

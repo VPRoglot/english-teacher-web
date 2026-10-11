@@ -5,4 +5,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type HealthApiHealthGet200 = {[key: string]: string};
+export type ErrorDetailDetails = { [key: string]: unknown };

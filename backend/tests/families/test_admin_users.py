@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.conftest import open_client
-from tests.factories import login, make_child, make_family, make_parent
+from tests.factories import TEST_PASSWORD, login, make_child, make_family, make_parent
 
 MISSING_ID = "019a0000-0000-7000-8000-000000000000"
 
@@ -102,22 +102,26 @@ async def test_deactivate_user_kills_sessions(
         await login(parent_client, "parent@example.com")
 
 
-async def test_cannot_activate_user_of_archived_family_or_child(
-    tutor_client: AsyncClient, db_session: AsyncSession
+async def test_unblocking_archived_member_does_not_restore_access(
+    app: FastAPI, tutor_client: AsyncClient, db_session: AsyncSession
 ) -> None:
+    # is_active — только ручная блокировка; доступ участникам архива закрыт самим архивом.
     archived_fam = await make_family(db_session, name="Старые", archived=True)
     parent = await make_parent(db_session, archived_fam, is_active=False)
     fam = await make_family(db_session)
-    child = await make_child(db_session, fam, username="masha", archived=True)
+    child = await make_child(db_session, fam, username="masha", archived=True, is_active=False)
     assert child.user_id is not None
 
     r1 = await tutor_client.patch(f"/api/admin/users/{parent.id}", json={"is_active": True})
     r2 = await tutor_client.patch(f"/api/admin/users/{child.user_id}", json={"is_active": True})
 
-    assert r1.status_code == 409
-    assert r1.json()["error"]["code"] == "family_archived"
-    assert r2.status_code == 409
-    assert r2.json()["error"]["code"] == "child_archived"
+    assert r1.status_code == r2.status_code == 204
+    await db_session.refresh(parent)
+    assert parent.is_active is True
+    async with open_client(app) as c:
+        for login_ in ("parent@example.com", "masha"):
+            r = await c.post("/api/auth/login", json={"login": login_, "password": TEST_PASSWORD})
+            assert r.status_code == 401, login_
 
 
 async def test_status_update_requires_boolean(

@@ -68,6 +68,7 @@ async def authenticate(session: AsyncSession, *, login: str, password: str) -> U
     """Пользователь по логину (email или username) и паролю; иначе `None`.
 
     Пароль проверяется всегда — и для несуществующего, и для неактивного пользователя.
+    Заблокированный вручную и участник архива получают тот же `None`, что и неверный пароль.
     """
     login = normalize_login(login)
     user = await session.scalar(
@@ -76,7 +77,11 @@ async def authenticate(session: AsyncSession, *, login: str, password: str) -> U
     if user is None:
         verify_password(DUMMY_PASSWORD_HASH, password)
         return None
-    if not verify_password(user.password_hash, password) or not user.is_active:
+    if (
+        not verify_password(user.password_hash, password)
+        or not user.is_active
+        or await families_service.is_member_access_blocked(session, user)
+    ):
         return None
 
     user.last_login_at = datetime.now(UTC)

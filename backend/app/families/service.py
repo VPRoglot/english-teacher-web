@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Collection
 from datetime import UTC, datetime
 
-from sqlalchemy import exists, or_, select, update
+from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.identity import normalize_username
@@ -47,6 +47,29 @@ async def list_active_children(session: AsyncSession, family_id: uuid.UUID) -> l
 
 async def get_child_by_user(session: AsyncSession, user_id: uuid.UUID) -> Child | None:
     return await session.scalar(select(Child).where(Child.user_id == user_id))
+
+
+async def is_member_access_blocked(session: AsyncSession, user: User) -> bool:
+    """Доступ закрыт архивом: родитель архивной семьи, архивный ученик или ученик архивной семьи.
+
+    Ручная блокировка (`users.is_active`) проверяется отдельно; архив её не меняет.
+    Репетитора проверка не касается.
+    """
+    if user.role is UserRole.PARENT:
+        stmt = (
+            select(Family.archived_at.is_not(None))
+            .join(ParentProfile, ParentProfile.family_id == Family.id)
+            .where(ParentProfile.user_id == user.id)
+        )
+    elif user.role is UserRole.CHILD:
+        stmt = (
+            select(or_(Child.archived_at.is_not(None), Family.archived_at.is_not(None)))
+            .join(Family, Family.id == Child.family_id)
+            .where(Child.user_id == user.id)
+        )
+    else:
+        return False
+    return bool(await session.scalar(stmt))
 
 
 async def list_cabinet_children(
@@ -228,37 +251,34 @@ async def get_family_detail(session: AsyncSession, family_id: uuid.UUID) -> Fami
     )
 
 
-async def _set_users_active(
-    session: AsyncSession, user_ids: list[uuid.UUID], is_active: bool
-) -> None:
-    if user_ids:
-        await session.execute(update(User).where(User.id.in_(user_ids)).values(is_active=is_active))
+async def _family_member_ids(session: AsyncSession, family_id: uuid.UUID) -> list[uuid.UUID]:
+    """Учётки семьи: родители и все дети с логином (включая архивных)."""
+    parents = await session.scalars(
+        select(ParentProfile.user_id).where(ParentProfile.family_id == family_id)
+    )
+    kids = await session.scalars(
+        select(Child.user_id).where(Child.family_id == family_id, Child.user_id.is_not(None))
+    )
+    return [*parents, *(k for k in kids if k is not None)]
 
 
 async def update_family(
     session: AsyncSession, family_id: uuid.UUID, data: FamilyUpdate, *, sessions: SessionStore
 ) -> FamilyDetail:
+    """Архив закрывает доступ участникам (см. `is_member_access_blocked`), не трогая `is_active`:
+    ручная блокировка репетитора переживает архивирование и возврат из архива."""
     family = await _require_family(session, family_id)
     if data.name is not None:
         family.name = data.name
     if "tutor_comment" in data.model_fields_set:
         family.tutor_comment = data.tutor_comment
 
-    parent_ids = list(
-        await session.scalars(
-            select(ParentProfile.user_id).where(ParentProfile.family_id == family_id)
-        )
-    )
-    children = list(await session.scalars(select(Child).where(Child.family_id == family_id)))
     logged_out: list[uuid.UUID] = []
     if data.archived is True and family.archived_at is None:
         family.archived_at = datetime.now(UTC)
-        logged_out = [*parent_ids, *(c.user_id for c in children if c.user_id)]
-        await _set_users_active(session, logged_out, False)
+        logged_out = await _family_member_ids(session, family_id)
     elif data.archived is False and family.archived_at is not None:
         family.archived_at = None
-        kids = [c.user_id for c in children if c.user_id and c.archived_at is None]
-        await _set_users_active(session, [*parent_ids, *kids], True)
     await session.flush()
     for user_id in logged_out:
         await sessions.delete_all_for_user(user_id)
@@ -306,17 +326,14 @@ async def update_child(
         url = data.default_meeting_url
         child.default_meeting_url = str(url) if url else None
 
+    # Как и архив семьи, архив ученика не трогает `is_active` его учётки.
     deactivated: uuid.UUID | None = None
     if data.archived is True and child.archived_at is None:
         child.archived_at = datetime.now(UTC)
-        if child.user_id:
-            await _set_users_active(session, [child.user_id], False)
-            deactivated = child.user_id
+        deactivated = child.user_id
     elif data.archived is False and child.archived_at is not None:
         await get_active_family(session, child.family_id)
         child.archived_at = None
-        if child.user_id:
-            await _set_users_active(session, [child.user_id], True)
     await session.flush()
     if deactivated:
         await sessions.delete_all_for_user(deactivated)
@@ -363,27 +380,11 @@ async def get_family_user(session: AsyncSession, user_id: uuid.UUID) -> User:
     return user
 
 
-async def _ensure_can_activate(session: AsyncSession, user: User) -> None:
-    """Участники архивной семьи и архивные ученики остаются неактивными."""
-    family_id: uuid.UUID | None = None
-    if user.role is UserRole.PARENT:
-        profile = await get_parent_profile(session, user.id)
-        family_id = profile.family_id if profile else None
-    else:
-        child = await get_child_by_user(session, user.id)
-        if child is not None:
-            if child.archived_at is not None:
-                raise Conflict("Ученик в архиве", code="child_archived")
-            family_id = child.family_id
-    if family_id is not None:
-        await get_active_family(session, family_id)
-
-
 async def set_user_active(
     session: AsyncSession, user: User, is_active: bool, *, sessions: SessionStore
 ) -> None:
-    if is_active:
-        await _ensure_can_activate(session, user)
+    """Ручная блокировка. Снятие блокировки с участника архива доступ не открывает:
+    его закрывает архив (`is_member_access_blocked`)."""
     user.is_active = is_active
     await session.flush()
     if not is_active:

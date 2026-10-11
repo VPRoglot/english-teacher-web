@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import Invitation
 from tests.conftest import open_client
-from tests.factories import login, make_child, make_family, make_parent
+from tests.factories import TEST_PASSWORD, login, make_child, make_family, make_parent
 
 MISSING_ID = "019a0000-0000-7000-8000-000000000000"
 
@@ -290,14 +290,17 @@ async def test_archive_family_logs_out_members(
 
         assert r.status_code == 200
         assert r.json()["archived_at"] is not None
-        assert all(p["is_active"] is False for p in r.json()["parents"])
-        assert all(c["account"]["is_active"] is False for c in r.json()["children"])
+        # Архив не трогает ручную блокировку: is_active — только решение репетитора.
+        assert all(p["is_active"] is True for p in r.json()["parents"])
+        assert all(c["account"]["is_active"] is True for c in r.json()["children"])
         assert (await parent_client.get("/api/auth/me")).status_code == 401
         assert (await kid.get("/api/auth/me")).status_code == 401
-        relogin = await parent_client.post(
-            "/api/auth/login", json={"login": "parent@example.com", "password": "Correct-Horse-7"}
-        )
-        assert relogin.status_code == 401
+        for login_ in ("parent@example.com", "masha"):
+            relogin = await parent_client.post(
+                "/api/auth/login", json={"login": login_, "password": "Correct-Horse-7"}
+            )
+            assert relogin.status_code == 401, login_
+            assert relogin.json()["error"]["code"] == "invalid_credentials"
 
         r = await tutor_client.patch(f"/api/admin/families/{fam.id}", json={"archived": False})
 
@@ -306,19 +309,41 @@ async def test_archive_family_logs_out_members(
         await login(kid, "masha")
 
 
-async def test_unarchive_family_keeps_archived_child_inactive(
-    tutor_client: AsyncClient, db_session: AsyncSession
+async def _login_status(app: FastAPI, login_: str) -> int:
+    async with open_client(app) as c:
+        r = await c.post("/api/auth/login", json={"login": login_, "password": TEST_PASSWORD})
+        return r.status_code
+
+
+async def test_unarchive_family_keeps_archived_child_locked_out(
+    app: FastAPI, tutor_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     fam = await make_family(db_session)
     await make_child(db_session, fam, full_name="Маша", username="masha")
     await make_child(db_session, fam, full_name="Яна", username="yana", archived=True)
 
     await tutor_client.patch(f"/api/admin/families/{fam.id}", json={"archived": True})
+    await tutor_client.patch(f"/api/admin/families/{fam.id}", json={"archived": False})
+
+    assert await _login_status(app, "masha") == 200
+    assert await _login_status(app, "yana") == 401
+
+
+async def test_unarchive_family_keeps_manually_blocked_parent_blocked(
+    app: FastAPI, tutor_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    fam = await make_family(db_session)
+    parent = await make_parent(db_session, fam)
+    blocked = await tutor_client.patch(f"/api/admin/users/{parent.id}", json={"is_active": False})
+    assert blocked.status_code == 204
+
+    await tutor_client.patch(f"/api/admin/families/{fam.id}", json={"archived": True})
     r = await tutor_client.patch(f"/api/admin/families/{fam.id}", json={"archived": False})
 
-    by_name = {c["full_name"]: c for c in r.json()["children"]}
-    assert by_name["Маша"]["account"]["is_active"] is True
-    assert by_name["Яна"]["account"]["is_active"] is False
+    assert r.json()["parents"][0]["is_active"] is False
+    await db_session.refresh(parent)
+    assert parent.is_active is False
+    assert await _login_status(app, "parent@example.com") == 401
 
 
 async def test_unarchive_of_active_family_does_not_touch_users(

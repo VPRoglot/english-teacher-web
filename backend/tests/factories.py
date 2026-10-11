@@ -67,6 +67,7 @@ async def make_child(
     username: str | None = None,
     password: str = TEST_PASSWORD,
     archived: bool = False,
+    is_active: bool = True,
 ) -> Child:
     now = datetime.now(UTC)
     user_id = None
@@ -75,7 +76,7 @@ async def make_child(
             role=UserRole.CHILD,
             username=username,
             password_hash=hash_password(password),
-            is_active=not archived,
+            is_active=is_active,
         )
         session.add(user)
         await session.flush()

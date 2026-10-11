@@ -7,6 +7,7 @@ from app.auth.models import User, UserRole
 from app.auth.sessions import SESSION_COOKIE, SessionStoreDep
 from app.core.db import DbSession
 from app.core.errors import NotAuthenticated, NotFound
+from app.families import service as families_service
 
 
 async def get_current_user(request: Request, session: DbSession, store: SessionStoreDep) -> User:
@@ -19,7 +20,13 @@ async def get_current_user(request: Request, session: DbSession, store: SessionS
 
     user = await session.get(User, data.user_id)
     # Роль в сессии должна совпадать с ролью в БД: сессия не переживает смену роли.
-    if user is None or not user.is_active or user.role != data.role:
+    # Архив семьи или ученика закрывает доступ так же, как ручная блокировка.
+    if (
+        user is None
+        or not user.is_active
+        or user.role != data.role
+        or await families_service.is_member_access_blocked(session, user)
+    ):
         await store.delete(token)
         raise NotAuthenticated()
     return user

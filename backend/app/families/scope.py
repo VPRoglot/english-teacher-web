@@ -20,6 +20,9 @@ class FamilyScope:
 
 
 async def get_family_scope(user: FamilyMember, session: DbSession) -> FamilyScope:
+    # `get_current_user` уже отсекает участников архива; повтор — защита для прямых вызовов.
+    if await service.is_member_access_blocked(session, user):
+        raise NotAuthenticated()
     if user.role is UserRole.PARENT:
         profile = await service.get_parent_profile(session, user.id)
         if profile is None:
@@ -28,7 +31,7 @@ async def get_family_scope(user: FamilyMember, session: DbSession) -> FamilyScop
         return FamilyScope(profile.family_id, frozenset(c.id for c in children))
 
     child = await service.get_child_by_user(session, user.id)
-    if child is None or child.archived_at is not None:
+    if child is None:
         raise NotAuthenticated()
     return FamilyScope(child.family_id, frozenset({child.id}))
 

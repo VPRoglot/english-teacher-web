@@ -275,6 +275,54 @@ async def test_deactivated_user_session_is_rejected(
     assert await SessionStore(redis).get(token) is None
 
 
+async def test_sessions_of_archived_members_are_rejected(
+    app: FastAPI, db_session: AsyncSession, redis: Redis
+) -> None:
+    # Архив выставлен прямо в БД (без отзыва сессий): доступ закрывает сама проверка архива.
+    fam = await make_family(db_session)
+    await make_parent(db_session, fam)
+    await make_child(db_session, fam, full_name="Маша", username="masha")
+    other_fam = await make_family(db_session, name="Петровы")
+    other_kid = await make_child(db_session, other_fam, full_name="Петя", username="petya")
+    async with open_client(app) as parent_c, open_client(app) as kid_c, open_client(app) as other_c:
+        await login(parent_c, "parent@example.com")
+        await login(kid_c, "masha")
+        await login(other_c, "petya")
+        tokens = [c.cookies["session"] for c in (parent_c, kid_c, other_c)]
+        fam.archived_at = datetime.now(UTC)
+        other_kid.archived_at = datetime.now(UTC)
+        await db_session.flush()
+
+        for c in (parent_c, kid_c, other_c):
+            assert (await c.get("/api/auth/me")).status_code == 401
+        store = SessionStore(redis)
+        for token in tokens:
+            assert await store.get(token) is None
+
+        fam.archived_at = None
+        other_kid.archived_at = None
+        await db_session.flush()
+        await login(parent_c, "parent@example.com")
+        await login(kid_c, "masha")
+        await login(other_c, "petya")
+
+
+async def test_archived_members_cannot_login(client: AsyncClient, db_session: AsyncSession) -> None:
+    archived_fam = await make_family(db_session, archived=True)
+    await make_parent(db_session, archived_fam)
+    await make_child(db_session, archived_fam, full_name="Маша", username="masha")
+    fam = await make_family(db_session, name="Петровы")
+    await make_child(db_session, fam, full_name="Петя", username="petya", archived=True)
+    await make_tutor(db_session)
+
+    for login_ in ("parent@example.com", "masha", "petya"):
+        r = await client.post("/api/auth/login", json={"login": login_, "password": TEST_PASSWORD})
+        assert r.status_code == 401, login_
+        assert r.json()["error"]["code"] == "invalid_credentials"
+        assert "set-cookie" not in r.headers
+    await login(client, "tutor@example.com")
+
+
 async def test_session_with_changed_role_is_rejected(
     client: AsyncClient, db_session: AsyncSession, redis: Redis
 ) -> None:

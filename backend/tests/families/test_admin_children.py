@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.conftest import open_client
-from tests.factories import login, make_child, make_family
+from tests.factories import TEST_PASSWORD, login, make_child, make_family
 
 MISSING_ID = "019a0000-0000-7000-8000-000000000000"
 
@@ -208,7 +208,7 @@ async def test_changing_child_account_logs_child_out(
         await login(kid, "masha2", "Zz9$new")
 
 
-async def test_archive_child_deactivates_account(
+async def test_archive_child_locks_out_account(
     app: FastAPI, tutor_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     fam = await make_family(db_session)
@@ -220,14 +220,41 @@ async def test_archive_child_deactivates_account(
 
         assert r.status_code == 200
         assert r.json()["archived_at"] is not None
-        assert r.json()["account"]["is_active"] is False
+        # Архив не трогает ручную блокировку: is_active — только решение репетитора.
+        assert r.json()["account"]["is_active"] is True
         assert (await kid.get("/api/auth/me")).status_code == 401
+        relogin = await kid.post(
+            "/api/auth/login", json={"login": "masha", "password": TEST_PASSWORD}
+        )
+        assert relogin.status_code == 401
+        assert relogin.json()["error"]["code"] == "invalid_credentials"
 
         r = await tutor_client.patch(f"/api/admin/children/{child.id}", json={"archived": False})
 
         assert r.json()["archived_at"] is None
         assert r.json()["account"]["is_active"] is True
         await login(kid, "masha")
+
+
+async def test_manually_blocked_child_stays_blocked_across_archive(
+    app: FastAPI, tutor_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    fam = await make_family(db_session)
+    child = await make_child(db_session, fam, username="masha")
+    blocked = await tutor_client.patch(
+        f"/api/admin/users/{child.user_id}", json={"is_active": False}
+    )
+    assert blocked.status_code == 204
+
+    await tutor_client.patch(f"/api/admin/children/{child.id}", json={"archived": True})
+    r = await tutor_client.patch(f"/api/admin/children/{child.id}", json={"archived": False})
+
+    assert r.json()["account"]["is_active"] is False
+    async with open_client(app) as kid:
+        relogin = await kid.post(
+            "/api/auth/login", json={"login": "masha", "password": TEST_PASSWORD}
+        )
+        assert relogin.status_code == 401
 
 
 async def test_unarchive_child_in_archived_family_conflict(

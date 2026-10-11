@@ -190,6 +190,18 @@ async def test_scope_rejects_archived_child_and_missing_profile(db_session: Asyn
         await get_family_scope(tutor, db_session)
 
 
+async def test_scope_rejects_members_of_archived_family(db_session: AsyncSession) -> None:
+    fam = await make_family(db_session, archived=True)
+    parent = await make_parent(db_session, fam)
+    kid = await make_child(db_session, fam, username="masha")
+    kid_user = await db_session.get(User, kid.user_id)
+    assert kid_user is not None
+
+    for user in (parent, kid_user):
+        with pytest.raises(NotAuthenticated):
+            await get_family_scope(user, db_session)
+
+
 async def test_scope_rejects_parent_without_profile(db_session: AsyncSession) -> None:
     orphan = User(role=UserRole.PARENT, email="orphan@example.com", password_hash="x")
     db_session.add(orphan)

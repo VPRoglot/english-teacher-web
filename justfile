@@ -18,6 +18,9 @@ down:
 logs *args:
     {{compose}} logs -f {{args}}
 
+restart *args:
+    {{compose}} restart {{args}}
+
 migrate:
     {{compose}} run --rm migrate
 
@@ -27,6 +30,10 @@ create-tutor email:
 # backend вне Docker (нужны postgres/redis из `just dev` и localhost-хосты в backend/.env)
 api:
     uv --directory backend run uvicorn app.main:create_app --factory --reload --port 8000
+
+# worker задач вне Docker (нужен redis из `just dev`; после правок задач перезапустить)
+worker:
+    uv --directory backend run taskiq worker app.worker:broker
 
 test-backend *args:
     uv --directory backend run pytest {{args}}

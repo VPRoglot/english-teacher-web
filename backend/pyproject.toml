@@ -9,10 +9,13 @@ dependencies = [
     "asyncpg>=0.32.0",
     "email-validator>=2.3.0",
     "fastapi>=0.143.0",
+    "httpx>=0.28.1",
     "pydantic-settings>=2.15.0",
     "redis>=5",
     "sqlalchemy[asyncio]>=2.1.4",
     "structlog>=26.1.0",
+    "taskiq>=0.13.0",
+    "taskiq-redis>=1.2.4",
     "typer>=0.27.3",
     "uuid-utils>=1.0.0",
     "uvicorn[standard]>=0.54.0",
@@ -24,7 +27,6 @@ package = false
 [dependency-groups]
 dev = [
     "asgi-lifespan>=2.1.0",
-    "httpx>=0.28.1",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
@@ -46,6 +48,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 "tests/**" = ["S101", "S105", "S106"]
 # Имена доменных исключений зафиксированы спецификацией (NotFound, Conflict, ...).
 "app/core/errors.py" = ["N818"]
+"app/site_content/tasks.py" = ["N818"]
 
 [tool.mypy]
 strict = true

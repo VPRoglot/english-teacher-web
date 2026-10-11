@@ -70,6 +70,7 @@ def export_openapi(
             _env_file=None,
             database_url="postgresql+asyncpg://openapi@localhost/openapi",
             redis_url="redis://localhost",
+            revalidate_secret="openapi-placeholder-secret",  # noqa: S106
         )
     )
     content = json.dumps(app.openapi(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"

@@ -58,6 +58,18 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  worker:
+    <<: *backend
+    command: ["taskiq", "worker", "app.worker:broker", "--workers", "1"]
+    environment:
+      REVALIDATE_URL: http://web:3000/api/revalidate
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   web:
     image: english-tutor-frontend:${IMAGE_TAG:-dev}
     build:

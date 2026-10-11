@@ -29,6 +29,16 @@ services:
       - --reload-dir
       - /app/app
 
+  # Hot reload у worker нет: после правки задач — `just restart worker`.
+  # Next в разработке работает на хосте (`just web`), поэтому worker ходит к нему через host.docker.internal.
+  worker:
+    volumes:
+      - ../backend/app:/app/app
+    environment:
+      REVALIDATE_URL: http://host.docker.internal:3000/api/revalidate
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   # В разработке frontend обычно запускается локально (`just web`);
   # контейнер — для проверки production-сборки: `just dev-full`.
   web:

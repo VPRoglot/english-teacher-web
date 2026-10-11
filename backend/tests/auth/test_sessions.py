@@ -56,10 +56,13 @@ async def test_token_not_stored_in_plain(redis: Redis) -> None:
     assert keys
     assert all(token not in k for k in keys)
     for key in keys:
-        if await redis.type(key) == "string":
+        key_type = await redis.type(key)
+        if key_type == "string":
             assert token not in (await redis.get(key) or "")
-        else:
+        elif key_type == "set":
             assert all(token not in m for m in await redis.smembers(key))
+        # Остальные типы — не наши: например, stream очереди задач (taskiq), который
+        # создаёт старт приложения в общем тестовом Redis.
 
 
 @pytest.mark.parametrize(

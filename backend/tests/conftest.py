@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic import command
@@ -16,6 +17,7 @@ from testcontainers.community.redis import RedisContainer
 
 from app.core.config import Settings
 from app.core.db import get_db_session
+from app.core.tasks import get_task_queue
 from app.main import create_app
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -54,15 +56,44 @@ async def redis(redis_url: str) -> AsyncIterator[Redis]:
     await client.aclose()
 
 
+def make_settings(**overrides: Any) -> Settings:
+    """Settings без .env и с заглушками для обязательных полей.
+
+    Все места, где Settings собираются руками, берут их здесь: новая обязательная
+    настройка добавляется один раз.
+    """
+    values: dict[str, Any] = {
+        "_env_file": None,
+        "database_url": "postgresql+asyncpg://u:p@h/db",
+        "redis_url": "redis://h",
+        "revalidate_secret": "test-revalidate-secret",
+    }
+    return Settings(**{**values, **overrides})
+
+
 @pytest.fixture
 def settings(postgres_url: str, redis_url: str) -> Settings:
-    return Settings(
-        _env_file=None,
-        app_env="test",
-        database_url=postgres_url,
-        redis_url=redis_url,
-        log_json=False,
+    return make_settings(
+        app_env="test", database_url=postgres_url, redis_url=redis_url, log_json=False
     )
+
+
+class FakeTaskQueue:
+    """Очередь задач для API-тестов: запоминает постановки; при `fail` падает, как Redis."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.fail = False
+
+    async def enqueue(self, task_name: str, /, **kwargs: Any) -> None:
+        if self.fail:
+            raise ConnectionError("redis недоступен")
+        self.calls.append((task_name, kwargs))
+
+
+@pytest.fixture
+def task_queue() -> FakeTaskQueue:
+    return FakeTaskQueue()
 
 
 @pytest.fixture(scope="session")
@@ -87,7 +118,9 @@ async def db_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
 
 
 @pytest.fixture
-async def app(settings: Settings, db_session: AsyncSession, redis: Redis) -> FastAPI:
+async def app(
+    settings: Settings, db_session: AsyncSession, redis: Redis, task_queue: FakeTaskQueue
+) -> FastAPI:
     await redis.flushdb()  # rate limit и сессии не текут между тестами
     application = create_app(settings)
 
@@ -95,6 +128,7 @@ async def app(settings: Settings, db_session: AsyncSession, redis: Redis) -> Fas
         yield db_session
 
     application.dependency_overrides[get_db_session] = _session
+    application.dependency_overrides[get_task_queue] = lambda: task_queue
     return application
 
 

@@ -1,6 +1,8 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI
 
 from app.auth import router as auth_router
@@ -12,7 +14,11 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.redis import create_redis
 from app.core.request_id import RequestIdMiddleware
+from app.core.tasks import BrokerTaskQueue, create_broker
 from app.families import admin_router, cabinet_router
+
+log = structlog.get_logger("app.main")
+_BROKER_STARTUP_TIMEOUT = 5  # секунд
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -25,9 +31,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.engine = create_db_engine(settings)
         app.state.sessionmaker = create_sessionmaker(app.state.engine)
         app.state.redis = create_redis(settings)
+        app.state.broker = broker = create_broker(settings)
+        app.state.task_queue = BrokerTaskQueue(broker)
         try:
+            # startup() брокера идёт в Redis (создаёт consumer group): если Redis недоступен,
+            # приложение всё равно стартует, а постановка задачи упадёт позже и обработается там.
+            try:
+                async with asyncio.timeout(_BROKER_STARTUP_TIMEOUT):
+                    await broker.startup()
+            except Exception:
+                log.warning("broker_startup_failed", exc_info=True)
             yield
         finally:
+            await broker.shutdown()
             await app.state.engine.dispose()
             await app.state.redis.aclose()
 

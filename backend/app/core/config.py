@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +16,15 @@ class Settings(BaseSettings):
     log_json: bool = True
     session_cookie_secure: bool = True
     public_base_url: str = "http://localhost:3000"
+    revalidate_url: str = "http://localhost:3000/api/revalidate"
+    revalidate_secret: SecretStr
+
+    @field_validator("revalidate_secret")
+    @classmethod
+    def _require_long_secret(cls, value: SecretStr) -> SecretStr:
+        if len(value.get_secret_value()) < 16:
+            raise ValueError("REVALIDATE_SECRET: не короче 16 символов")
+        return value
 
     @field_validator("public_base_url")
     @classmethod

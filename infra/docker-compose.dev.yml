@@ -1,0 +1,30 @@
+# Поверх docker-compose.yml: порты наружу и hot reload для разработки.
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api:
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend/app:/app/app
+    environment:
+      # Docker Desktop на Windows не пробрасывает inotify-события из bind mount.
+      WATCHFILES_FORCE_POLLING: "true"
+    command:
+      - uvicorn
+      - app.main:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --no-access-log
+      - --reload
+      - --reload-dir
+      - /app/app

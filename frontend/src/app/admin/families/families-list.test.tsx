@@ -148,6 +148,32 @@ test("создание семьи ведёт на её карточку", async 
   });
 });
 
+test("после создания семьи диалог закрыт, а при повторном открытии форма пуста", async () => {
+  stubApi();
+  renderList();
+  await userEvent.click(await screen.findByRole("button", { name: "Новая семья" }));
+  const dialog = await screen.findByRole("dialog");
+  await userEvent.type(within(dialog).getByLabelText("Название"), "Семья Смирновых");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Создать" }));
+
+  await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/families/f9"));
+  // С cacheComponents прежний маршрут остаётся смонтированным (Activity): диалог не должен остаться открытым.
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+  await userEvent.click(screen.getByRole("button", { name: "Новая семья" }));
+  expect(await screen.findByLabelText("Название")).toHaveValue("");
+});
+
+test("поле названия доступно по метке, а не по плейсхолдеру", async () => {
+  stubApi();
+  renderList();
+  await userEvent.click(await screen.findByRole("button", { name: "Новая семья" }));
+  const dialog = await screen.findByRole("dialog");
+  const input = within(dialog).getByRole("textbox", { name: "Название" });
+  expect(input).toBe(within(dialog).getByLabelText("Название"));
+  expect(input).toHaveAttribute("placeholder", "Семья Ивановых");
+});
+
 test("пустое название не отправляется", async () => {
   stubApi();
   renderList();

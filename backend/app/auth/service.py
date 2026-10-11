@@ -223,7 +223,12 @@ async def accept_invitation(
     validate_password(data.password)
 
     now = datetime.now(UTC)
-    user = User(role=UserRole.PARENT, email=email, password_hash=hash_password(data.password))
+    user = User(
+        role=UserRole.PARENT,
+        email=email,
+        password_hash=hash_password(data.password),
+        last_login_at=now,  # принятие приглашения сразу открывает сессию
+    )
     session.add(user)
     await session.flush()
     session.add(

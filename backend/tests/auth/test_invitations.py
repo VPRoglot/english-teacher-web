@@ -101,6 +101,7 @@ async def test_accept_creates_parent_and_logs_in(
     assert profile.phone == "+7 (999) 000-00-00"
     user = await db_session.get(User, uuid.UUID(body["id"]))
     assert user is not None and user.role is UserRole.PARENT
+    assert user.last_login_at is not None  # принятие приглашения = вход
     await db_session.refresh(invitation)
     assert invitation.used_at is not None
     assert (await client.get("/api/auth/me")).status_code == 200

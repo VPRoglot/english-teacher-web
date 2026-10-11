@@ -29,7 +29,7 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
-function CreateFamilyForm() {
+function CreateFamilyForm({ onCreated }: { onCreated: () => void }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const create = useCreateFamily();
@@ -37,6 +37,7 @@ function CreateFamilyForm() {
     register,
     handleSubmit,
     setError,
+    reset,
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -50,6 +51,9 @@ function CreateFamilyForm() {
       {
         onSuccess: (family) => {
           toast.success("Семья создана");
+          // Прежний маршрут остаётся смонтированным (Activity): закрываем и очищаем форму до перехода.
+          reset();
+          onCreated();
           router.push(`/admin/families/${family.id}`);
         },
         onError: (error) => setFormError(applyApiErrors(error, setError, ["name", "tutor_comment"])),
@@ -103,7 +107,7 @@ export function CreateFamilyDialog() {
             <DialogTitle>Новая семья</DialogTitle>
             <DialogDescription>Родителей и детей можно добавить на странице семьи.</DialogDescription>
           </DialogHeader>
-          <CreateFamilyForm />
+          <CreateFamilyForm onCreated={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
     </>

@@ -36,13 +36,23 @@ async def test_cabinet_child_fields_and_order(
     await make_parent(db_session, fam)
     await make_child(db_session, fam, full_name="Яна")
     await make_child(db_session, fam, full_name="Аня", username="anya")
+    await make_child(db_session, fam, full_name="Боря", username="borya", is_active=False)
     await login(client, "parent@example.com")
 
     r = await client.get("/api/me/children")
 
-    assert [c["full_name"] for c in r.json()] == ["Аня", "Яна"]
-    assert set(r.json()[0]) == {"id", "full_name", "birth_year", "english_level", "username"}
-    assert [c["username"] for c in r.json()] == ["anya", None]
+    assert [c["full_name"] for c in r.json()] == ["Аня", "Боря", "Яна"]
+    assert set(r.json()[0]) == {
+        "id",
+        "full_name",
+        "birth_year",
+        "english_level",
+        "username",
+        "is_active",
+    }
+    assert [c["username"] for c in r.json()] == ["anya", "borya", None]
+    # Родитель видит ручную блокировку учётки; без учётки статуса нет.
+    assert [c["is_active"] for c in r.json()] == [True, False, None]
 
 
 async def test_child_sees_only_self(client: AsyncClient, db_session: AsyncSession) -> None:

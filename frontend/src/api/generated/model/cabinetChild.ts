@@ -11,5 +11,6 @@ export interface CabinetChild {
   english_level: EnglishLevel | null;
   full_name: string;
   id: string;
+  is_active: boolean | null;
   username: string | null;
 }

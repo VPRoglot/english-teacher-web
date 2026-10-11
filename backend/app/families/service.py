@@ -75,7 +75,7 @@ async def is_member_access_blocked(session: AsyncSession, user: User) -> bool:
 async def list_cabinet_children(
     session: AsyncSession, child_ids: Collection[uuid.UUID]
 ) -> list[CabinetChild]:
-    """Дети для кабинета семьи: только перечисленные id, с логином учётки (если есть)."""
+    """Дети для кабинета семьи: только перечисленные id, с логином и статусом учётки (если есть)."""
     if not child_ids:
         return []
     return [
@@ -85,9 +85,10 @@ async def list_cabinet_children(
             birth_year=child.birth_year,
             english_level=child.english_level,
             username=username,
+            is_active=is_active,
         )
-        for child, username in await session.execute(
-            select(Child, User.username)
+        for child, username, is_active in await session.execute(
+            select(Child, User.username, User.is_active)
             .outerjoin(User, User.id == Child.user_id)
             .where(Child.id.in_(child_ids))
             .order_by(Child.full_name, Child.id)

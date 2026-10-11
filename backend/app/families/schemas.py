@@ -90,6 +90,8 @@ class CabinetChild(BaseModel):
     birth_year: int | None
     english_level: EnglishLevel | None
     username: str | None
+    # Ручная блокировка учётки репетитором; `None` — учётки нет.
+    is_active: bool | None
 
 
 class UserStatusUpdate(BaseModel):

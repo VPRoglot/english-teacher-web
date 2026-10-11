@@ -34,7 +34,14 @@ const me = (role: "parent" | "child") => ({
   children: [],
 });
 
-type Child = { id: string; full_name: string; birth_year: null; english_level: null; username: string | null };
+type Child = {
+  id: string;
+  full_name: string;
+  birth_year: null;
+  english_level: null;
+  username: string | null;
+  is_active: boolean | null;
+};
 
 let children: Child[];
 let accountPost: (body: { username: string; password: string }) => Response;
@@ -76,7 +83,9 @@ beforeEach(() => {
   replace.mockReset();
   toastSuccess.mockReset();
   document.cookie = "csrf_token=t";
-  children = [{ id: "c1", full_name: "Петя", birth_year: null, english_level: null, username: null }];
+  children = [
+    { id: "c1", full_name: "Петя", birth_year: null, english_level: null, username: null, is_active: null },
+  ];
   accountPost = () => jsonResponse(200, children[0]);
 });
 
@@ -126,6 +135,21 @@ test("короткий пароль не отправляется", async () => 
   const card = await fillCard("Петя", "petya", "12345");
   expect(await within(card).findByText("Минимум 6 символов")).toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([url]) => url === "/api/me/children/c1/account")).toBe(false);
+});
+
+test("заблокированная репетитором учётка помечена, форма остаётся", async () => {
+  children = [
+    { ...children[0], username: "petya", is_active: false },
+    { id: "c2", full_name: "Маша", birth_year: null, english_level: null, username: "masha", is_active: true },
+  ];
+  stubApi();
+  renderPage();
+
+  const blocked = (await screen.findByText("Петя")).closest("[data-slot=card]") as HTMLElement;
+  const active = screen.getByText("Маша").closest("[data-slot=card]") as HTMLElement;
+  expect(within(blocked).getByText("Вход заблокирован репетитором")).toBeInTheDocument();
+  expect(within(blocked).getByRole("button", { name: "Сохранить" })).toBeInTheDocument();
+  expect(within(active).queryByText("Вход заблокирован репетитором")).not.toBeInTheDocument();
 });
 
 test("ребёнка перенаправляет в кабинет", async () => {

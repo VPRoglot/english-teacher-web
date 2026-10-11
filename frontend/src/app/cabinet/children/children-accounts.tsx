@@ -105,6 +105,9 @@ function ChildAccountCard({ child }: { child: CabinetChild }) {
         <p className="text-sm text-muted-foreground">
           {child.username ? `Логин: ${child.username}` : "Логин не выдан"}
         </p>
+        {child.is_active === false && (
+          <p className="text-sm font-medium text-destructive">Вход заблокирован репетитором</p>
+        )}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">

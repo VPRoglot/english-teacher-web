@@ -15,6 +15,7 @@ export const ListMyChildrenResponseItem = zod.object({
   "english_level": zod.union([zod.enum(['A1', 'A2', 'B1', 'B2', 'C1']),zod.null()]),
   "full_name": zod.string(),
   "id": zod.uuid(),
+  "is_active": zod.union([zod.boolean(),zod.null()]),
   "username": zod.union([zod.string(),zod.null()])
 })
 export const ListMyChildrenResponse = zod.array(ListMyChildrenResponseItem)
@@ -42,6 +43,7 @@ export const SetMyChildAccountResponse = zod.object({
   "english_level": zod.union([zod.enum(['A1', 'A2', 'B1', 'B2', 'C1']),zod.null()]),
   "full_name": zod.string(),
   "id": zod.uuid(),
+  "is_active": zod.union([zod.boolean(),zod.null()]),
   "username": zod.union([zod.string(),zod.null()])
 })
 

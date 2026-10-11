@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Сгенерировано orval (`just gen-api`).
+    "src/api/generated/**",
   ]),
 ]);
 

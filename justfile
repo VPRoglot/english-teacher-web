@@ -47,6 +47,11 @@ lint: lint-backend lint-frontend
 web:
     pnpm --dir frontend dev
 
+# OpenAPI из backend → frontend/openapi.json → типизированный клиент (orval)
+gen-api:
+    uv --directory backend run python -m app.cli export-openapi ../frontend/openapi.json
+    pnpm --dir frontend gen:api
+
 fmt:
     uv --directory backend run ruff check --fix .
     uv --directory backend run ruff format .

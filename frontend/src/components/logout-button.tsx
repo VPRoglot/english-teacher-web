@@ -1,25 +1,25 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import { useLogout } from "@/api/generated/endpoints/auth/auth";
 import { Button } from "@/components/ui/button";
-import { errorMessage } from "@/lib/form-errors";
 
 export function LogoutButton() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const logout = useLogout();
 
   function onClick() {
     logout.mutate(undefined, {
-      onSuccess: () => {
+      // И при ошибке: на /login сессия перепроверяется, и если она жива — вернёт обратно.
+      onSettled: () => {
         queryClient.clear();
-        router.replace("/login");
+        // Полная перезагрузка, а не router.replace: с cacheComponents посещённые страницы
+        // остаются скрытыми в <Activity> — с данными прежнего пользователя и формой входа,
+        // где ещё лежат его логин и пароль.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign("/login");
       },
-      onError: (error) => toast.error(errorMessage(error)),
     });
   }
 

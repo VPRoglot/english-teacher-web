@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const replace = vi.fn();
@@ -35,7 +34,6 @@ let fetchMock: ReturnType<typeof vi.fn>;
 function renderShell(role: "tutor" | "parent" | "child") {
   fetchMock = vi.fn(async (url: string) => {
     if (url === "/api/auth/me") return jsonResponse(200, me(role));
-    if (url === "/api/auth/logout") return new Response(null, { status: 204 });
     throw new Error(`unexpected fetch ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -83,9 +81,8 @@ test("репетитора перенаправляет в админку, со�
   expect(screen.queryByText("содержимое")).not.toBeInTheDocument();
 });
 
-test("выход очищает кэш и ведёт на /login", async () => {
-  const client = renderShell("parent");
-  await userEvent.click(await screen.findByRole("button", { name: "Выйти" }));
-  await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
-  expect(client.getQueryCache().getAll()).toHaveLength(0);
+// Само поведение выхода (полная перезагрузка на /login) — в components/logout-button.test.tsx.
+test("в шапке есть кнопка выхода", async () => {
+  renderShell("parent");
+  expect(await screen.findByRole("button", { name: "Выйти" })).toBeInTheDocument();
 });

@@ -11,6 +11,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(search),
 }));
 
+import { getGetMeQueryKey } from "@/api/generated/endpoints/auth/auth";
+
 import { LoginForm } from "./login-form";
 
 type Handler = () => Response;
@@ -51,11 +53,12 @@ function stubApi(routes: Record<string, Handler>) {
 
 function renderForm() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <LoginForm />
     </QueryClientProvider>,
   );
+  return client;
 }
 
 async function fillAndSubmit(login = "ivan", password = "secret") {
@@ -85,6 +88,26 @@ test("успешный вход ведёт на next, если он безопа
   renderForm();
   await fillAndSubmit();
   await waitFor(() => expect(replace).toHaveBeenCalledWith("/cabinet/settings"));
+  // Кэш /me после входа не должен уводить на главную роли поверх next.
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(replace).toHaveBeenCalledTimes(1);
+});
+
+test("после входа поля очищены, а /me в кэше — вошедший пользователь", async () => {
+  stubApi({
+    "/api/auth/me": unauthenticated,
+    "/api/auth/login": () => jsonResponse(200, me("parent")),
+  });
+  const client = renderForm();
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1)); // проба /me: 401
+  await fillAndSubmit("ivan", "secret");
+
+  await waitFor(() => expect(replace).toHaveBeenCalledWith("/cabinet"));
+  // Скрытая в <Activity> страница входа не должна хранить логин и пароль.
+  expect(screen.getByLabelText("Email или логин")).toHaveValue("");
+  expect(screen.getByLabelText("Пароль")).toHaveValue("");
+  // Оболочки кабинета читают /me из кэша: там уже пользователь, а не 401 от пробы.
+  expect(client.getQueryData(getGetMeQueryKey())).toEqual(me("parent"));
 });
 
 test("без next вход ведёт на главную страницу роли", async () => {

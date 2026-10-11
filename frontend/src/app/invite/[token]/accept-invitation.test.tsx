@@ -213,4 +213,7 @@ test("успех ведёт в кабинет и отправляет данны
     phone: "+7 900 000-00-00",
     consent: true,
   });
+  // Скрытая в <Activity> страница приглашения не должна хранить пароль.
+  expect(screen.getByLabelText("Пароль")).toHaveValue("");
+  expect(screen.getByLabelText("Повторите пароль")).toHaveValue("");
 });

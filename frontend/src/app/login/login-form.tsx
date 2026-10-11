@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { useGetMe, useLogin } from "@/api/generated/endpoints/auth/auth";
+import { getGetMeQueryKey, useGetMe, useLogin } from "@/api/generated/endpoints/auth/auth";
 import { PasswordField } from "@/components/password-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -40,9 +41,12 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: zodResolver(schema),
@@ -54,9 +58,12 @@ export function LoginForm() {
   const login = useLogin();
 
   const signedInRole = me.data?.role;
+  // Уводит только уже вошедшего посетителя. После входа /me в кэше заполняет onSuccess,
+  // и навигацию (с учётом next) делает он же — эффект не должен перебить её главной роли.
+  const justSignedIn = login.isSuccess;
   useEffect(() => {
-    if (signedInRole) router.replace(homeFor(signedInRole));
-  }, [signedInRole, router]);
+    if (signedInRole && !justSignedIn) router.replace(homeFor(signedInRole));
+  }, [signedInRole, justSignedIn, router]);
 
   function onSubmit(values: LoginValues) {
     setFormError(null);
@@ -64,6 +71,10 @@ export function LoginForm() {
       { data: values },
       {
         onSuccess: (user) => {
+          // Страница входа остаётся скрытой в <Activity>: логин и пароль в ней не храним.
+          reset({ login: "", password: "" });
+          // Оболочки читают /me из кэша — там должен быть пользователь, а не 401 от пробы.
+          queryClient.setQueryData(getGetMeQueryKey(), user);
           router.replace(safeNext(searchParams.get("next")) ?? homeFor(user.role));
         },
         onError: (error) => setFormError(loginErrorMessage(error)),

@@ -84,6 +84,7 @@ function InvitationForm({ token, invitation }: { token: string; invitation: Invi
     control,
     handleSubmit,
     setError,
+    reset,
     formState: { errors },
   } = useForm<AcceptValues>({
     resolver: zodResolver(schema),
@@ -111,7 +112,11 @@ function InvitationForm({ token, invitation }: { token: string; invitation: Invi
         },
       },
       {
-        onSuccess: () => router.replace("/cabinet"),
+        onSuccess: () => {
+          // Страница остаётся скрытой в <Activity>: пароль в ней не храним.
+          reset({ ...values, password: "", repeat: "" });
+          router.replace("/cabinet");
+        },
         onError: (error) => {
           if (applyPasswordPolicyError(error, setError)) return;
           setFormError(applyApiErrors(error, setError, API_FIELDS));

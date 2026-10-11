@@ -276,7 +276,7 @@ Expected: всё зелёное, покрытие ≥ 85%.
 
 - [ ] **Step 6: Проверить worker в Docker**
 
-Run: `cp .env.example .env` (если нет), `just dev`, `just logs worker`
+Run: `cp .env.example .env` (если нет; в существующий `.env` дописать `REVALIDATE_SECRET` из `.env.example`), `just dev`, `just logs worker`
 Expected: worker стартовал без ошибок и слушает очередь. Next ещё не запущен — это нормально.
 
 - [ ] **Step 7: Commit**
@@ -475,6 +475,7 @@ git commit -m "feat(backend): site blocks and media models, block schemas, seede
     - одноразовый `minio-init` (`minio/mc`): `mc alias set`, `mc mb --ignore-existing`, `mc anonymous set download` на `${S3_BUCKET}`;
     - `api` и `worker` зависят от `minio-init: service_completed_successfully`.
   - **`.env.example`:** `S3_ENDPOINT_URL=http://minio:9000`, `S3_BUCKET=media`, `S3_ACCESS_KEY=minio-dev`, `S3_SECRET_KEY=minio-dev-secret` и строка для `backend/.env` с `S3_ENDPOINT_URL=http://localhost:9000`.
+  - **Тесты, которые создают `Settings` вручную** (`tests/core/test_config.py`, `test_ready.py`), получают обязательные `s3_*`: лучше через общий хелпер из `tests/conftest.py`, а не копированием.
   - **Тестовые фикстуры:**
     - `minio` — session-фикстура `MinioContainer()` из `testcontainers.community.minio`;
     - `minio_client` — клиент `minio.Minio` из контейнера;

@@ -54,6 +54,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 "app/core/errors.py" = ["N818"]
 "app/site_content/errors.py" = ["N818"]
 "app/site_content/tasks.py" = ["N818"]
+"app/notifications/notifier.py" = ["N818"]
 
 [tool.mypy]
 strict = true

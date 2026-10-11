@@ -5,12 +5,18 @@ import { Suspense } from "react";
 import { PrivacyPolicy } from "@/components/site/privacy-policy";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
+import { serverEnv } from "@/lib/server-env";
 import { getSite } from "@/lib/site-content";
 
-export const metadata: Metadata = {
-  title: "Политика обработки персональных данных",
-  alternates: { canonical: "/privacy" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // metadataBase нужен, чтобы canonical был абсолютным; SITE_URL — только во время запроса.
+  await connection();
+  return {
+    metadataBase: new URL(serverEnv("SITE_URL")),
+    title: "Политика обработки персональных данных",
+    alternates: { canonical: "/privacy" },
+  };
+}
 
 export default function PrivacyPage() {
   return (

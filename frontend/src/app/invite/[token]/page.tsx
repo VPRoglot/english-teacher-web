@@ -5,7 +5,7 @@ import { AcceptInvitation } from "./accept-invitation";
 
 export const metadata: Metadata = {
   title: "Приглашение",
-  robots: { index: false },
+  robots: { index: false, follow: false },
   // Токен в URL не должен утекать через заголовок Referer.
   referrer: "no-referrer",
 };

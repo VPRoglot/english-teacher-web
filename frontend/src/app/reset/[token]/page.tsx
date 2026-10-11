@@ -5,7 +5,7 @@ import { ResetPassword } from "./reset-password";
 
 export const metadata: Metadata = {
   title: "Смена пароля",
-  robots: { index: false },
+  robots: { index: false, follow: false },
   // Токен в URL не должен утекать через заголовок Referer.
   referrer: "no-referrer",
 };

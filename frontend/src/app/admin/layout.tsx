@@ -4,7 +4,7 @@ import { AdminShell } from "./admin-shell";
 
 export const metadata: Metadata = {
   title: "Админка",
-  robots: { index: false },
+  robots: { index: false, follow: false },
 };
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {

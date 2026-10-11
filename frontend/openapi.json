@@ -40,6 +40,60 @@
         "title": "AcceptInvitationRequest",
         "type": "object"
       },
+      "CabinetChild": {
+        "properties": {
+          "birth_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Year"
+          },
+          "english_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnglishLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "birth_year",
+          "english_level",
+          "username"
+        ],
+        "title": "CabinetChild",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -1788,6 +1842,94 @@
         "summary": "Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/me/children": {
+      "get": {
+        "operationId": "list_my_children",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CabinetChild"
+                  },
+                  "title": "Response List My Children",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "List My Children",
+        "tags": [
+          "cabinet"
+        ]
+      }
+    },
+    "/api/me/children/{child_id}/account": {
+      "post": {
+        "operationId": "set_my_child_account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "child_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Child Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildAccountSet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CabinetChild"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Set My Child Account",
+        "tags": [
+          "cabinet"
         ]
       }
     }

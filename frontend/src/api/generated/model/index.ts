@@ -6,6 +6,7 @@
  */
 
 export * from './acceptInvitationRequest';
+export * from './cabinetChild';
 export * from './changePasswordRequest';
 export * from './childAccount';
 export * from './childAccountSet';

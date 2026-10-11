@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Collection
 from datetime import UTC, datetime
 
 from sqlalchemy import exists, or_, select, update
@@ -12,6 +13,7 @@ from app.auth.sessions import SessionStore
 from app.core.errors import Conflict, NotFound
 from app.families.models import Child, Family, ParentProfile
 from app.families.schemas import (
+    CabinetChild,
     ChildAccount,
     ChildAccountSet,
     ChildCreate,
@@ -45,6 +47,29 @@ async def list_active_children(session: AsyncSession, family_id: uuid.UUID) -> l
 
 async def get_child_by_user(session: AsyncSession, user_id: uuid.UUID) -> Child | None:
     return await session.scalar(select(Child).where(Child.user_id == user_id))
+
+
+async def list_cabinet_children(
+    session: AsyncSession, child_ids: Collection[uuid.UUID]
+) -> list[CabinetChild]:
+    """Дети для кабинета семьи: только перечисленные id, с логином учётки (если есть)."""
+    if not child_ids:
+        return []
+    return [
+        CabinetChild(
+            id=child.id,
+            full_name=child.full_name,
+            birth_year=child.birth_year,
+            english_level=child.english_level,
+            username=username,
+        )
+        for child, username in await session.execute(
+            select(Child, User.username)
+            .outerjoin(User, User.id == Child.user_id)
+            .where(Child.id.in_(child_ids))
+            .order_by(Child.full_name, Child.id)
+        )
+    ]
 
 
 def _like_pattern(q: str) -> str:

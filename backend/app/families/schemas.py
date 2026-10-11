@@ -84,6 +84,14 @@ class ChildAccountSet(BaseModel):
     password: str = Field(max_length=PASSWORD_MAX_LENGTH)
 
 
+class CabinetChild(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    birth_year: int | None
+    english_level: EnglishLevel | None
+    username: str | None
+
+
 class UserStatusUpdate(BaseModel):
     is_active: bool
 

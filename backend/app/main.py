@@ -12,7 +12,7 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.redis import create_redis
 from app.core.request_id import RequestIdMiddleware
-from app.families import admin_router
+from app.families import admin_router, cabinet_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -48,4 +48,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(csrf.router, prefix="/api")
     app.include_router(auth_router.router, prefix="/api")
     app.include_router(admin_router.router, prefix="/api")
+    app.include_router(cabinet_router.router, prefix="/api")
     return app

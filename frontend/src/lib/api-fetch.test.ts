@@ -82,6 +82,20 @@ test("POST добавляет CSRF-заголовок из cookie", async () => 
   );
 });
 
+test("FormData body is sent without forcing Content-Type", async () => {
+  document.cookie = "csrf_token=tok123";
+  const f = stubFetch(new Response("{}", { status: 201 }));
+  const formData = new FormData();
+  formData.append("file", new File(["abc"], "a.png", { type: "image/png" }));
+  await apiFetch("/api/admin/media", { method: "POST", body: formData });
+  const init = f.mock.calls[0][1] as RequestInit;
+  expect(init.body).toBe(formData);
+  const headers = new Headers(init.headers);
+  // Content-Type с boundary выставит браузер сам.
+  expect(headers.has("Content-Type")).toBe(false);
+  expect(headers.get("X-CSRF-Token")).toBe("tok123");
+});
+
 test("GET не требует CSRF-токена", async () => {
   const f = stubFetch(new Response("{}", { status: 200 }));
   await apiFetch("/api/x");

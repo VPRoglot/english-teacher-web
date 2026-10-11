@@ -73,6 +73,10 @@ def _decode(data: bytes) -> tuple[Image.Image, str]:
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             image = Image.open(BytesIO(data))
             image_format = image.format
+            if image_format == "MPO":
+                # Многокадровый JPEG (Multi-Picture, часто с карты глубины у телефонов):
+                # Pillow открывает его как MPO. Это тот же JPEG, берём первый кадр.
+                image_format = "JPEG"
             if image_format not in _FORMATS:
                 raise UnsupportedImage
             if image.width * image.height > MAX_PIXELS:

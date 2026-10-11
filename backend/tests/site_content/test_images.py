@@ -50,6 +50,20 @@ def test_animated_webp_keeps_first_frame_only() -> None:
     assert getattr(Image.open(BytesIO(out.data)), "n_frames", 1) == 1
 
 
+def test_multi_frame_mpo_jpeg_from_phone_is_accepted_as_jpeg() -> None:
+    frames = [Image.new("RGB", (300, 200), color) for color in ("red", "blue")]
+    buffer = BytesIO()
+    frames[0].save(buffer, format="MPO", save_all=True, append_images=frames[1:])
+    assert Image.open(BytesIO(buffer.getvalue())).format == "MPO"  # предпосылка теста
+    out = process_image(buffer.getvalue())
+    assert (out.width, out.height) == (300, 200)
+    assert out.content_type == "image/jpeg"
+    assert out.extension == "jpg"
+    saved = Image.open(BytesIO(out.data))
+    assert saved.format == "JPEG"
+    assert getattr(saved, "n_frames", 1) == 1
+
+
 @pytest.mark.parametrize(
     "payload",
     [

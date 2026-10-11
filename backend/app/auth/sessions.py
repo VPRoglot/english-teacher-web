@@ -67,7 +67,12 @@ class SessionStore:
         key = _session_key(token)
         data = _parse(await self._redis.get(key))
         if data is not None:
-            await self._redis.expire(key, SESSION_TTL[data.role])
+            # Индекс продлевается вместе с сессией, иначе он истечёт раньше долгоживущей сессии
+            # и delete_all_for_user перестанет её находить.
+            async with self._redis.pipeline(transaction=True) as pipe:
+                pipe.expire(key, SESSION_TTL[data.role])
+                pipe.expire(_index_key(data.user_id), _INDEX_TTL)
+                await pipe.execute()
         return data
 
     async def delete(self, token: str) -> None:
@@ -79,13 +84,16 @@ class SessionStore:
     async def delete_all_for_user(self, user_id: uuid.UUID) -> int:
         """Удаляет все сессии пользователя и индекс; возвращает число реально удалённых сессий."""
         index = _index_key(user_id)
-        digests = await self._redis.smembers(index)
-        removed = 0
-        if digests:
-            # В индексе могут остаться хэши уже истёкших сессий — DEL считает только существующие.
-            removed = await self._redis.delete(*(f"session:{_text(d)}" for d in digests))
-        await self._redis.delete(index)
-        return int(removed)
+        # Чтение и удаление индекса — одна транзакция: сессия, созданная после неё, попадёт
+        # в новый индекс и не потеряется.
+        async with self._redis.pipeline(transaction=True) as pipe:
+            pipe.smembers(index)
+            pipe.delete(index)
+            digests, _ = await pipe.execute()
+        if not digests:
+            return 0
+        # В индексе могут остаться хэши уже истёкших сессий — DEL считает только существующие.
+        return int(await self._redis.delete(*(f"session:{_text(d)}" for d in digests)))
 
 
 def _text(value: bytes | str) -> str:

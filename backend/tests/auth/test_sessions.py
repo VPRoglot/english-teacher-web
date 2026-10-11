@@ -62,13 +62,28 @@ async def test_token_not_stored_in_plain(redis: Redis) -> None:
             assert all(token not in m for m in await redis.smembers(key))
 
 
-async def test_get_extends_ttl(redis: Redis) -> None:
+@pytest.mark.parametrize(
+    ("role", "days"), [(UserRole.TUTOR, 7), (UserRole.PARENT, 30), (UserRole.CHILD, 30)]
+)
+async def test_get_extends_ttl(redis: Redis, role: UserRole, days: int) -> None:
     store = SessionStore(redis)
-    token = await store.create(new_uuid7(), UserRole.TUTOR)
+    token = await store.create(new_uuid7(), role)
     key = f"session:{sha256_hex(token)}"
     await redis.expire(key, 10)
     await store.get(token)
-    assert await redis.ttl(key) > 6 * DAY
+    assert (days - 1) * DAY < await redis.ttl(key) <= days * DAY
+
+
+async def test_get_extends_index_ttl_so_revocation_still_works(redis: Redis) -> None:
+    store = SessionStore(redis)
+    uid = new_uuid7()
+    token = await store.create(uid, UserRole.PARENT)
+    index = f"user_sessions:{uid}"
+    await redis.expire(index, 5)
+    assert await store.get(token) is not None
+    assert await redis.ttl(index) > 29 * DAY
+    assert await store.delete_all_for_user(uid) == 1
+    assert await store.get(token) is None
 
 
 async def test_unknown_and_corrupt_tokens(redis: Redis) -> None:

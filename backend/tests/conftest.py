@@ -78,6 +78,18 @@ def settings(postgres_url: str, redis_url: str) -> Settings:
     )
 
 
+@pytest.fixture
+def retry_sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    """Подменяет паузу между повторами задач (тесты не ждут) и записывает её длительность."""
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr("app.core.tasks.sleep", fake_sleep)
+    return sleeps
+
+
 class FakeTaskQueue:
     """Очередь задач для API-тестов: запоминает постановки; при `fail` падает, как Redis."""
 

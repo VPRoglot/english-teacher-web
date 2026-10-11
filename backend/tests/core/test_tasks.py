@@ -1,12 +1,19 @@
+from itertools import pairwise
 from typing import Annotated, Any
 
 import structlog
-from taskiq import Context, InMemoryBroker, TaskiqDepends
+from taskiq import Context, InMemoryBroker, TaskiqDepends, TaskiqMiddleware
 from taskiq.middlewares import SmartRetryMiddleware
 
 from app.core.config import Settings
 from app.core.request_id import _request_id, get_request_id
-from app.core.tasks import BrokerTaskQueue, RequestIdTaskMiddleware, create_broker
+from app.core.tasks import (
+    BrokerTaskQueue,
+    DelayedRetryMiddleware,
+    RequestIdTaskMiddleware,
+    create_broker,
+    task_middlewares,
+)
 
 
 async def test_enqueue_kicks_task_by_name_with_request_id_label() -> None:
@@ -68,6 +75,51 @@ async def test_middleware_binds_request_id_and_task_name_while_task_runs() -> No
     assert seen["request_id"] == "rid-2"
     assert seen["log_context"] == {"request_id": "rid-2", "task_name": "test.probe"}
     assert structlog.contextvars.get_contextvars() == {}
+
+
+async def _run_failing_task(*middlewares: TaskiqMiddleware) -> int:
+    broker = InMemoryBroker(propagate_exceptions=False).with_middlewares(*middlewares)
+    attempts = 0
+
+    async def always_fails() -> None:
+        nonlocal attempts
+        attempts += 1
+        raise RuntimeError("boom")
+
+    broker.register_task(always_fails, task_name="test.fails", retry_on_error=True)
+    await broker.startup()
+    try:
+        await BrokerTaskQueue(broker).enqueue("test.fails")
+        for _ in range(10):  # каждый повтор — новая задача, wait_all ждёт только запущенные
+            await broker.wait_all()
+    finally:
+        await broker.shutdown()
+    return attempts
+
+
+async def test_retries_wait_with_growing_delay(retry_sleeps: list[float]) -> None:
+    attempts = await _run_failing_task(*task_middlewares())
+    assert attempts == 5
+    assert len(retry_sleeps) == 4  # пауза перед каждым из 4 повторов
+    assert retry_sleeps == sorted(retry_sleeps)
+    assert 5 <= retry_sleeps[0] < 6  # default_delay + джиттер < 1 с
+    assert all(a < b for a, b in pairwise(retry_sleeps))
+    assert retry_sleeps[-1] == 60  # дошло до потолка (метка delay растёт с каждым повтором)
+
+
+async def test_retry_delay_is_capped(retry_sleeps: list[float]) -> None:
+    middleware = DelayedRetryMiddleware(
+        default_retry_count=6,
+        default_retry_label=True,
+        default_delay=5,
+        use_jitter=True,
+        use_delay_exponent=True,
+        max_delay_exponent=12,
+    )
+    await _run_failing_task(middleware)
+    assert len(retry_sleeps) == 5
+    assert max(retry_sleeps) <= 12  # потолок действует и вместе с джиттером
+    assert retry_sleeps[-1] == 12
 
 
 def test_broker_retries_five_times(settings: Settings) -> None:

@@ -92,16 +92,22 @@ async def _run_with_retries(settings: Settings, transport: httpx.MockTransport) 
         await broker.shutdown()
 
 
-async def test_task_is_retried_until_next_accepts(settings: Settings) -> None:
+async def test_task_is_retried_until_next_accepts(
+    settings: Settings, retry_sleeps: list[float]
+) -> None:
     requests: list[httpx.Request] = []
     transport = _mock(
         requests, lambda r: httpx.Response(503 if len(requests) < 3 else 204)
     )  # Next перезапускается: первые два ответа — 503
     await _run_with_retries(settings, transport)
     assert len(requests) == 3
+    assert len(retry_sleeps) == 2
 
 
-async def test_task_gives_up_after_five_attempts(settings: Settings) -> None:
+async def test_task_gives_up_after_five_attempts(
+    settings: Settings, retry_sleeps: list[float]
+) -> None:
     requests: list[httpx.Request] = []
     await _run_with_retries(settings, _mock(requests, lambda r: httpx.Response(500)))
     assert len(requests) == 5
+    assert len(retry_sleeps) == 4

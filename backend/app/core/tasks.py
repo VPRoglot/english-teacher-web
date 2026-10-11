@@ -1,3 +1,4 @@
+from asyncio import sleep
 from typing import Annotated, Any, Protocol
 
 import structlog
@@ -50,12 +51,28 @@ class RequestIdTaskMiddleware(TaskiqMiddleware):
         _request_id.set(None)
 
 
+class DelayedRetryMiddleware(SmartRetryMiddleware):
+    """Повтор с настоящей паузой.
+
+    Без schedule_source SmartRetryMiddleware только кладёт метку `delay`, а Redis-брокер
+    её не учитывает: повторы шли бы подряд. Планировщик (отдельный процесс) не нужен —
+    выдерживаем паузу прямо в worker перед повторной постановкой. Занимает один слот
+    выполнения на время паузы, не дольше `max_delay_exponent`.
+    """
+
+    async def on_send(
+        self, kicker: AsyncKicker[Any, Any], message: TaskiqMessage, delay: float
+    ) -> None:
+        await sleep(min(delay, self.max_delay_exponent))
+        await super().on_send(kicker, message, delay)
+
+
 def task_middlewares() -> list[TaskiqMiddleware]:
     return [
         # Метки retry_on_error/max_retries задачи в сообщение попадают только при вызове
         # через зарегистрированную задачу, а API ставит задачи по имени, поэтому
         # повтор по умолчанию включён для всех задач.
-        SmartRetryMiddleware(
+        DelayedRetryMiddleware(
             default_retry_count=5,
             default_retry_label=True,
             default_delay=5,

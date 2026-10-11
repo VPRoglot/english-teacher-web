@@ -28,3 +28,10 @@ services:
       - --reload
       - --reload-dir
       - /app/app
+
+  # В разработке frontend обычно запускается локально (`just web`);
+  # контейнер — для проверки production-сборки: `just dev-full`.
+  web:
+    profiles: ["docker-web"]
+    ports:
+      - "3000:3000"

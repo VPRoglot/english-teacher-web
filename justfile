@@ -8,8 +8,12 @@ compose := "docker compose --env-file .env -f infra/docker-compose.yml -f infra/
 dev:
     {{compose}} up --build -d
 
+# То же + frontend в контейнере (production-сборка) на :3000
+dev-full:
+    {{compose}} --profile docker-web up --build -d
+
 down:
-    {{compose}} down
+    {{compose}} --profile docker-web down
 
 logs *args:
     {{compose}} logs -f {{args}}

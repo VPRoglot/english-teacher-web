@@ -6,7 +6,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import app.auth.models
-import app.families.models  # noqa: F401  (регистрируют модели в Base.metadata)
+import app.families.models
+import app.site_content.models  # noqa: F401  (регистрируют модели в Base.metadata)
 from app.core.config import get_settings
 from app.core.db import Base
 

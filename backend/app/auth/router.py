@@ -47,11 +47,20 @@ async def login(
     # проверку лимита одновременно, а верный пароль не обходит исчерпанный лимит.
     pair_count = await limiter.hit(pair_key, LOGIN_PAIR)
     ip_count = await limiter.hit(ip_key, LOGIN_IP)
-    waits: list[int] = []
-    for key, rule, count in ((pair_key, LOGIN_PAIR, pair_count), (ip_key, LOGIN_IP, ip_count)):
-        if count > rule.limit:
-            waits.append(await limiter.retry_after(key, rule) or rule.window_seconds)
-    if waits:
+    pair_over = pair_count > LOGIN_PAIR.limit
+    ip_over = ip_count > LOGIN_IP.limit
+    if pair_over or ip_over:
+        # Отклонённая попытка пароль не проверяла: занятый ею слот в непревышенном счётчике
+        # возвращается. Иначе перебор одной закрытой пары выжигает общий бюджет IP (и наоборот).
+        if pair_over:
+            await limiter.decr(ip_key)
+        else:
+            await limiter.decr(pair_key)
+        waits = [
+            await limiter.retry_after(key, rule) or rule.window_seconds
+            for key, rule, over in ((pair_key, LOGIN_PAIR, pair_over), (ip_key, LOGIN_IP, ip_over))
+            if over
+        ]
         raise RateLimited(max(waits))
 
     user = await service.authenticate(session, login=body.login, password=body.password)

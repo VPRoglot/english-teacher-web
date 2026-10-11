@@ -17,6 +17,7 @@ from app.auth.passwords import password_needs_rehash, verify_password
 from app.auth.service import DUMMY_PASSWORD_HASH, build_me
 from app.auth.sessions import SessionStore
 from app.core.db import get_db_session
+from app.core.rate_limit import RateLimiter
 from tests.conftest import BACKEND_DIR, open_client
 from tests.factories import (
     TEST_PASSWORD,
@@ -195,6 +196,31 @@ async def test_ip_limit_after_30_failures(client: AsyncClient) -> None:
         assert await _attempt(client, f"user{i}@example.com") == 401
 
     assert await _attempt(client, "someone-else@example.com") == 429
+
+
+async def test_rate_limited_pair_attempts_do_not_consume_ip_budget(client: AsyncClient) -> None:
+    for _ in range(5):
+        assert await _attempt(client, "victim@example.com") == 401
+    for _ in range(30):
+        assert await _attempt(client, "victim@example.com") == 429
+
+    # Отклонённые по лимиту пары попытки не проверяли пароль и не тратят общий бюджет IP.
+    assert await _attempt(client, "someone-else@example.com") == 401
+
+
+async def test_ip_limited_attempts_do_not_consume_pair_budget(
+    client: AsyncClient, redis: Redis
+) -> None:
+    for i in range(30):
+        assert await _attempt(client, f"user{i}@example.com") == 401
+    for _ in range(5):
+        assert await _attempt(client, "victim@example.com") == 429
+
+    # Окно IP закончилось (сброс вручную): пара не потратила ни одной попытки, пока IP был закрыт.
+    await RateLimiter(redis).reset("login-ip:127.0.0.1")
+    for _ in range(5):
+        assert await _attempt(client, "victim@example.com") == 401
+    assert await _attempt(client, "victim@example.com") == 429
 
 
 async def test_success_resets_pair_counter(client: AsyncClient, db_session: AsyncSession) -> None:

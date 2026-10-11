@@ -5,15 +5,15 @@ from types import TracebackType
 from typing import Any
 
 import pytest
-from asgi_lifespan import LifespanManager
 from fastapi import APIRouter
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from starlette.types import Message, Receive, Scope, Send
 
 from app.core.config import Settings
 from app.core.db import DbSession
 from app.core.errors import Conflict
 from app.main import create_app
+from tests.conftest import open_client
 
 
 class FakeSession:
@@ -68,8 +68,8 @@ async def _client(
 
         await app(scope, receive, record)
 
-    transport = ASGITransport(app=recording, raise_app_exceptions=False)
-    async with LifespanManager(app), AsyncClient(transport=transport, base_url="http://t") as c:
+    async with open_client(app, asgi=recording, raise_app_exceptions=False) as c:
+        events.clear()  # ответ на получение CSRF-токена не относится к проверяемому запросу
         app.state.sessionmaker = lambda: FakeSession(events, fail_commit=fail_commit)
         yield c
 

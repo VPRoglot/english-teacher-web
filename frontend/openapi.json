@@ -46,6 +46,31 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/auth/csrf": {
+      "get": {
+        "description": "Выдаёт CSRF-токен в cookie (читаемой из JS); уже выданный не меняет.",
+        "operationId": "get_csrf",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Csrf",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "health",

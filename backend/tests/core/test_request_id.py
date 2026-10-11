@@ -3,13 +3,13 @@ import re
 from collections.abc import AsyncIterator
 
 import pytest
-from asgi_lifespan import LifespanManager
 from fastapi import APIRouter
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 from app.core.config import Settings
 from app.core.logging import configure_logging
 from app.main import create_app
+from tests.conftest import open_client
 
 HEX32 = re.compile(r"[0-9a-f]{32}")
 
@@ -30,8 +30,7 @@ async def boom() -> None:
 async def tclient(settings: Settings) -> AsyncIterator[AsyncClient]:
     app = create_app(settings)
     app.include_router(routes)
-    transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with LifespanManager(app), AsyncClient(transport=transport, base_url="http://test") as c:
+    async with open_client(app, raise_app_exceptions=False) as c:
         yield c
 
 

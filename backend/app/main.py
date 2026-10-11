@@ -3,8 +3,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.core import health
+from app.core import csrf, health
 from app.core.config import Settings, get_settings
+from app.core.csrf import CsrfMiddleware
 from app.core.db import create_db_engine, create_sessionmaker
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
@@ -38,6 +39,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     register_error_handlers(app)
+    # Последний добавленный — внешний: request id остаётся самым внешним слоем.
+    app.add_middleware(CsrfMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router, prefix="/api")
+    app.include_router(csrf.router, prefix="/api")
     return app

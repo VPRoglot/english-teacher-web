@@ -1,20 +1,17 @@
 import time
 
-from asgi_lifespan import LifespanManager
-from httpx import ASGITransport, AsyncClient, Response
+from httpx import AsyncClient, Response
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.main import create_app
+from tests.conftest import open_client
 
 
 async def _ready(settings: Settings) -> tuple[Response, float]:
     app = create_app(settings)
-    async with (
-        LifespanManager(app),
-        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c,
-    ):
+    async with open_client(app) as c:
         assert (await c.get("/api/health")).status_code == 200
         started = time.monotonic()
         r = await c.get("/api/health/ready")

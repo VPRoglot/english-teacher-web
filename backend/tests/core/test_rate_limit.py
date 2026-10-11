@@ -1,15 +1,15 @@
 from collections.abc import AsyncIterator
 
 import pytest
-from asgi_lifespan import LifespanManager
 from fastapi import APIRouter
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from redis.asyncio import Redis
 
 from app.core.config import Settings
 from app.core.errors import NotAuthenticated, RateLimited
 from app.core.rate_limit import RateLimit, RateLimiter
 from app.main import create_app
+from tests.conftest import open_client
 
 RULE = RateLimit(limit=3, window_seconds=60)
 
@@ -36,10 +36,7 @@ async def clean_redis(redis: Redis) -> Redis:
 async def tclient(settings: Settings) -> AsyncIterator[AsyncClient]:
     app = create_app(settings)
     app.include_router(routes)
-    async with (
-        LifespanManager(app),
-        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c,
-    ):
+    async with open_client(app) as c:
         yield c
 
 

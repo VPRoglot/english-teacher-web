@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from starlette.types import ASGIApp
 from testcontainers.community.postgres import PostgresContainer
 from testcontainers.community.redis import RedisContainer
 
@@ -96,10 +98,26 @@ async def app(settings: Settings, db_session: AsyncSession, redis: Redis) -> Fas
     return application
 
 
-@pytest.fixture
-async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+@asynccontextmanager
+async def open_client(
+    app: FastAPI, *, asgi: ASGIApp | None = None, raise_app_exceptions: bool = True
+) -> AsyncIterator[AsyncClient]:
+    """Клиент по HTTPS с уже полученным CSRF-токеном (cookie + заголовок).
+
+    `asgi` позволяет обернуть приложение (например, записать порядок событий ответа).
+    """
+    transport = ASGITransport(app=asgi or app, raise_app_exceptions=raise_app_exceptions)
     async with (
         LifespanManager(app),
-        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c,
+        AsyncClient(transport=transport, base_url="https://test") as c,
     ):
+        r = await c.get("/api/auth/csrf")
+        assert r.status_code == 204
+        c.headers["X-CSRF-Token"] = c.cookies["csrf_token"]
+        yield c
+
+
+@pytest.fixture
+async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    async with open_client(app) as c:
         yield c

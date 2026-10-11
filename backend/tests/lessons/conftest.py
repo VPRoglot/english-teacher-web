@@ -4,7 +4,8 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
+from taskiq import Context, InMemoryBroker, TaskiqMessage, TaskiqState
 
 from app.families.models import Child
 from app.leads.models import Lead
@@ -82,3 +83,31 @@ async def make_lesson(
     session.add(lesson)
     await session.flush()
     return lesson
+
+
+@pytest.fixture
+def sessionmaker(db_session: AsyncSession) -> async_sessionmaker[AsyncSession]:
+    """Фабрика сессий на соединении тестовой транзакции: каждая сессия — свой savepoint.
+
+    Так `materialize_all` открывает по сессии на серию и коммитит их, а данные теста
+    остаются видны и откатываются вместе с внешней транзакцией.
+    """
+    assert isinstance(db_session.bind, AsyncConnection)
+    return async_sessionmaker(
+        db_session.bind, expire_on_commit=False, join_transaction_mode="create_savepoint"
+    )
+
+
+@pytest.fixture
+def worker_state(sessionmaker: async_sessionmaker[AsyncSession]) -> TaskiqState:
+    state = TaskiqState()
+    state.sessionmaker = sessionmaker
+    return state
+
+
+@pytest.fixture
+def context(worker_state: TaskiqState) -> Context:
+    broker = InMemoryBroker()
+    broker.state = worker_state
+    message = TaskiqMessage(task_id="t", task_name="n", labels={}, args=[], kwargs={})
+    return Context(message, broker)

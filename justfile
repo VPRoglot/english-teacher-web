@@ -35,6 +35,10 @@ api:
 worker:
     uv --directory backend run taskiq worker app.worker:broker
 
+# планировщик задач вне Docker (нужен redis из `just dev`; ровно один экземпляр)
+scheduler:
+    uv --directory backend run taskiq scheduler app.scheduler:scheduler
+
 test-backend *args:
     uv --directory backend run pytest {{args}}
 

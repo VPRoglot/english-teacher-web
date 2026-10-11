@@ -3,6 +3,7 @@ from taskiq import AsyncBroker, TaskiqEvents, TaskiqState
 
 from app.core.config import Settings
 from app.core.db import create_db_engine, create_sessionmaker
+from app.lessons import tasks as lesson_tasks
 from app.notifications import tasks as notification_tasks
 from app.notifications.notifier import DisabledNotifier, Notifier, TelegramNotifier
 from app.site_content import tasks as site_content_tasks
@@ -18,6 +19,7 @@ def setup_worker(
     """Регистрирует задачи и создаёт ресурсы worker (httpx-клиент, движок, сессии БД, notifier)."""
     site_content_tasks.register_tasks(broker)
     notification_tasks.register_tasks(broker)
+    lesson_tasks.register_tasks(broker)
 
     @broker.on_event(TaskiqEvents.WORKER_STARTUP)
     async def _startup(state: TaskiqState) -> None:

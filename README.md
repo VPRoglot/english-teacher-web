@@ -36,6 +36,7 @@ just web                      # frontend на http://localhost:3000, /api про
 | `just create-tutor <email>` | создать учётную запись репетитора (одна на систему) |
 | `just api` | backend вне Docker; localhost-хосты — в `backend/.env` (см. `.env.example`) |
 | `just worker` | worker задач вне Docker (нужен redis из `just dev`; после правок задач перезапустить) |
+| `just scheduler` | планировщик задач вне Docker (ежедневная материализация серий занятий в 01:00 UTC); ровно один экземпляр, в Docker это сервис `scheduler` |
 | `just web` | Next.js dev-сервер |
 | `just gen-api` | OpenAPI из backend → типизированный клиент `frontend/src/api/generated` |
 | `just test` / `just test-backend` / `just test-frontend` | тесты |

@@ -94,18 +94,80 @@ S3_ENDPOINT_URL=http://localhost:9000
 
 **MinIO в разработке.** `just dev` поднимает MinIO и одноразовый `minio-init`: он создаёт бакет (`S3_BUCKET`) и включает анонимное чтение, так фото отдаются на лендинге. Образы — Chainguard (`cgr.dev/chainguard/minio`, `cgr.dev/chainguard/minio-client`), потому что официальные образы minio недоступны для скачивания. Консоль: http://localhost:9001 (логин и пароль — `S3_ACCESS_KEY` и `S3_SECRET_KEY` из `.env`), S3 API — `http://localhost:9000`. В dev Next проксирует `/media` на MinIO (`MEDIA_PROXY_URL`), в production `/media` проксирует nginx. Вместо MinIO можно указать настоящий AWS S3: удалите строку `S3_ENDPOINT_URL` и задайте `S3_ADDRESSING_STYLE=virtual`.
 
-**Переменные окружения.** Все описаны комментариями в `.env.example`. Контейнер `web` не читает `.env` целиком (в нём секреты backend): Compose передаёт ему только `API_INTERNAL_URL`, `SITE_URL` и `REVALIDATE_SECRET`, подставляя значения из `.env`.
+**Переменные окружения.** Все описаны комментариями в `.env.example`. Контейнер `web` не читает `.env` целиком (в нём секреты backend): Compose передаёт ему только `API_INTERNAL_URL`, `SITE_URL`, `REVALIDATE_SECRET` и `SMARTCAPTCHA_CLIENT_KEY`, подставляя значения из `.env` (последний необязателен).
 
 | Где | Переменные |
 |---|---|
 | backend | `REVALIDATE_URL`, `REVALIDATE_SECRET`, `S3_ENDPOINT_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_ADDRESSING_STYLE`, `MEDIA_PUBLIC_BASE_URL` |
-| frontend | `API_INTERNAL_URL`, `SITE_URL`, `REVALIDATE_SECRET`, `MEDIA_PROXY_URL` (только dev) |
+| frontend | `API_INTERNAL_URL`, `SITE_URL`, `REVALIDATE_SECRET`, `SMARTCAPTCHA_CLIENT_KEY`, `MEDIA_PROXY_URL` (только dev) |
+
+Переменные заявок и уведомлений (`SMARTCAPTCHA_*`, `TELEGRAM_*`, `TASK_ENQUEUE_TIMEOUT_SECONDS`) — в разделе «Заявки и уведомления».
 
 Next читает эти переменные во время запроса, поэтому `pnpm --dir frontend build` проходит без запущенного API.
 
 **SEO.** `SITE_URL` (без завершающего `/`) определяет canonical, Open Graph, `robots.txt` и `sitemap.xml`. `robots.txt` закрывает `/admin`, `/cabinet`, `/invite`, `/reset`, `/login` и `/api`.
 
 **Перед production** заполните в `/admin/site` поле `hero.name` (имя репетитора) и блок `contacts`: они попадают на страницу `/privacy` как имя и контакты оператора персональных данных. По умолчанию там заглушки из миграции.
+
+## Заявки и уведомления
+
+Путь заявки: форма на `/` → `POST /api/public/leads` → задача `notifications.notify_new_lead` в очереди → worker → сообщение в Telegram репетитору. Заявка сохраняется в БД независимо от судьбы уведомления; репетитор ведёт её в `/admin/leads`.
+
+**Форма.** Поля: родитель, ребёнок, возраст, телефон (маска), способ связи (Telegram, WhatsApp, телефон), ник в мессенджере, цель, удобное время. Обязательно согласие со ссылкой на `/privacy`. UTM-метки (`utm_source`, `utm_medium`, `utm_campaign`) берутся из URL, сохраняются в `sessionStorage` и уходят вместе с заявкой. Защита от спама:
+
+- **Honeypot.** Скрытое поле `website`: если оно заполнено, API отвечает так же, как на настоящую заявку (`201 {"accepted": true}`), но ничего не сохраняет и задачу не ставит.
+- **Rate limit.** 3 заявки в час с одного IP; четвёртая получает `429` с заголовком `Retry-After` и сообщением о лимите. Попытка учитывается до остальных проверок. За прокси IP берётся из `request.client`, проброс `X-Forwarded-For` настраивается отдельно (план 7).
+- **Yandex SmartCaptcha** в невидимом режиме. Неверный токен — `400 captcha_failed`, ничего не сохраняется. Проверка работает по принципу fail-open (рекомендация Яндекса): если сервис капчи недоступен или ответил не 200, заявка проходит, а в лог пишется `captcha_unavailable`; honeypot и rate limit действуют всегда.
+
+**Уведомление.** Сообщение уходит обычным текстом (без `parse_mode`) и содержит имя родителя и ребёнка, возраст, способ связи, телефон, цель, удобное время и ссылку `{PUBLIC_BASE_URL}/admin/leads/{id}`; длиннее 4096 символов обрезается. Задачу API ставит после `commit`; если Redis недоступен, заявка всё равно сохраняется (ответ `201`), а в лог пишется `lead_notification_enqueue_failed`. Таймаут постановки — `TASK_ENQUEUE_TIMEOUT_SECONDS` (по умолчанию 2 с). Повторы такие же, как у сброса кеша: до 5 попыток с нарастающей паузой до 60 с. Задача идемпотентна: после успешной отправки в заявке заполняется `notified_at`, и повторная доставка второго сообщения не шлёт. Как и для других задач, `request_id` в `just logs worker` (события `task_started` / `task_finished`) совпадает с `request_id` запроса `POST /api/public/leads`.
+
+**Без ключей в dev.** Если `SMARTCAPTCHA_SERVER_KEY` не задан, капча на сервере отключена, а если не задан `SMARTCAPTCHA_CLIENT_KEY`, форма работает без неё. Если нет `TELEGRAM_BOT_TOKEN` или `TELEGRAM_CHAT_ID`, worker сообщение не шлёт, а пишет в лог `telegram_disabled` (задача при этом завершается успешно, `notified_at` заполняется). При `APP_ENV=prod` backend без `SMARTCAPTCHA_SERVER_KEY`, `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` не запустится.
+
+| Переменная | Где | Назначение |
+|---|---|---|
+| `SMARTCAPTCHA_SERVER_KEY` | backend | серверный ключ SmartCaptcha; обязателен в prod |
+| `SMARTCAPTCHA_CLIENT_KEY` | frontend (web) | клиентский ключ; читается во время запроса, необязателен |
+| `TELEGRAM_BOT_TOKEN` | backend (worker) | токен бота; обязателен в prod |
+| `TELEGRAM_CHAT_ID` | backend (worker) | чат, куда бот пишет; обязателен в prod |
+| `TASK_ENQUEUE_TIMEOUT_SECONDS` | backend (api) | потолок постановки задачи в очередь, по умолчанию 2 |
+
+Изменив `TELEGRAM_*` в `.env`, перезапустите worker: `just restart worker`. Ключи SmartCaptcha читают api (серверный) и Next (клиентский): перезапустите `api` и `web`.
+
+**Как создать бота и узнать `TELEGRAM_CHAT_ID`.**
+
+1. В Telegram откройте [@BotFather](https://t.me/BotFather), выполните `/newbot`, задайте имя и username. BotFather пришлёт токен — это `TELEGRAM_BOT_TOKEN`.
+2. Откройте диалог с созданным ботом и отправьте ему любое сообщение (бот не может писать первым). Для группы добавьте бота в группу и напишите в ней.
+3. Откройте `https://api.telegram.org/bot<токен>/getUpdates` и найдите `message.chat.id`: это `TELEGRAM_CHAT_ID` (у групп число отрицательное).
+4. Токен даёт полный доступ к боту: не публикуйте его и не коммитьте `.env`. Если токен утёк, выпустите новый через `/revoke` в BotFather.
+
+**Где взять ключи SmartCaptcha.** В консоли [Yandex Cloud](https://console.yandex.cloud/) → SmartCaptcha → «Создать капчу» (форма использует невидимый режим; домен сайта добавьте в настройках капчи). В карточке капчи: «Ключ клиента» — `SMARTCAPTCHA_CLIENT_KEY`, «Ключ сервера» — `SMARTCAPTCHA_SERVER_KEY`.
+
+**Админка заявок.** `/admin/leads`: список со статусами, фильтр по статусу, поиск и постраничный вывод; карточка `/admin/leads/{id}` с историей статусов. API: `GET /api/admin/leads`, `GET /api/admin/leads/{id}`, `PATCH /api/admin/leads/{id}`, `POST /api/admin/leads/{id}/convert`.
+
+Статусы: «Новая» (`new`), «Связались» (`contacted`), «Пробное назначено» (`trial_scheduled`), «Стала учеником» (`converted`), «Отказ» (`rejected`). Переходы:
+
+- `new` → `contacted`, `trial_scheduled`, `rejected`;
+- `contacted` → `trial_scheduled`, `rejected`;
+- `trial_scheduled` → `converted`, `rejected`, `contacted`;
+- `rejected` → `contacted`;
+- `converted` — конечный.
+
+Вручную через `PATCH` выставляются только `contacted` и `rejected` (отказ требует причину, иначе `422`); недопустимый переход даёт `409 invalid_status_transition`. Каждый переход записывается в историю. «Конвертировать» создаёт в одной транзакции семью, ребёнка и ссылку-приглашение с предзаполненными ФИО и телефоном; повторная конвертация возвращает `409 lead_not_convertible`. Конвертировать можно только заявку в статусе `trial_scheduled`.
+
+**Появится в плане 5.** Статус `trial_scheduled` и кнопка «Назначить пробное» (`POST /api/admin/leads/{id}/trial`) появятся вместе с расписанием: пробное занятие — это занятие, а таблица занятий создаётся в плане 5. Пока кнопка «Конвертировать» неактивна, а для ручной проверки статус выставляется SQL:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.dev.yml exec postgres psql -U tutor -d tutor -c "UPDATE leads SET status = 'trial_scheduled' WHERE id = '<id заявки>'"
+```
+
+**Эксплуатация: очередь задач.** Брокер Taskiq хранит задачи в потоке Redis `taskiq` и читает их группой `taskiq`. Теперь группа создаётся с начала потока (`consumer_id="0"` в `backend/app/core/tasks.py`), чтобы задачи, поставленные API до первого запуска worker, не терялись. Если в окружении worker уже запускался раньше, группа `taskiq` там создана со старой позицией `$` (только новые сообщения) и существующую группу брокер не пересоздаёт. Один раз удалите её, затем перезапустите worker, и он создаст группу заново с начала потока:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.dev.yml exec redis redis-cli XGROUP DESTROY taskiq taskiq
+docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.dev.yml restart worker
+```
+
+Сообщения ack-нутых задач из потока не удаляются (его длина ограничена примерно 10 000 записей), поэтому после пересоздания группы worker один раз повторно прогонит сохранившуюся историю потока. Это безопасно: задачи идемпотентны (сброс кеша лендинга и уведомление с `notified_at`). В production замените файлы `-f` на свои, а на новом окружении ничего делать не нужно.
 
 ## Тесты
 

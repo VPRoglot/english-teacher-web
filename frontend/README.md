@@ -25,9 +25,14 @@ Next.js 16 (App Router, `cacheComponents`), TanStack Query, Tailwind + shadcn/ui
 | `API_INTERNAL_URL` | куда серверный код Next ходит за данными лендинга (`http://localhost:8000`, в Docker — `http://api:8000`) |
 | `SITE_URL` | публичный адрес сайта без завершающего `/`: canonical, Open Graph, `robots.txt`, `sitemap.xml` |
 | `REVALIDATE_SECRET` | секрет для `POST /api/revalidate` (заголовок `Authorization: Bearer ...`); должен совпадать с `REVALIDATE_SECRET` backend |
+| `SMARTCAPTCHA_CLIENT_KEY` | необязательный клиентский ключ Yandex SmartCaptcha для формы заявки на `/`; пустой — форма работает без капчи. Серверный ключ (`SMARTCAPTCHA_SERVER_KEY`) нужен backend. В Docker передаётся контейнеру `web` из корневого `.env` |
 | `API_PROXY_URL` | только dev: куда проксировать `/api` (в production — nginx) |
 | `MEDIA_PROXY_URL` | только dev: куда проксировать `/media` (MinIO, `http://localhost:9000/media`; в production — nginx) |
 
 ## Контент сайта
 
 Лендинг получает блоки через `getSite()` (`src/lib/site-content.ts`) с тегом кеша `site-content`. Backend сбрасывает тег запросом на `/api/revalidate` (`src/app/api/revalidate/route.ts`) после сохранения блока в `/admin/site`. Схема и настройка worker — в разделе «Контент сайта» корневого README.
+
+## Заявки
+
+Форма заявки на `/` — `src/components/site/trial-form.tsx` (маска телефона `src/lib/phone-mask.ts`, UTM из URL в `sessionStorage` — `src/lib/utm.ts`, honeypot-поле `website`, невидимая SmartCaptcha). Админка заявок — `/admin/leads` и `/admin/leads/[id]`. Путь заявки, бот Telegram и ключи SmartCaptcha — в разделе «Заявки и уведомления» корневого README.

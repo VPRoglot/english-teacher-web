@@ -80,6 +80,8 @@ services:
       API_INTERNAL_URL: http://api:8000
       SITE_URL: ${SITE_URL}
       REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      # Клиентский ключ SmartCaptcha необязателен: без него форма заявки работает без капчи.
+      SMARTCAPTCHA_CLIENT_KEY: ${SMARTCAPTCHA_CLIENT_KEY:-}
     depends_on:
       api:
         condition: service_healthy

@@ -52,6 +52,22 @@ class ValidationFailed(AppError):
     message = "Ошибка валидации"
 
 
+class NotAuthenticated(AppError):
+    status_code = 401
+    code = "not_authenticated"
+    message = "Требуется вход"
+
+
+class RateLimited(AppError):
+    status_code = 429
+    code = "rate_limited"
+    message = "Слишком много попыток. Попробуйте позже."
+
+    def __init__(self, retry_after: int) -> None:
+        super().__init__(details={"retry_after": retry_after})
+        self.retry_after = retry_after
+
+
 _HTTP_CODES = {404: "not_found", 405: "method_not_allowed"}
 _HTTP_MESSAGES = {404: "Не найдено", 405: "Метод не поддерживается"}
 
@@ -90,7 +106,10 @@ def error_body(code: str, message: str, details: dict[str, Any] | None = None) -
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:
-        return JSONResponse(error_body(exc.code, exc.message, exc.details), exc.status_code)
+        headers = {"Retry-After": str(exc.retry_after)} if isinstance(exc, RateLimited) else None
+        return JSONResponse(
+            error_body(exc.code, exc.message, exc.details), exc.status_code, headers=headers
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:

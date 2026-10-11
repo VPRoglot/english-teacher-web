@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend
 
-## Getting Started
+Next.js 16 (App Router, `cacheComponents`), TanStack Query, Tailwind + shadcn/ui. Общая документация проекта, запуск стека и сценарии проверки — в [../README.md](../README.md).
 
-First, run the development server:
+Перед правками прочитайте [AGENTS.md](AGENTS.md): API Next 16 отличается от старых версий, документация лежит в `node_modules/next/dist/docs/`.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Команды
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Запускаются из корня репозитория или через `pnpm --dir frontend ...`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Команда | Что делает |
+|---|---|
+| `pnpm dev` (`just web`) | dev-сервер на http://localhost:3000; `/api` проксируется на backend, `/media` на MinIO |
+| `pnpm build` | production-сборка; проходит без запущенного API (лендинг, `/privacy`, `robots.txt` и `sitemap.xml` читают данные и env во время запроса) |
+| `pnpm test` | Vitest + Testing Library |
+| `pnpm lint`, `pnpm typecheck` | ESLint, `next typegen` + `tsc` |
+| `just gen-api` | OpenAPI из backend → `openapi.json` → типизированный клиент `src/api/generated` (orval); результат коммитится |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Переменные окружения
 
-## Learn More
+Для `pnpm dev` значения берутся из `.env.development` (в git). В Docker они приходят из корневого `.env`, а `API_INTERNAL_URL` задаёт `infra/docker-compose.yml`. Next читает их во время запроса, при сборке они не нужны.
 
-To learn more about Next.js, take a look at the following resources:
+| Переменная | Назначение |
+|---|---|
+| `API_INTERNAL_URL` | куда серверный код Next ходит за данными лендинга (`http://localhost:8000`, в Docker — `http://api:8000`) |
+| `SITE_URL` | публичный адрес сайта без завершающего `/`: canonical, Open Graph, `robots.txt`, `sitemap.xml` |
+| `REVALIDATE_SECRET` | секрет для `POST /api/revalidate` (заголовок `Authorization: Bearer ...`); должен совпадать с `REVALIDATE_SECRET` backend |
+| `API_PROXY_URL` | только dev: куда проксировать `/api` (в production — nginx) |
+| `MEDIA_PROXY_URL` | только dev: куда проксировать `/media` (MinIO, `http://localhost:9000/media`; в production — nginx) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Контент сайта
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Лендинг получает блоки через `getSite()` (`src/lib/site-content.ts`) с тегом кеша `site-content`. Backend сбрасывает тег запросом на `/api/revalidate` (`src/app/api/revalidate/route.ts`) после сохранения блока в `/admin/site`. Схема и настройка worker — в разделе «Контент сайта» корневого README.

@@ -84,7 +84,7 @@ S3_ENDPOINT_URL=http://localhost:9000
 ```
 
 - **Порядок.** API ставит задачу только после `commit`, поэтому Next не успеет закешировать старые данные. Если Redis недоступен, блок всё равно сохраняется (ответ 200), а в лог пишется `site_revalidation_enqueue_failed`; тогда обновить кеш можно повторным сохранением блока.
-- **Повторы.** Задача `site_content.revalidate_site` делает до 5 попыток; пауза между ними растёт и не превышает 60 с (пауза выдерживается внутри worker, `DelayedRetryMiddleware` в `backend/app/core/tasks.py`). Пока Next остановлен, в `just logs worker` видны повторы; после его запуска очередной повтор проходит.
+- **Повторы.** Задача `site_content.revalidate_site` делает до 5 попыток всего (первая и до 4 повторов); пауза между ними растёт и не превышает 60 с (пауза выдерживается внутри worker, `DelayedRetryMiddleware` в `backend/app/core/tasks.py`). Пока Next остановлен, в `just logs worker` видны повторы; после его запуска очередной повтор проходит.
 - **Один `request_id`.** Задача наследует `request_id` запроса, который её поставил: в `just logs api` и `just logs worker` (события `task_started` / `task_finished`) он совпадает.
 - **Worker и hot reload.** У api hot reload есть, у worker нет: после правки задач выполните `just restart worker`. Worker вне Docker — `just worker`.
 - **Адрес Next для worker.** `REVALIDATE_URL` задаёт Docker Compose: в production `http://web:3000/api/revalidate`, в dev — `http://host.docker.internal:3000/api/revalidate`, потому что `just web` запускает Next на хосте.
@@ -119,25 +119,29 @@ Next читает эти переменные во время запроса, п
 - **Rate limit.** 3 заявки в час с одного IP; четвёртая получает `429` с заголовком `Retry-After` и сообщением о лимите. Попытка учитывается до остальных проверок. За прокси IP берётся из `request.client`, проброс `X-Forwarded-For` настраивается отдельно.
 - **Yandex SmartCaptcha** в невидимом режиме. Неверный токен — `400 captcha_failed`, ничего не сохраняется. Проверка работает по принципу fail-open (рекомендация Яндекса): если сервис капчи недоступен или ответил не 200, заявка проходит, а в лог пишется `captcha_unavailable`; honeypot и rate limit действуют всегда.
 
-**Уведомление.** Сообщение уходит обычным текстом (без `parse_mode`) и содержит имя родителя и ребёнка, возраст, способ связи, телефон, цель, удобное время и ссылку `{PUBLIC_BASE_URL}/admin/leads/{id}`; длиннее 4096 символов обрезается. Задачу API ставит после `commit`; если Redis недоступен, заявка всё равно сохраняется (ответ `201`), а в лог пишется `lead_notification_enqueue_failed`. Таймаут постановки — `TASK_ENQUEUE_TIMEOUT_SECONDS` (по умолчанию 2 с). Повторы такие же, как у сброса кеша: до 5 попыток с нарастающей паузой до 60 с. Задача идемпотентна: после успешной отправки в заявке заполняется `notified_at`, и повторная доставка второго сообщения не шлёт. Как и для других задач, `request_id` в `just logs worker` (события `task_started` / `task_finished`) совпадает с `request_id` запроса `POST /api/public/leads`.
+**Уведомление.** Сообщение уходит обычным текстом (без `parse_mode`) и содержит имя родителя и ребёнка, возраст, способ связи, телефон, цель, удобное время и ссылку `{PUBLIC_BASE_URL}/admin/leads/{id}`; длиннее 4096 символов обрезается. Задачу API ставит после `commit`; если Redis недоступен, заявка всё равно сохраняется (ответ `201`), а в лог пишется `lead_notification_enqueue_failed`. Таймаут постановки — `TASK_ENQUEUE_TIMEOUT_SECONDS` (по умолчанию 2 с). Повторы такие же, как у сброса кеша: до 5 попыток всего (первая и до 4 повторов) с нарастающей паузой до 60 с. Задача идемпотентна: после успешной отправки в заявке заполняется `notified_at`, и повторная доставка второго сообщения не шлёт. Как и для других задач, `request_id` в `just logs worker` (события `task_started` / `task_finished`) совпадает с `request_id` запроса `POST /api/public/leads`.
 
 **Без ключей в dev.** Если `SMARTCAPTCHA_SERVER_KEY` не задан, капча на сервере отключена, а если не задан `SMARTCAPTCHA_CLIENT_KEY`, форма работает без неё. Если нет `TELEGRAM_BOT_TOKEN` или `TELEGRAM_CHAT_ID`, worker сообщение не шлёт, а пишет в лог `telegram_disabled` (задача при этом завершается успешно, `notified_at` заполняется). При `APP_ENV=prod` backend без `SMARTCAPTCHA_SERVER_KEY`, `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` не запустится.
 
 | Переменная | Где | Назначение |
 |---|---|---|
 | `SMARTCAPTCHA_SERVER_KEY` | backend | серверный ключ SmartCaptcha; обязателен в prod |
-| `SMARTCAPTCHA_CLIENT_KEY` | frontend (web) | клиентский ключ; читается во время запроса, необязателен |
+| `SMARTCAPTCHA_CLIENT_KEY` | frontend | клиентский ключ; читается во время запроса; при `just web` — в `frontend/.env.development`, для контейнера `web` — в корневом `.env`; задаётся вместе с серверным |
 | `TELEGRAM_BOT_TOKEN` | backend (worker) | токен бота; обязателен в prod |
 | `TELEGRAM_CHAT_ID` | backend (worker) | чат, куда бот пишет; обязателен в prod |
 | `TASK_ENQUEUE_TIMEOUT_SECONDS` | backend (api) | потолок постановки задачи в очередь, по умолчанию 2 |
 
-Изменив `TELEGRAM_*` в `.env`, перезапустите worker: `just restart worker`. Ключи SmartCaptcha читают api (серверный) и Next (клиентский): перезапустите `api` и `web`.
+**Где задавать ключи.** Серверные значения (`SMARTCAPTCHA_SERVER_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) — в корневой `.env`: их читают контейнеры api и worker. Клиентский ключ зависит от способа запуска frontend: при `just web` Next работает на хосте и читает `frontend/.env.development`, а не корневой `.env`, поэтому `SMARTCAPTCHA_CLIENT_KEY` пишется туда (после правки перезапустите `just web`). В корневой `.env` он нужен только для контейнера `web` (`just dev-full`, production).
+
+**Ключи SmartCaptcha задаются парой.** Серверный ключ без клиентского даёт форму без капчи, и каждая заявка получает `400 captcha_failed` (нет токена — сервер отказывает). Клиентский ключ без серверного ничего не защищает: сервер капчу не проверяет. Задавайте оба или ни одного.
+
+**После правки `.env` контейнеры нужно пересоздать.** `just restart` выполняет `docker compose restart`: контейнер сохраняет окружение, с которым был создан, и новый `.env` не подхватывает. Выполните `just dev` (это `up --build -d`, он пересоздаёт изменившиеся сервисы) или точечно `docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.dev.yml up -d worker api` (и `web` при `just dev-full`). `just restart` годится только после правки кода: он подхватывается из bind mount.
 
 **Как создать бота и узнать `TELEGRAM_CHAT_ID`.**
 
 1. В Telegram откройте [@BotFather](https://t.me/BotFather), выполните `/newbot`, задайте имя и username. BotFather пришлёт токен — это `TELEGRAM_BOT_TOKEN`.
 2. Откройте диалог с созданным ботом и отправьте ему любое сообщение (бот не может писать первым). Для группы добавьте бота в группу и напишите в ней.
-3. Откройте `https://api.telegram.org/bot<токен>/getUpdates` и найдите `message.chat.id`: это `TELEGRAM_CHAT_ID` (у групп число отрицательное).
+3. Откройте `https://api.telegram.org/bot<токен>/getUpdates` и найдите `message.chat.id`: это `TELEGRAM_CHAT_ID` (у групп число отрицательное). Для группы в ответе может быть только `my_chat_member` (добавление бота): id лежит в `my_chat_member.chat.id`.
 4. Токен даёт полный доступ к боту: не публикуйте его и не коммитьте `.env`. Если токен утёк, выпустите новый через `/revoke` в BotFather.
 
 **Где взять ключи SmartCaptcha.** В консоли [Yandex Cloud](https://console.yandex.cloud/) → SmartCaptcha → «Создать капчу» (форма использует невидимый режим; домен сайта добавьте в настройках капчи). В карточке капчи: «Ключ клиента» — `SMARTCAPTCHA_CLIENT_KEY`, «Ключ сервера» — `SMARTCAPTCHA_SERVER_KEY`.

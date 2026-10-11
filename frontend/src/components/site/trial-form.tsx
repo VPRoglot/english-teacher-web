@@ -237,8 +237,8 @@ export function TrialForm({ captchaKey }: { captchaKey: string | null }) {
   }
 
   function onCaptchaHidden() {
-    // Пользователь закрыл проверку, не пройдя её: форма снова доступна, ничего не отправлено.
-    setPending(null);
+    // Виджет может сообщить о закрытии раньше, чем пришёл токен: `pending` не трогаем,
+    // чтобы опоздавший `success` всё равно отправил заявку. Новая отправка перезапишет `pending`.
     setChallenge(false);
   }
 

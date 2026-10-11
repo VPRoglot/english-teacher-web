@@ -352,7 +352,7 @@ test.each([
   expectCaptchaUnavailable();
 });
 
-test("closing the challenge frees the form and sends nothing", async () => {
+test("closing the challenge frees the button and sends nothing yet", async () => {
   await startChallenge(userEvent.setup());
 
   act(() => captcha.props?.onChallengeHidden?.());
@@ -360,6 +360,17 @@ test("closing the challenge frees the form and sends nothing", async () => {
   expect(submitButton()).toBeEnabled();
   expect(screen.queryByRole("alert")).toBeNull();
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("a token that arrives after the challenge was hidden still submits the lead once", async () => {
+  await startChallenge(userEvent.setup());
+
+  act(() => captcha.props?.onChallengeHidden?.());
+  expect(fetchMock).not.toHaveBeenCalled();
+  act(() => captcha.props?.onSuccess?.("late-token"));
+
+  await screen.findByText(/Спасибо! Заявка отправлена/);
+  expect(postBody()).toMatchObject({ captcha_token: "late-token", parent_name: "Мария" });
 });
 
 test("a challenge that never answers is given up after 20 seconds", async () => {

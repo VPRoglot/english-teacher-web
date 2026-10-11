@@ -27,6 +27,8 @@ const RATE_LIMITED =
 const CAPTCHA_UNAVAILABLE =
   "Не удалось загрузить проверку «я не робот». Проверьте соединение и попробуйте ещё раз.";
 const AGE_RANGE_ERROR = "Возраст — от 3 до 18 лет";
+/** Невидимая капча, которая не ответила за это время, считается недоступной. */
+const CAPTCHA_TIMEOUT_MS = 20_000;
 
 const russian = z.locales.ru().localeError;
 
@@ -184,6 +186,14 @@ export function TrialForm({ captchaKey }: { captchaKey: string | null }) {
     captureUtm(window.location.search);
   }, []);
 
+  // Сторож: если виджет завис и не сообщил ни об успехе, ни об ошибке, форма не должна
+  // оставаться заблокированной. Таймер снимается при любом выходе из проверки и при размонтировании.
+  useEffect(() => {
+    if (!challenge) return;
+    const timer = setTimeout(abortCaptcha, CAPTCHA_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [challenge]);
+
   function send(values: Values, captchaToken: string | undefined) {
     setFormError(null);
     submit.mutate(
@@ -218,10 +228,22 @@ export function TrialForm({ captchaKey }: { captchaKey: string | null }) {
     if (values) send(values, token);
   }
 
-  function onCaptchaNetworkError() {
+  /** Проверка не состоялась (сбой сети или скрипта, истёк токен, виджет завис). */
+  function abortCaptcha() {
     setPending(null);
     setChallenge(false);
+    setWidgetKey((key) => key + 1); // свежий виджет вместо зависшего
     setFormError(CAPTCHA_UNAVAILABLE);
+  }
+
+  function onCaptchaHidden() {
+    // Пользователь закрыл проверку, не пройдя её: форма снова доступна, ничего не отправлено.
+    setPending(null);
+    setChallenge(false);
+  }
+
+  function onCaptchaTokenExpired() {
+    if (challenge) abortCaptcha();
   }
 
   if (done) {
@@ -390,8 +412,10 @@ export function TrialForm({ captchaKey }: { captchaKey: string | null }) {
           language="ru"
           visible={challenge}
           onSuccess={onCaptchaSuccess}
-          onChallengeHidden={() => setChallenge(false)}
-          onNetworkError={onCaptchaNetworkError}
+          onChallengeHidden={onCaptchaHidden}
+          onNetworkError={abortCaptcha}
+          onJavascriptError={abortCaptcha}
+          onTokenExpired={onCaptchaTokenExpired}
         />
       )}
 

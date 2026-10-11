@@ -142,7 +142,11 @@ function ConvertForm({
           onConverted(result);
           void refresh();
         },
-        onError: (error) => setFormError(applyConvertErrors(error, setError)),
+        onError: (error) => {
+          setFormError(applyConvertErrors(error, setError));
+          // Статус мог измениться в другой вкладке: показываем актуальное состояние.
+          if (error instanceof ApiError && error.status === 409) void refresh();
+        },
       },
     );
   }

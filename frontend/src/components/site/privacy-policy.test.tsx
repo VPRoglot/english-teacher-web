@@ -23,7 +23,25 @@ test("policy does not claim there are no third parties while Telegram gets notif
   render(<PrivacyPolicy operatorName="Анна Смирнова" contacts={siteFixture.contacts} />);
   expect(screen.queryByText(/третьим лицам не передаются/)).not.toBeInTheDocument();
   expect(screen.getByText(/не продаются и не передаются третьим лицам/)).toBeInTheDocument();
-  expect(screen.getByText(/доставляется\s+репетитору через Telegram/)).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      /имя родителя, возраст ребёнка, способ связи и контакт\s+для связи\) доставляется\s+репетитору через Telegram/,
+    ),
+  ).toBeInTheDocument();
+  // Имя ребёнка, цель и удобное время в Telegram не уходят.
+  expect(screen.queryByText(/имя ребёнка.*Telegram/)).not.toBeInTheDocument();
+});
+
+test("policy discloses Yandex SmartCaptcha and IP processing", () => {
+  render(<PrivacyPolicy operatorName="Анна Смирнова" contacts={siteFixture.contacts} />);
+  expect(
+    screen.getByText(
+      /Yandex SmartCaptcha: данные о взаимодействии с формой и IP-адрес\s+передаются ООО «Яндекс» для защиты от спама/,
+    ),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/IP-адрес: сайт обрабатывает его, чтобы ограничивать частоту отправки заявок/),
+  ).toBeInTheDocument();
 });
 
 test("policy points to the site contacts when none are published", () => {

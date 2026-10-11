@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
+import { getListLeadsQueryKey } from "@/api/generated/endpoints/admin/admin";
 import type { LeadStatus } from "@/api/generated/model";
 
 const toastSuccess = vi.fn();
@@ -130,10 +131,10 @@ test("client validation blocks the request", async () => {
   expect(converts()).toHaveLength(0);
 });
 
-test("409 is shown in the form", async () => {
+test("409 is shown in the form and the lead and the list are refreshed", async () => {
   convertResponse = () =>
     errorResponse(409, "lead_not_convertible", "Конвертировать можно только заявку с назначенным пробным");
-  renderDialog();
+  const { invalidate } = renderDialog();
   await userEvent.click(screen.getByRole("button", { name: "Конвертировать в ученика" }));
   await userEvent.click(screen.getByRole("button", { name: "Конвертировать" }));
 
@@ -141,6 +142,8 @@ test("409 is shown in the form", async () => {
     "Конвертировать можно только заявку с назначенным пробным",
   );
   expect(screen.getByLabelText("Семья")).toBeInTheDocument();
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["/api/admin/leads/l1"] });
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: getListLeadsQueryKey() });
 });
 
 test("422 is put on the field it concerns", async () => {

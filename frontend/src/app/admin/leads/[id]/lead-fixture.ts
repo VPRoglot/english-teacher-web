@@ -8,7 +8,7 @@ export function makeLead(overrides: Partial<LeadDetail> = {}): LeadDetail {
     child_age: 8,
     phone: "+79991234567",
     contact_method: "telegram",
-    messenger_handle: "@anna",
+    messenger_handle: "anna_en",
     goal: "Подтянуть разговорный английский",
     preferred_time: "Будни после 17:00",
     status: "new",

@@ -78,7 +78,7 @@ test("shows fields, contact link and history", async () => {
   expect(screen.getByText("Маша, 8 лет")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Telegram · +79991234567" })).toHaveAttribute(
     "href",
-    "https://t.me/anna",
+    "https://t.me/anna_en",
   );
   expect(screen.getByText("Подтянуть разговорный английский")).toBeInTheDocument();
   expect(screen.getByText("Будни после 17:00")).toBeInTheDocument();

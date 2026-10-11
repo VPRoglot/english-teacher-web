@@ -1,20 +1,33 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
+type CaptchaProps = {
+  sitekey: string;
+  visible?: boolean;
+  onSuccess?: (token: string) => void;
+  onChallengeHidden?: () => void;
+  onNetworkError?: () => void;
+  onTokenExpired?: () => void;
+  onJavascriptError?: (error: { filename: string; message: string; col: number; line: number }) => void;
+};
+
+const captcha = vi.hoisted(() => ({
+  autoSolve: true,
+  props: null as CaptchaProps | null,
+}));
 const captchaProps = vi.fn();
 vi.mock("@yandex/smart-captcha", () => ({
-  InvisibleSmartCaptcha: (props: {
-    sitekey: string;
-    visible?: boolean;
-    onSuccess?: (token: string) => void;
-  }) => {
+  InvisibleSmartCaptcha: (props: CaptchaProps) => {
     captchaProps(props.sitekey);
     const { visible, onSuccess } = props;
     useEffect(() => {
-      if (visible) onSuccess?.("tok");
+      captcha.props = props;
+    });
+    useEffect(() => {
+      if (visible && captcha.autoSolve) onSuccess?.("tok");
     }, [visible, onSuccess]);
     return <div data-testid="captcha" />;
   },
@@ -81,10 +94,13 @@ beforeEach(() => {
   document.cookie = "csrf_token=t";
   sessionStorage.clear();
   captchaProps.mockClear();
+  captcha.autoSolve = true;
+  captcha.props = null;
   stubApi();
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.cookie = "csrf_token=; max-age=0";
 });
@@ -302,4 +318,84 @@ test("button is disabled while the request is in flight", async () => {
   await waitFor(() => expect(screen.getByRole("button", { name: "Отправляем…" })).toBeDisabled());
   release(jsonResponse(201, { accepted: true }));
   await screen.findByText(/Спасибо! Заявка отправлена/);
+});
+
+const CAPTCHA_UNAVAILABLE =
+  "Не удалось загрузить проверку «я не робот». Проверьте соединение и попробуйте ещё раз.";
+
+async function startChallenge(user: ReturnType<typeof userEvent.setup>) {
+  captcha.autoSolve = false;
+  renderForm("client-key");
+  await fillRequired(user);
+  await user.click(submitButton());
+  await waitFor(() => expect(screen.getByRole("button", { name: "Отправляем…" })).toBeDisabled());
+}
+
+function expectCaptchaUnavailable() {
+  expect(screen.getByRole("alert")).toHaveTextContent(CAPTCHA_UNAVAILABLE);
+  expect(submitButton()).toBeEnabled();
+  expect(fetchMock).not.toHaveBeenCalled();
+}
+
+test.each([
+  ["a network error", () => captcha.props?.onNetworkError?.()],
+  [
+    "a javascript error",
+    () => captcha.props?.onJavascriptError?.({ filename: "c.js", message: "boom", col: 1, line: 1 }),
+  ],
+  ["an expired token", () => captcha.props?.onTokenExpired?.()],
+])("%s during the challenge frees the form and sends nothing", async (_name, emit) => {
+  await startChallenge(userEvent.setup());
+
+  act(() => emit());
+
+  expectCaptchaUnavailable();
+});
+
+test("closing the challenge frees the form and sends nothing", async () => {
+  await startChallenge(userEvent.setup());
+
+  act(() => captcha.props?.onChallengeHidden?.());
+
+  expect(submitButton()).toBeEnabled();
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("a challenge that never answers is given up after 20 seconds", async () => {
+  const user = userEvent.setup();
+  captcha.autoSolve = false;
+  renderForm("client-key");
+  await fillRequired(user);
+
+  // Под фейковыми таймерами user-event зависает в vitest (RTL ждёт jest), поэтому кликаем напрямую.
+  vi.useFakeTimers();
+  fireEvent.click(submitButton());
+  await act(() => vi.advanceTimersByTimeAsync(0));
+  expect(screen.getByRole("button", { name: "Отправляем…" })).toBeDisabled();
+
+  await act(() => vi.advanceTimersByTimeAsync(19_999));
+  expect(screen.getByRole("button", { name: "Отправляем…" })).toBeDisabled();
+  expect(screen.queryByRole("alert")).toBeNull();
+
+  await act(() => vi.advanceTimersByTimeAsync(1));
+  expectCaptchaUnavailable();
+});
+
+test("the watchdog is cleared once the challenge ends", async () => {
+  const user = userEvent.setup();
+  captcha.autoSolve = false;
+  renderForm("client-key");
+  await fillRequired(user);
+
+  // Под фейковыми таймерами user-event зависает в vitest (RTL ждёт jest), поэтому кликаем напрямую.
+  vi.useFakeTimers();
+  fireEvent.click(submitButton());
+  await act(() => vi.advanceTimersByTimeAsync(0));
+  act(() => captcha.props?.onChallengeHidden?.());
+
+  await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(vi.getTimerCount()).toBe(0);
 });

@@ -24,20 +24,27 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AboutBlock,
   BodyUploadMedia,
   ChildAccountSet,
   ChildCreate,
   ChildDetail,
   ChildUpdate,
+  ContactsBlock,
   ErrorResponse,
   FamilyCreate,
   FamilyDetail,
   FamilyListItem,
   FamilyUpdate,
+  FaqBlock,
+  HeroBlock,
   InvitationCreate,
   LinkResponse,
   ListFamiliesParams,
   MediaOut,
+  ReviewsBlock,
+  ServicesBlock,
+  SiteBlocksAdmin,
   UserStatusUpdate
 } from '../../model';
 
@@ -872,6 +879,628 @@ export const useUploadMedia = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getUploadMediaMutationOptions(options), queryClient);
+    }
+    export const getGetSiteBlocksUrl = () => {
+
+
+
+
+  return `/api/admin/site-blocks`
+}
+
+/**
+ * @summary Get Site Blocks
+ */
+export const getSiteBlocks = async ( options?: Parameters<typeof apiFetch>[1]): Promise<SiteBlocksAdmin> => {
+
+  return apiFetch<SiteBlocksAdmin>(getGetSiteBlocksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSiteBlocksQueryKey = () => {
+    return [
+    `/api/admin/site-blocks`
+    ] as const;
+    }
+
+
+export const getGetSiteBlocksQueryOptions = <TData = Awaited<ReturnType<typeof getSiteBlocks>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteBlocks>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSiteBlocksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSiteBlocks>>> = ({ signal }) => getSiteBlocks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSiteBlocks>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSiteBlocksQueryResult = NonNullable<Awaited<ReturnType<typeof getSiteBlocks>>>
+export type GetSiteBlocksQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetSiteBlocks<TData = Awaited<ReturnType<typeof getSiteBlocks>>, TError = ErrorType<ErrorResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteBlocks>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSiteBlocks>>,
+          TError,
+          Awaited<ReturnType<typeof getSiteBlocks>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSiteBlocks<TData = Awaited<ReturnType<typeof getSiteBlocks>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteBlocks>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSiteBlocks>>,
+          TError,
+          Awaited<ReturnType<typeof getSiteBlocks>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSiteBlocks<TData = Awaited<ReturnType<typeof getSiteBlocks>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteBlocks>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Site Blocks
+ */
+
+export function useGetSiteBlocks<TData = Awaited<ReturnType<typeof getSiteBlocks>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSiteBlocks>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSiteBlocksQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getUpdateAboutBlockUrl = () => {
+
+
+
+
+  return `/api/admin/site-blocks/about`
+}
+
+/**
+ * @summary Update About Block
+ */
+export const updateAboutBlock = async (aboutBlock: AboutBlock, options?: Parameters<typeof apiFetch>[1]): Promise<AboutBlock> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<AboutBlock>(getUpdateAboutBlockUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(aboutBlock)
+  }
+);}
+
+
+
+
+
+export const getUpdateAboutBlockMutationKey = () => ['updateAboutBlock'] as const;
+
+export const getUpdateAboutBlockMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAboutBlock>>, TError,UpdateAboutBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAboutBlock>>, TError,UpdateAboutBlockMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAboutBlockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAboutBlock>>, UpdateAboutBlockMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAboutBlock(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAboutBlockMutationResult = NonNullable<Awaited<ReturnType<typeof updateAboutBlock>>>
+    export type UpdateAboutBlockMutationBody = BodyType<AboutBlock>
+    export type UpdateAboutBlockMutationError = ErrorType<ErrorResponse>
+    export type UpdateAboutBlockMutationVariables = {data: BodyType<AboutBlock>}
+
+    /**
+ * @summary Update About Block
+ */
+export const useUpdateAboutBlock = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAboutBlock>>, TError,UpdateAboutBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAboutBlock>>,
+        TError,
+        UpdateAboutBlockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAboutBlockMutationOptions(options), queryClient);
+    }
+    export const getUpdateContactsBlockUrl = () => {
+
+
+
+
+  return `/api/admin/site-blocks/contacts`
+}
+
+/**
+ * @summary Update Contacts Block
+ */
+export const updateContactsBlock = async (contactsBlock: ContactsBlock, options?: Parameters<typeof apiFetch>[1]): Promise<ContactsBlock> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<ContactsBlock>(getUpdateContactsBlockUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(contactsBlock)
+  }
+);}
+
+
+
+
+
+export const getUpdateContactsBlockMutationKey = () => ['updateContactsBlock'] as const;
+
+export const getUpdateContactsBlockMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateContactsBlock>>, TError,UpdateContactsBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateContactsBlock>>, TError,UpdateContactsBlockMutationVariables, TContext> => {
+
+const mutationKey = getUpdateContactsBlockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateContactsBlock>>, UpdateContactsBlockMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateContactsBlock(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateContactsBlockMutationResult = NonNullable<Awaited<ReturnType<typeof updateContactsBlock>>>
+    export type UpdateContactsBlockMutationBody = BodyType<ContactsBlock>
+    export type UpdateContactsBlockMutationError = ErrorType<ErrorResponse>
+    export type UpdateContactsBlockMutationVariables = {data: BodyType<ContactsBlock>}
+
+    /**
+ * @summary Update Contacts Block
+ */
+export const useUpdateContactsBlock = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateContactsBlock>>, TError,UpdateContactsBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateContactsBlock>>,
+        TError,
+        UpdateContactsBlockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateContactsBlockMutationOptions(options), queryClient);
+    }
+    export const getUpdateFaqBlockUrl = () => {
+
+
+
+
+  return `/api/admin/site-blocks/faq`
+}
+
+/**
+ * @summary Update Faq Block
+ */
+export const updateFaqBlock = async (faqBlock: FaqBlock, options?: Parameters<typeof apiFetch>[1]): Promise<FaqBlock> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<FaqBlock>(getUpdateFaqBlockUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(faqBlock)
+  }
+);}
+
+
+
+
+
+export const getUpdateFaqBlockMutationKey = () => ['updateFaqBlock'] as const;
+
+export const getUpdateFaqBlockMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFaqBlock>>, TError,UpdateFaqBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFaqBlock>>, TError,UpdateFaqBlockMutationVariables, TContext> => {
+
+const mutationKey = getUpdateFaqBlockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFaqBlock>>, UpdateFaqBlockMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateFaqBlock(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFaqBlockMutationResult = NonNullable<Awaited<ReturnType<typeof updateFaqBlock>>>
+    export type UpdateFaqBlockMutationBody = BodyType<FaqBlock>
+    export type UpdateFaqBlockMutationError = ErrorType<ErrorResponse>
+    export type UpdateFaqBlockMutationVariables = {data: BodyType<FaqBlock>}
+
+    /**
+ * @summary Update Faq Block
+ */
+export const useUpdateFaqBlock = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFaqBlock>>, TError,UpdateFaqBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateFaqBlock>>,
+        TError,
+        UpdateFaqBlockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateFaqBlockMutationOptions(options), queryClient);
+    }
+    export const getUpdateHeroBlockUrl = () => {
+
+
+
+
+  return `/api/admin/site-blocks/hero`
+}
+
+/**
+ * @summary Update Hero Block
+ */
+export const updateHeroBlock = async (heroBlock: HeroBlock, options?: Parameters<typeof apiFetch>[1]): Promise<HeroBlock> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<HeroBlock>(getUpdateHeroBlockUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(heroBlock)
+  }
+);}
+
+
+
+
+
+export const getUpdateHeroBlockMutationKey = () => ['updateHeroBlock'] as const;
+
+export const getUpdateHeroBlockMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHeroBlock>>, TError,UpdateHeroBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateHeroBlock>>, TError,UpdateHeroBlockMutationVariables, TContext> => {
+
+const mutationKey = getUpdateHeroBlockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateHeroBlock>>, UpdateHeroBlockMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateHeroBlock(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateHeroBlockMutationResult = NonNullable<Awaited<ReturnType<typeof updateHeroBlock>>>
+    export type UpdateHeroBlockMutationBody = BodyType<HeroBlock>
+    export type UpdateHeroBlockMutationError = ErrorType<ErrorResponse>
+    export type UpdateHeroBlockMutationVariables = {data: BodyType<HeroBlock>}
+
+    /**
+ * @summary Update Hero Block
+ */
+export const useUpdateHeroBlock = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHeroBlock>>, TError,UpdateHeroBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateHeroBlock>>,
+        TError,
+        UpdateHeroBlockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateHeroBlockMutationOptions(options), queryClient);
+    }
+    export const getUpdateReviewsBlockUrl = () => {
+
+
+
+
+  return `/api/admin/site-blocks/reviews`
+}
+
+/**
+ * @summary Update Reviews Block
+ */
+export const updateReviewsBlock = async (reviewsBlock: ReviewsBlock, options?: Parameters<typeof apiFetch>[1]): Promise<ReviewsBlock> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<ReviewsBlock>(getUpdateReviewsBlockUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reviewsBlock)
+  }
+);}
+
+
+
+
+
+export const getUpdateReviewsBlockMutationKey = () => ['updateReviewsBlock'] as const;
+
+export const getUpdateReviewsBlockMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReviewsBlock>>, TError,UpdateReviewsBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateReviewsBlock>>, TError,UpdateReviewsBlockMutationVariables, TContext> => {
+
+const mutationKey = getUpdateReviewsBlockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateReviewsBlock>>, UpdateReviewsBlockMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateReviewsBlock(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateReviewsBlockMutationResult = NonNullable<Awaited<ReturnType<typeof updateReviewsBlock>>>
+    export type UpdateReviewsBlockMutationBody = BodyType<ReviewsBlock>
+    export type UpdateReviewsBlockMutationError = ErrorType<ErrorResponse>
+    export type UpdateReviewsBlockMutationVariables = {data: BodyType<ReviewsBlock>}
+
+    /**
+ * @summary Update Reviews Block
+ */
+export const useUpdateReviewsBlock = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReviewsBlock>>, TError,UpdateReviewsBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateReviewsBlock>>,
+        TError,
+        UpdateReviewsBlockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateReviewsBlockMutationOptions(options), queryClient);
+    }
+    export const getUpdateServicesBlockUrl = () => {
+
+
+
+
+  return `/api/admin/site-blocks/services`
+}
+
+/**
+ * @summary Update Services Block
+ */
+export const updateServicesBlock = async (servicesBlock: ServicesBlock, options?: Parameters<typeof apiFetch>[1]): Promise<ServicesBlock> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<ServicesBlock>(getUpdateServicesBlockUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(servicesBlock)
+  }
+);}
+
+
+
+
+
+export const getUpdateServicesBlockMutationKey = () => ['updateServicesBlock'] as const;
+
+export const getUpdateServicesBlockMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateServicesBlock>>, TError,UpdateServicesBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateServicesBlock>>, TError,UpdateServicesBlockMutationVariables, TContext> => {
+
+const mutationKey = getUpdateServicesBlockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateServicesBlock>>, UpdateServicesBlockMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateServicesBlock(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateServicesBlockMutationResult = NonNullable<Awaited<ReturnType<typeof updateServicesBlock>>>
+    export type UpdateServicesBlockMutationBody = BodyType<ServicesBlock>
+    export type UpdateServicesBlockMutationError = ErrorType<ErrorResponse>
+    export type UpdateServicesBlockMutationVariables = {data: BodyType<ServicesBlock>}
+
+    /**
+ * @summary Update Services Block
+ */
+export const useUpdateServicesBlock = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateServicesBlock>>, TError,UpdateServicesBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateServicesBlock>>,
+        TError,
+        UpdateServicesBlockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateServicesBlockMutationOptions(options), queryClient);
     }
     export const getUpdateUserStatusUrl = (userId: string,) => {
 

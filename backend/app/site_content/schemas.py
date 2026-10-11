@@ -160,3 +160,53 @@ class MediaOut(BaseModel):
 
 def media_url(settings: Settings, s3_key: str) -> str:
     return f"{settings.media_public_base_url}/{s3_key}"
+
+
+class MediaRef(BaseModel):
+    url: str
+    width: int
+    height: int
+
+
+class HeroPublic(BaseModel):
+    name: str
+    title: str
+    subtitle: str
+    photo: MediaRef | None
+    cta_text: str
+
+
+class AboutPublic(BaseModel):
+    text: str
+    photo: MediaRef | None
+    credentials: list[str]
+
+
+class ReviewPublic(BaseModel):
+    author: str
+    text: str
+    child_age: int | None
+    photo: MediaRef | None
+
+
+class ReviewsPublic(BaseModel):
+    items: list[ReviewPublic]
+
+
+class PublicSite(BaseModel):
+    hero: HeroPublic
+    about: AboutPublic
+    services: ServicesBlock
+    reviews: ReviewsPublic
+    faq: FaqBlock
+    contacts: ContactsBlock
+
+
+class SiteBlocksAdmin(BaseModel):
+    hero: HeroBlock
+    about: AboutBlock
+    services: ServicesBlock
+    reviews: ReviewsBlock
+    faq: FaqBlock
+    contacts: ContactsBlock
+    media: list[MediaOut]  # фото, на которые ссылаются блоки

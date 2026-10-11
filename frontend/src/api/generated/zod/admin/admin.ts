@@ -311,6 +311,340 @@ export const UploadMediaResponse = zod.object({
 })
 
 /**
+ * @summary Get Site Blocks
+ */
+export const getSiteBlocksResponseAboutCredentialsItemMax = 200;
+
+export const getSiteBlocksResponseAboutCredentialsMax = 20;
+
+export const getSiteBlocksResponseAboutTextMax = 5000;
+
+export const getSiteBlocksResponseContactsWorkingHoursTextOneMax = 200;
+
+export const getSiteBlocksResponseFaqItemsItemAnswerMax = 2000;
+
+export const getSiteBlocksResponseFaqItemsItemQuestionMax = 300;
+
+export const getSiteBlocksResponseFaqItemsMax = 30;
+
+export const getSiteBlocksResponseHeroCtaTextMax = 40;
+
+export const getSiteBlocksResponseHeroNameMax = 100;
+
+export const getSiteBlocksResponseHeroSubtitleMax = 300;
+
+export const getSiteBlocksResponseHeroTitleMax = 120;
+
+export const getSiteBlocksResponseReviewsItemsItemAuthorMax = 100;
+
+export const getSiteBlocksResponseReviewsItemsItemChildAgeOneMin = 3;
+export const getSiteBlocksResponseReviewsItemsItemChildAgeOneMax = 18;
+
+export const getSiteBlocksResponseReviewsItemsItemTextMax = 2000;
+
+export const getSiteBlocksResponseReviewsItemsMax = 30;
+
+export const getSiteBlocksResponseServicesItemsItemDescriptionMin = 0;
+export const getSiteBlocksResponseServicesItemsItemDescriptionMax = 1000;
+
+export const getSiteBlocksResponseServicesItemsItemDurationMinMin = 15;
+export const getSiteBlocksResponseServicesItemsItemDurationMinMax = 240;
+
+export const getSiteBlocksResponseServicesItemsItemFormatMax = 60;
+
+export const getSiteBlocksResponseServicesItemsItemPriceRubMin = 0;
+export const getSiteBlocksResponseServicesItemsItemPriceRubMax = 100000;
+
+export const getSiteBlocksResponseServicesItemsItemTitleMax = 120;
+
+export const getSiteBlocksResponseServicesItemsMax = 20;
+
+
+
+export const GetSiteBlocksResponse = zod.object({
+  "about": zod.object({
+  "credentials": zod.array(zod.string().min(1).max(getSiteBlocksResponseAboutCredentialsItemMax)).max(getSiteBlocksResponseAboutCredentialsMax),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "text": zod.string().min(1).max(getSiteBlocksResponseAboutTextMax)
+}),
+  "contacts": zod.object({
+  "email": zod.union([zod.email(),zod.null()]).optional(),
+  "phone": zod.union([zod.string(),zod.null()]).optional(),
+  "telegram": zod.union([zod.string(),zod.null()]).optional(),
+  "whatsapp": zod.union([zod.string(),zod.null()]).optional(),
+  "working_hours_text": zod.union([zod.string().min(1).max(getSiteBlocksResponseContactsWorkingHoursTextOneMax),zod.null()]).optional()
+}),
+  "faq": zod.object({
+  "items": zod.array(zod.object({
+  "answer": zod.string().min(1).max(getSiteBlocksResponseFaqItemsItemAnswerMax),
+  "question": zod.string().min(1).max(getSiteBlocksResponseFaqItemsItemQuestionMax)
+})).max(getSiteBlocksResponseFaqItemsMax)
+}),
+  "hero": zod.object({
+  "cta_text": zod.string().min(1).max(getSiteBlocksResponseHeroCtaTextMax),
+  "name": zod.string().min(1).max(getSiteBlocksResponseHeroNameMax),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "subtitle": zod.string().min(1).max(getSiteBlocksResponseHeroSubtitleMax),
+  "title": zod.string().min(1).max(getSiteBlocksResponseHeroTitleMax)
+}),
+  "media": zod.array(zod.object({
+  "content_type": zod.string(),
+  "height": zod.int(),
+  "id": zod.uuid(),
+  "size_bytes": zod.int(),
+  "url": zod.string(),
+  "width": zod.int()
+})),
+  "reviews": zod.object({
+  "items": zod.array(zod.object({
+  "author": zod.string().min(1).max(getSiteBlocksResponseReviewsItemsItemAuthorMax),
+  "child_age": zod.union([zod.int().min(getSiteBlocksResponseReviewsItemsItemChildAgeOneMin).max(getSiteBlocksResponseReviewsItemsItemChildAgeOneMax),zod.null()]).optional(),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "text": zod.string().min(1).max(getSiteBlocksResponseReviewsItemsItemTextMax)
+})).max(getSiteBlocksResponseReviewsItemsMax)
+}),
+  "services": zod.object({
+  "items": zod.array(zod.object({
+  "description": zod.string().min(getSiteBlocksResponseServicesItemsItemDescriptionMin).max(getSiteBlocksResponseServicesItemsItemDescriptionMax),
+  "duration_min": zod.int().min(getSiteBlocksResponseServicesItemsItemDurationMinMin).max(getSiteBlocksResponseServicesItemsItemDurationMinMax),
+  "format": zod.string().min(1).max(getSiteBlocksResponseServicesItemsItemFormatMax),
+  "price_rub": zod.int().min(getSiteBlocksResponseServicesItemsItemPriceRubMin).max(getSiteBlocksResponseServicesItemsItemPriceRubMax),
+  "title": zod.string().min(1).max(getSiteBlocksResponseServicesItemsItemTitleMax)
+})).max(getSiteBlocksResponseServicesItemsMax)
+})
+})
+
+/**
+ * @summary Update About Block
+ */
+export const updateAboutBlockBodyCredentialsItemMax = 200;
+
+export const updateAboutBlockBodyCredentialsMax = 20;
+
+export const updateAboutBlockBodyTextMax = 5000;
+
+
+
+export const UpdateAboutBlockBody = zod.object({
+  "credentials": zod.array(zod.string().min(1).max(updateAboutBlockBodyCredentialsItemMax)).max(updateAboutBlockBodyCredentialsMax),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "text": zod.string().min(1).max(updateAboutBlockBodyTextMax)
+})
+
+export const updateAboutBlockResponseCredentialsItemMax = 200;
+
+export const updateAboutBlockResponseCredentialsMax = 20;
+
+export const updateAboutBlockResponseTextMax = 5000;
+
+
+
+export const UpdateAboutBlockResponse = zod.object({
+  "credentials": zod.array(zod.string().min(1).max(updateAboutBlockResponseCredentialsItemMax)).max(updateAboutBlockResponseCredentialsMax),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "text": zod.string().min(1).max(updateAboutBlockResponseTextMax)
+})
+
+/**
+ * @summary Update Contacts Block
+ */
+export const updateContactsBlockBodyWorkingHoursTextOneMax = 200;
+
+
+
+export const UpdateContactsBlockBody = zod.object({
+  "email": zod.union([zod.email(),zod.null()]).optional(),
+  "phone": zod.union([zod.string(),zod.null()]).optional(),
+  "telegram": zod.union([zod.string(),zod.null()]).optional(),
+  "whatsapp": zod.union([zod.string(),zod.null()]).optional(),
+  "working_hours_text": zod.union([zod.string().min(1).max(updateContactsBlockBodyWorkingHoursTextOneMax),zod.null()]).optional()
+})
+
+export const updateContactsBlockResponseWorkingHoursTextOneMax = 200;
+
+
+
+export const UpdateContactsBlockResponse = zod.object({
+  "email": zod.union([zod.email(),zod.null()]).optional(),
+  "phone": zod.union([zod.string(),zod.null()]).optional(),
+  "telegram": zod.union([zod.string(),zod.null()]).optional(),
+  "whatsapp": zod.union([zod.string(),zod.null()]).optional(),
+  "working_hours_text": zod.union([zod.string().min(1).max(updateContactsBlockResponseWorkingHoursTextOneMax),zod.null()]).optional()
+})
+
+/**
+ * @summary Update Faq Block
+ */
+export const updateFaqBlockBodyItemsItemAnswerMax = 2000;
+
+export const updateFaqBlockBodyItemsItemQuestionMax = 300;
+
+export const updateFaqBlockBodyItemsMax = 30;
+
+
+
+export const UpdateFaqBlockBody = zod.object({
+  "items": zod.array(zod.object({
+  "answer": zod.string().min(1).max(updateFaqBlockBodyItemsItemAnswerMax),
+  "question": zod.string().min(1).max(updateFaqBlockBodyItemsItemQuestionMax)
+})).max(updateFaqBlockBodyItemsMax)
+})
+
+export const updateFaqBlockResponseItemsItemAnswerMax = 2000;
+
+export const updateFaqBlockResponseItemsItemQuestionMax = 300;
+
+export const updateFaqBlockResponseItemsMax = 30;
+
+
+
+export const UpdateFaqBlockResponse = zod.object({
+  "items": zod.array(zod.object({
+  "answer": zod.string().min(1).max(updateFaqBlockResponseItemsItemAnswerMax),
+  "question": zod.string().min(1).max(updateFaqBlockResponseItemsItemQuestionMax)
+})).max(updateFaqBlockResponseItemsMax)
+})
+
+/**
+ * @summary Update Hero Block
+ */
+export const updateHeroBlockBodyCtaTextMax = 40;
+
+export const updateHeroBlockBodyNameMax = 100;
+
+export const updateHeroBlockBodySubtitleMax = 300;
+
+export const updateHeroBlockBodyTitleMax = 120;
+
+
+
+export const UpdateHeroBlockBody = zod.object({
+  "cta_text": zod.string().min(1).max(updateHeroBlockBodyCtaTextMax),
+  "name": zod.string().min(1).max(updateHeroBlockBodyNameMax),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "subtitle": zod.string().min(1).max(updateHeroBlockBodySubtitleMax),
+  "title": zod.string().min(1).max(updateHeroBlockBodyTitleMax)
+})
+
+export const updateHeroBlockResponseCtaTextMax = 40;
+
+export const updateHeroBlockResponseNameMax = 100;
+
+export const updateHeroBlockResponseSubtitleMax = 300;
+
+export const updateHeroBlockResponseTitleMax = 120;
+
+
+
+export const UpdateHeroBlockResponse = zod.object({
+  "cta_text": zod.string().min(1).max(updateHeroBlockResponseCtaTextMax),
+  "name": zod.string().min(1).max(updateHeroBlockResponseNameMax),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "subtitle": zod.string().min(1).max(updateHeroBlockResponseSubtitleMax),
+  "title": zod.string().min(1).max(updateHeroBlockResponseTitleMax)
+})
+
+/**
+ * @summary Update Reviews Block
+ */
+export const updateReviewsBlockBodyItemsItemAuthorMax = 100;
+
+export const updateReviewsBlockBodyItemsItemChildAgeOneMin = 3;
+export const updateReviewsBlockBodyItemsItemChildAgeOneMax = 18;
+
+export const updateReviewsBlockBodyItemsItemTextMax = 2000;
+
+export const updateReviewsBlockBodyItemsMax = 30;
+
+
+
+export const UpdateReviewsBlockBody = zod.object({
+  "items": zod.array(zod.object({
+  "author": zod.string().min(1).max(updateReviewsBlockBodyItemsItemAuthorMax),
+  "child_age": zod.union([zod.int().min(updateReviewsBlockBodyItemsItemChildAgeOneMin).max(updateReviewsBlockBodyItemsItemChildAgeOneMax),zod.null()]).optional(),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "text": zod.string().min(1).max(updateReviewsBlockBodyItemsItemTextMax)
+})).max(updateReviewsBlockBodyItemsMax)
+})
+
+export const updateReviewsBlockResponseItemsItemAuthorMax = 100;
+
+export const updateReviewsBlockResponseItemsItemChildAgeOneMin = 3;
+export const updateReviewsBlockResponseItemsItemChildAgeOneMax = 18;
+
+export const updateReviewsBlockResponseItemsItemTextMax = 2000;
+
+export const updateReviewsBlockResponseItemsMax = 30;
+
+
+
+export const UpdateReviewsBlockResponse = zod.object({
+  "items": zod.array(zod.object({
+  "author": zod.string().min(1).max(updateReviewsBlockResponseItemsItemAuthorMax),
+  "child_age": zod.union([zod.int().min(updateReviewsBlockResponseItemsItemChildAgeOneMin).max(updateReviewsBlockResponseItemsItemChildAgeOneMax),zod.null()]).optional(),
+  "photo_media_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "text": zod.string().min(1).max(updateReviewsBlockResponseItemsItemTextMax)
+})).max(updateReviewsBlockResponseItemsMax)
+})
+
+/**
+ * @summary Update Services Block
+ */
+export const updateServicesBlockBodyItemsItemDescriptionMin = 0;
+export const updateServicesBlockBodyItemsItemDescriptionMax = 1000;
+
+export const updateServicesBlockBodyItemsItemDurationMinMin = 15;
+export const updateServicesBlockBodyItemsItemDurationMinMax = 240;
+
+export const updateServicesBlockBodyItemsItemFormatMax = 60;
+
+export const updateServicesBlockBodyItemsItemPriceRubMin = 0;
+export const updateServicesBlockBodyItemsItemPriceRubMax = 100000;
+
+export const updateServicesBlockBodyItemsItemTitleMax = 120;
+
+export const updateServicesBlockBodyItemsMax = 20;
+
+
+
+export const UpdateServicesBlockBody = zod.object({
+  "items": zod.array(zod.object({
+  "description": zod.string().min(updateServicesBlockBodyItemsItemDescriptionMin).max(updateServicesBlockBodyItemsItemDescriptionMax),
+  "duration_min": zod.int().min(updateServicesBlockBodyItemsItemDurationMinMin).max(updateServicesBlockBodyItemsItemDurationMinMax),
+  "format": zod.string().min(1).max(updateServicesBlockBodyItemsItemFormatMax),
+  "price_rub": zod.int().min(updateServicesBlockBodyItemsItemPriceRubMin).max(updateServicesBlockBodyItemsItemPriceRubMax),
+  "title": zod.string().min(1).max(updateServicesBlockBodyItemsItemTitleMax)
+})).max(updateServicesBlockBodyItemsMax)
+})
+
+export const updateServicesBlockResponseItemsItemDescriptionMin = 0;
+export const updateServicesBlockResponseItemsItemDescriptionMax = 1000;
+
+export const updateServicesBlockResponseItemsItemDurationMinMin = 15;
+export const updateServicesBlockResponseItemsItemDurationMinMax = 240;
+
+export const updateServicesBlockResponseItemsItemFormatMax = 60;
+
+export const updateServicesBlockResponseItemsItemPriceRubMin = 0;
+export const updateServicesBlockResponseItemsItemPriceRubMax = 100000;
+
+export const updateServicesBlockResponseItemsItemTitleMax = 120;
+
+export const updateServicesBlockResponseItemsMax = 20;
+
+
+
+export const UpdateServicesBlockResponse = zod.object({
+  "items": zod.array(zod.object({
+  "description": zod.string().min(updateServicesBlockResponseItemsItemDescriptionMin).max(updateServicesBlockResponseItemsItemDescriptionMax),
+  "duration_min": zod.int().min(updateServicesBlockResponseItemsItemDurationMinMin).max(updateServicesBlockResponseItemsItemDurationMinMax),
+  "format": zod.string().min(1).max(updateServicesBlockResponseItemsItemFormatMax),
+  "price_rub": zod.int().min(updateServicesBlockResponseItemsItemPriceRubMin).max(updateServicesBlockResponseItemsItemPriceRubMax),
+  "title": zod.string().min(1).max(updateServicesBlockResponseItemsItemTitleMax)
+})).max(updateServicesBlockResponseItemsMax)
+})
+
+/**
  * @summary Update User Status
  */
 export const UpdateUserStatusParams = zod.object({

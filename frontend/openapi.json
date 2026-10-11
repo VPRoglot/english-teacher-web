@@ -1,6 +1,77 @@
 {
   "components": {
     "schemas": {
+      "AboutBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "credentials": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Credentials",
+            "type": "array"
+          },
+          "photo_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Media Id"
+          },
+          "text": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "credentials"
+        ],
+        "title": "AboutBlock",
+        "type": "object"
+      },
+      "AboutPublic": {
+        "properties": {
+          "credentials": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Credentials",
+            "type": "array"
+          },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "photo",
+          "credentials"
+        ],
+        "title": "AboutPublic",
+        "type": "object"
+      },
       "AcceptInvitationRequest": {
         "properties": {
           "consent": {
@@ -396,6 +467,71 @@
         "title": "ChildUpdate",
         "type": "object"
       },
+      "ContactsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "telegram": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram"
+          },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          },
+          "working_hours_text": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Working Hours Text"
+          }
+        },
+        "title": "ContactsBlock",
+        "type": "object"
+      },
       "EnglishLevel": {
         "enum": [
           "A1",
@@ -657,6 +793,135 @@
         "title": "FamilyUpdate",
         "type": "object"
       },
+      "FaqBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FaqItem"
+            },
+            "maxItems": 30,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "FaqBlock",
+        "type": "object"
+      },
+      "FaqItem": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Answer",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer"
+        ],
+        "title": "FaqItem",
+        "type": "object"
+      },
+      "HeroBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "cta_text": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Cta Text",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "photo_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Media Id"
+          },
+          "subtitle": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "subtitle",
+          "cta_text"
+        ],
+        "title": "HeroBlock",
+        "type": "object"
+      },
+      "HeroPublic": {
+        "properties": {
+          "cta_text": {
+            "title": "Cta Text",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "subtitle",
+          "photo",
+          "cta_text"
+        ],
+        "title": "HeroPublic",
+        "type": "object"
+      },
       "InvitationCreate": {
         "properties": {
           "prefill_full_name": {
@@ -876,6 +1141,29 @@
         "title": "MediaOut",
         "type": "object"
       },
+      "MediaRef": {
+        "properties": {
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "url",
+          "width",
+          "height"
+        ],
+        "title": "MediaRef",
+        "type": "object"
+      },
       "ParentDetail": {
         "properties": {
           "email": {
@@ -962,6 +1250,38 @@
         "title": "PendingInvitation",
         "type": "object"
       },
+      "PublicSite": {
+        "properties": {
+          "about": {
+            "$ref": "#/components/schemas/AboutPublic"
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/ContactsBlock"
+          },
+          "faq": {
+            "$ref": "#/components/schemas/FaqBlock"
+          },
+          "hero": {
+            "$ref": "#/components/schemas/HeroPublic"
+          },
+          "reviews": {
+            "$ref": "#/components/schemas/ReviewsPublic"
+          },
+          "services": {
+            "$ref": "#/components/schemas/ServicesBlock"
+          }
+        },
+        "required": [
+          "hero",
+          "about",
+          "services",
+          "reviews",
+          "faq",
+          "contacts"
+        ],
+        "title": "PublicSite",
+        "type": "object"
+      },
       "ResetPasswordRequest": {
         "properties": {
           "password": {
@@ -974,6 +1294,231 @@
           "password"
         ],
         "title": "ResetPasswordRequest",
+        "type": "object"
+      },
+      "ReviewItem": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Author",
+            "type": "string"
+          },
+          "child_age": {
+            "anyOf": [
+              {
+                "maximum": 18.0,
+                "minimum": 3.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Age"
+          },
+          "photo_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Media Id"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "author",
+          "text"
+        ],
+        "title": "ReviewItem",
+        "type": "object"
+      },
+      "ReviewPublic": {
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "child_age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Age"
+          },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "author",
+          "text",
+          "child_age",
+          "photo"
+        ],
+        "title": "ReviewPublic",
+        "type": "object"
+      },
+      "ReviewsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItem"
+            },
+            "maxItems": 30,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReviewsBlock",
+        "type": "object"
+      },
+      "ReviewsPublic": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewPublic"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReviewsPublic",
+        "type": "object"
+      },
+      "ServiceItem": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "title": "Description",
+            "type": "string"
+          },
+          "duration_min": {
+            "maximum": 240.0,
+            "minimum": 15.0,
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "format": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Format",
+            "type": "string"
+          },
+          "price_rub": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Price Rub",
+            "type": "integer"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "duration_min",
+          "price_rub",
+          "format"
+        ],
+        "title": "ServiceItem",
+        "type": "object"
+      },
+      "ServicesBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceItem"
+            },
+            "maxItems": 20,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ServicesBlock",
+        "type": "object"
+      },
+      "SiteBlocksAdmin": {
+        "properties": {
+          "about": {
+            "$ref": "#/components/schemas/AboutBlock"
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/ContactsBlock"
+          },
+          "faq": {
+            "$ref": "#/components/schemas/FaqBlock"
+          },
+          "hero": {
+            "$ref": "#/components/schemas/HeroBlock"
+          },
+          "media": {
+            "items": {
+              "$ref": "#/components/schemas/MediaOut"
+            },
+            "title": "Media",
+            "type": "array"
+          },
+          "reviews": {
+            "$ref": "#/components/schemas/ReviewsBlock"
+          },
+          "services": {
+            "$ref": "#/components/schemas/ServicesBlock"
+          }
+        },
+        "required": [
+          "hero",
+          "about",
+          "services",
+          "reviews",
+          "faq",
+          "contacts",
+          "media"
+        ],
+        "title": "SiteBlocksAdmin",
         "type": "object"
       },
       "UserRole": {
@@ -1458,6 +2003,283 @@
           }
         },
         "summary": "Upload Media",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/site-blocks": {
+      "get": {
+        "operationId": "get_site_blocks",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteBlocksAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Site Blocks",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/site-blocks/about": {
+      "put": {
+        "operationId": "update_about_block",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AboutBlock"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AboutBlock"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update About Block",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/site-blocks/contacts": {
+      "put": {
+        "operationId": "update_contacts_block",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactsBlock"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactsBlock"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update Contacts Block",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/site-blocks/faq": {
+      "put": {
+        "operationId": "update_faq_block",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FaqBlock"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaqBlock"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update Faq Block",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/site-blocks/hero": {
+      "put": {
+        "operationId": "update_hero_block",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeroBlock"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeroBlock"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update Hero Block",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/site-blocks/reviews": {
+      "put": {
+        "operationId": "update_reviews_block",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewsBlock"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewsBlock"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update Reviews Block",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/site-blocks/services": {
+      "put": {
+        "operationId": "update_services_block",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServicesBlock"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServicesBlock"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update Services Block",
         "tags": [
           "admin"
         ]
@@ -2036,6 +2858,37 @@
         "summary": "Set My Child Account",
         "tags": [
           "cabinet"
+        ]
+      }
+    },
+    "/api/public/site": {
+      "get": {
+        "operationId": "get_public_site",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicSite"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Public Site",
+        "tags": [
+          "public"
         ]
       }
     }

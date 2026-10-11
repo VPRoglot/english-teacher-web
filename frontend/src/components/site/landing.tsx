@@ -12,7 +12,14 @@ import { SiteHeader, type SiteNavItem } from "./site-header";
 import { TrialSection } from "./trial-section";
 
 /** Лендинг целиком из блоков контента. Секции без данных не выводятся. */
-export function Landing({ site }: { site: PublicSite }) {
+export function Landing({
+  site,
+  captchaKey = null,
+}: {
+  site: PublicSite;
+  /** Клиентский ключ Yandex SmartCaptcha; без него форма заявки работает без капчи. */
+  captchaKey?: string | null;
+}) {
   const { hero, about, services, reviews, faq, contacts } = site;
   const links = contactLinks(contacts);
   const hasContacts = links.length > 0 || Boolean(contacts.working_hours_text);
@@ -34,7 +41,7 @@ export function Landing({ site }: { site: PublicSite }) {
         {services.items.length > 0 && <ServicesSection items={services.items} />}
         {reviews.items.length > 0 && <ReviewsSection items={reviews.items} />}
         {faq.items.length > 0 && <FaqSection items={faq.items} />}
-        <TrialSection links={links} />
+        <TrialSection links={links} captchaKey={captchaKey} />
         {hasContacts && <ContactsSection links={links} workingHours={contacts.working_hours_text} />}
       </main>
       <SiteFooter name={hero.name} />

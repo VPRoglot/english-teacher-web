@@ -175,6 +175,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.104.1
         version: 5.104.1(react@19.3.0)
+      '@yandex/smart-captcha':
+        specifier: ^2.9.1
+        version: 2.9.1(react@19.3.0)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1763,6 +1766,11 @@ packages:
 
   '@vitest/spy@5.0.3':
     resolution: {integrity: sha512-XhFysQTB8AZ+P4gMi+Lpo99vg2AZi0qKpaB9yXQl37+CaMEAPO3iH/wGVnSyL5MPERiLezpqTVtrR6UZH5GCXg==}
+
+  '@yandex/smart-captcha@2.9.1':
+    resolution: {integrity: sha512-0PnrNOxAQqskDhaDI3TL9qk27WGIgJACuKwtWc1u34tkbOJBzoo3cPvzyOLiYIIc8P0FuYP4KosSaf9hH9gXZg==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -5755,6 +5763,10 @@ snapshots:
       vite: 8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)
 
   '@vitest/spy@5.0.3': {}
+
+  '@yandex/smart-captcha@2.9.1(react@19.3.0)':
+    dependencies:
+      react: 19.3.0
 
   accepts@2.0.0:
     dependencies:

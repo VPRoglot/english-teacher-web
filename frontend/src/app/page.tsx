@@ -24,13 +24,15 @@ export default function Home() {
 async function LandingContent() {
   await connection();
   const site = await getSite();
+  // Читается во время запроса, поэтому ключ можно сменить без пересборки образа.
+  const captchaKey = process.env.SMARTCAPTCHA_CLIENT_KEY || null;
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(buildJsonLd(site, serverEnv("SITE_URL"))) }}
       />
-      <Landing site={site} />
+      <Landing site={site} captchaKey={captchaKey} />
     </>
   );
 }

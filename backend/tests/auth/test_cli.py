@@ -30,12 +30,20 @@ async def _users(url: str) -> list[User]:
     return [User(**row._mapping) for row in rows]
 
 
+def _set_required_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Обязательные настройки, не относящиеся к тесту: реальный .env их не даёт."""
+    monkeypatch.setenv("REVALIDATE_SECRET", "test-revalidate-secret")
+    monkeypatch.setenv("S3_BUCKET", "media-test")
+    monkeypatch.setenv("S3_ACCESS_KEY", "test-access-key")
+    monkeypatch.setenv("S3_SECRET_KEY", "test-secret-key")
+
+
 @pytest.fixture
 def cli_env(migrated_db: str, redis_url: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     """CLI работает с настоящей БД и коммитит — после теста таблица очищается."""
     monkeypatch.setenv("DATABASE_URL", migrated_db)
     monkeypatch.setenv("REDIS_URL", redis_url)
-    monkeypatch.setenv("REVALIDATE_SECRET", "test-revalidate-secret")
+    _set_required_env(monkeypatch)
     get_settings.cache_clear()
     yield migrated_db
     asyncio.run(_execute(migrated_db, "TRUNCATE users CASCADE"))
@@ -85,7 +93,7 @@ def test_cli_invalid_email_fails_before_password_prompt(cli_env: str) -> None:
 def test_cli_database_unreachable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@127.0.0.1:1/x")
     monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:1/0")
-    monkeypatch.setenv("REVALIDATE_SECRET", "test-revalidate-secret")
+    _set_required_env(monkeypatch)
     get_settings.cache_clear()
     r = CliRunner().invoke(
         cli, ["create-tutor", "--email", "t@x.ru", "--password-stdin"], input="Strong-pass-1\n"

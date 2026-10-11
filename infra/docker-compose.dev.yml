@@ -8,7 +8,43 @@ services:
     ports:
       - "6379:6379"
 
+  # Локальное S3. Образ minio/minio убран с Docker Hub, поэтому chainguard-сборка (тег latest).
+  # В образе нет оболочки и curl, healthcheck невозможен: minio-init сам ждёт готовности.
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    restart: unless-stopped
+
+  # Одноразово: создаёт бакет и включает анонимное чтение (так отдаются фото на лендинге).
+  minio-init:
+    image: cgr.dev/chainguard/minio-client:latest-dev
+    depends_on:
+      - minio
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        until mc alias set local http://minio:9000 "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY"; do sleep 1; done
+        mc mb --ignore-existing "local/$$S3_BUCKET"
+        mc anonymous set download "local/$$S3_BUCKET"
+    restart: "no"
+
   api:
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     volumes:
@@ -32,6 +68,9 @@ services:
   # Hot reload у worker нет: после правки задач — `just restart worker`.
   # Next в разработке работает на хосте (`just web`), поэтому worker ходит к нему через host.docker.internal.
   worker:
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
     volumes:
       - ../backend/app:/app/app
     environment:
@@ -45,3 +84,6 @@ services:
     profiles: ["docker-web"]
     ports:
       - "3000:3000"
+
+volumes:
+  miniodata:

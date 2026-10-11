@@ -24,6 +24,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BodyUploadMedia,
   ChildAccountSet,
   ChildCreate,
   ChildDetail,
@@ -36,6 +37,7 @@ import type {
   InvitationCreate,
   LinkResponse,
   ListFamiliesParams,
+  MediaOut,
   UserStatusUpdate
 } from '../../model';
 
@@ -795,6 +797,81 @@ export const useCreateFamilyInvitation = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateFamilyInvitationMutationOptions(options), queryClient);
+    }
+    export const getUploadMediaUrl = () => {
+
+
+
+
+  return `/api/admin/media`
+}
+
+/**
+ * @summary Upload Media
+ */
+export const uploadMedia = async (bodyUploadMedia: BodyUploadMedia, options?: Parameters<typeof apiFetch>[1]): Promise<MediaOut> => {
+    const formData = new FormData();
+formData.append(`file`, bodyUploadMedia.file);
+
+  return apiFetch<MediaOut>(getUploadMediaUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getUploadMediaMutationKey = () => ['uploadMedia'] as const;
+
+export const getUploadMediaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadMedia>>, TError,UploadMediaMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadMedia>>, TError,UploadMediaMutationVariables, TContext> => {
+
+const mutationKey = getUploadMediaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadMedia>>, UploadMediaMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadMedia(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadMediaMutationResult = NonNullable<Awaited<ReturnType<typeof uploadMedia>>>
+    export type UploadMediaMutationBody = BodyType<BodyUploadMedia>
+    export type UploadMediaMutationError = ErrorType<ErrorResponse>
+    export type UploadMediaMutationVariables = {data: BodyType<BodyUploadMedia>}
+
+    /**
+ * @summary Upload Media
+ */
+export const useUploadMedia = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadMedia>>, TError,UploadMediaMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof uploadMedia>>,
+        TError,
+        UploadMediaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUploadMediaMutationOptions(options), queryClient);
     }
     export const getUpdateUserStatusUrl = (userId: string,) => {
 

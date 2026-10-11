@@ -16,6 +16,8 @@ from app.core.redis import create_redis
 from app.core.request_id import RequestIdMiddleware
 from app.core.tasks import BrokerTaskQueue, create_broker
 from app.families import admin_router, cabinet_router
+from app.site_content import admin_router as site_admin_router
+from app.site_content.storage import S3MediaStorage
 
 log = structlog.get_logger("app.main")
 _BROKER_STARTUP_TIMEOUT = 5  # секунд
@@ -33,6 +35,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.redis = create_redis(settings)
         app.state.broker = broker = create_broker(settings)
         app.state.task_queue = BrokerTaskQueue(broker)
+        app.state.media_storage = S3MediaStorage(settings)  # без сети: клиент создаётся на запрос
         try:
             # startup() брокера идёт в Redis (создаёт consumer group): если Redis недоступен,
             # приложение всё равно стартует, а постановка задачи упадёт позже и обработается там.
@@ -65,4 +68,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router.router, prefix="/api")
     app.include_router(admin_router.router, prefix="/api")
     app.include_router(cabinet_router.router, prefix="/api")
+    app.include_router(site_admin_router.router, prefix="/api")
     return app

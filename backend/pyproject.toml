@@ -4,13 +4,16 @@ version = "0.1.0"
 description = "Backend for the English tutor web app"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "aiobotocore>=3.9.2",
     "alembic>=1.20.0",
     "argon2-cffi>=25.1.0",
     "asyncpg>=0.32.0",
     "email-validator>=2.3.0",
     "fastapi>=0.143.0",
     "httpx>=0.28.1",
+    "pillow>=12.3.0",
     "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
     "redis>=5",
     "sqlalchemy[asyncio]>=2.1.4",
     "structlog>=26.1.0",
@@ -32,7 +35,8 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.17.0",
-    "testcontainers[postgres,redis]>=4.15.0",
+    "testcontainers[minio,postgres,redis]>=4.15.0",
+    "types-aiobotocore[s3]>=3.9.2",
 ]
 
 [tool.ruff]
@@ -48,6 +52,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 "tests/**" = ["S101", "S105", "S106"]
 # Имена доменных исключений зафиксированы спецификацией (NotFound, Conflict, ...).
 "app/core/errors.py" = ["N818"]
+"app/site_content/errors.py" = ["N818"]
 "app/site_content/tasks.py" = ["N818"]
 
 [tool.mypy]

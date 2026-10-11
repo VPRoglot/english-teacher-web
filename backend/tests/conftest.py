@@ -9,9 +9,11 @@ from alembic.config import Config
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from minio import Minio
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from starlette.types import ASGIApp
+from testcontainers.community.minio import MinioContainer
 from testcontainers.community.postgres import PostgresContainer
 from testcontainers.community.redis import RedisContainer
 
@@ -21,6 +23,7 @@ from app.core.tasks import get_task_queue
 from app.main import create_app
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+MINIO_BUCKET = "media-test"
 
 
 def alembic_config(database_url: str) -> Config:
@@ -41,6 +44,23 @@ def postgres_url() -> Iterator[str]:
 def redis_url() -> Iterator[str]:
     with RedisContainer("redis:7-alpine") as r:
         yield f"redis://{r.get_container_host_ip()}:{r.get_exposed_port(6379)}/0"
+
+
+@pytest.fixture(scope="session")
+def minio() -> Iterator[MinioContainer]:
+    # minio/minio убран с Docker Hub; рабочий образ — chainguard (только тег latest).
+    # Ключи доступа 2026-й версии задаются MINIO_ROOT_*; MINIO_ACCESS_KEY из testcontainers устарел.
+    container = MinioContainer("cgr.dev/chainguard/minio:latest")
+    container.with_env("MINIO_ROOT_USER", container.access_key)
+    container.with_env("MINIO_ROOT_PASSWORD", container.secret_key)
+    with container:
+        container.get_client().make_bucket(MINIO_BUCKET)
+        yield container
+
+
+@pytest.fixture(scope="session")
+def minio_client(minio: MinioContainer) -> Minio:
+    return minio.get_client()
 
 
 @pytest.fixture(scope="session")
@@ -67,14 +87,24 @@ def make_settings(**overrides: Any) -> Settings:
         "database_url": "postgresql+asyncpg://u:p@h/db",
         "redis_url": "redis://h",
         "revalidate_secret": "test-revalidate-secret",
+        "s3_bucket": MINIO_BUCKET,
+        "s3_access_key": "test-access-key",
+        "s3_secret_key": "test-secret-key",
     }
     return Settings(**{**values, **overrides})
 
 
 @pytest.fixture
-def settings(postgres_url: str, redis_url: str) -> Settings:
+def settings(postgres_url: str, redis_url: str, minio: MinioContainer) -> Settings:
+    s3 = minio.get_config()
     return make_settings(
-        app_env="test", database_url=postgres_url, redis_url=redis_url, log_json=False
+        app_env="test",
+        database_url=postgres_url,
+        redis_url=redis_url,
+        log_json=False,
+        s3_endpoint_url=f"http://{s3['endpoint']}",
+        s3_access_key=s3["access_key"],
+        s3_secret_key=s3["secret_key"],
     )
 
 

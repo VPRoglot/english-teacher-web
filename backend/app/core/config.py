@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     public_base_url: str = "http://localhost:3000"
     revalidate_url: str = "http://localhost:3000/api/revalidate"
     revalidate_secret: SecretStr
+    # S3-совместимое хранилище медиа (MinIO в разработке). endpoint None — настоящий AWS S3.
+    s3_endpoint_url: str | None = None
+    s3_region: str = "us-east-1"
+    s3_bucket: str
+    s3_access_key: str
+    s3_secret_key: SecretStr
+    s3_addressing_style: Literal["path", "virtual"] = "path"
+    # Префикс публичных URL медиа: `{media_public_base_url}/{s3_key}`.
+    media_public_base_url: str = "/media"
 
     @field_validator("revalidate_secret")
     @classmethod
@@ -26,7 +35,7 @@ class Settings(BaseSettings):
             raise ValueError("REVALIDATE_SECRET: не короче 16 символов")
         return value
 
-    @field_validator("public_base_url")
+    @field_validator("public_base_url", "media_public_base_url")
     @classmethod
     def _strip_trailing_slash(cls, value: str) -> str:
         return value.rstrip("/")

@@ -5,6 +5,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
 
+from app.core.config import Settings
 from app.site_content.models import BlockKey
 
 TELEGRAM_ERROR = "Укажите имя пользователя Telegram, например @anna_english"
@@ -146,3 +147,16 @@ def referenced_media_ids(block: BaseModel) -> list[tuple[tuple[str | int, ...], 
             if item.photo_media_id is not None
         ]
     return []
+
+
+class MediaOut(BaseModel):
+    id: uuid.UUID
+    url: str
+    content_type: str
+    size_bytes: int
+    width: int
+    height: int
+
+
+def media_url(settings: Settings, s3_key: str) -> str:
+    return f"{settings.media_public_base_url}/{s3_key}"

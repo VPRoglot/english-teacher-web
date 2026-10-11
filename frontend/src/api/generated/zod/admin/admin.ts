@@ -295,6 +295,22 @@ export const CreateFamilyInvitationResponse = zod.object({
 })
 
 /**
+ * @summary Upload Media
+ */
+export const UploadMediaBody = zod.object({
+  "file": zod.instanceof(Blob)
+})
+
+export const UploadMediaResponse = zod.object({
+  "content_type": zod.string(),
+  "height": zod.int(),
+  "id": zod.uuid(),
+  "size_bytes": zod.int(),
+  "url": zod.string(),
+  "width": zod.int()
+})
+
+/**
  * @summary Update User Status
  */
 export const UpdateUserStatusParams = zod.object({

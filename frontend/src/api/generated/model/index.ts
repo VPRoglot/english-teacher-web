@@ -6,6 +6,7 @@
  */
 
 export * from './acceptInvitationRequest';
+export * from './bodyUploadMedia';
 export * from './cabinetChild';
 export * from './changePasswordRequest';
 export * from './childAccount';
@@ -29,6 +30,7 @@ export * from './invitationInfo';
 export * from './linkResponse';
 export * from './listFamiliesParams';
 export * from './loginRequest';
+export * from './mediaOut';
 export * from './meResponse';
 export * from './parentDetail';
 export * from './passwordResetInfo';

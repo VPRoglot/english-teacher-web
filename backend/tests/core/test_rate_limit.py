@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 
 import pytest
@@ -49,6 +50,29 @@ async def test_allows_until_limit(clean_redis: Redis) -> None:
     ra = await rl.retry_after("k", RULE)
     assert ra is not None
     assert 1 <= ra <= 60
+
+
+async def test_hit_returns_new_count(clean_redis: Redis) -> None:
+    rl = RateLimiter(clean_redis)
+    assert [await rl.hit("k", RULE) for _ in range(4)] == [1, 2, 3, 4]
+    assert 0 < await clean_redis.ttl("rl:k") <= 60
+
+
+async def test_concurrent_hits_get_distinct_counts(clean_redis: Redis) -> None:
+    rl = RateLimiter(clean_redis)
+    counts = await asyncio.gather(*[rl.hit("k", RULE) for _ in range(20)])
+    assert sorted(counts) == list(range(1, 21))
+
+
+async def test_decr_gives_an_attempt_back_and_stays_non_negative(clean_redis: Redis) -> None:
+    rl = RateLimiter(clean_redis)
+    await rl.hit("k", RULE)
+    await rl.hit("k", RULE)
+    await rl.decr("k")
+    assert await rl.hit("k", RULE) == 2
+    await rl.reset("k")
+    await rl.decr("k")  # счётчика нет — не уходит в минус
+    assert await rl.hit("k", RULE) == 1
 
 
 async def test_window_is_not_extended_by_hits(clean_redis: Redis) -> None:

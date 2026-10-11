@@ -28,12 +28,24 @@ class RateLimiter:
         ttl = await self._redis.ttl(redis_key)
         return ttl if ttl > 0 else rule.window_seconds
 
-    async def hit(self, key: str, rule: RateLimit) -> None:
+    async def hit(self, key: str, rule: RateLimit) -> int:
+        """Атомарно учитывает попытку и возвращает новое значение счётчика.
+
+        Проверку «лимит превышен» нужно строить на этом значении, а не на отдельном чтении:
+        иначе параллельные запросы все проходят проверку до первого инкремента.
+        """
         redis_key = self._key(key)
         async with self._redis.pipeline(transaction=True) as pipe:
             pipe.incr(redis_key)
             pipe.expire(redis_key, rule.window_seconds, nx=True)
-            await pipe.execute()
+            count, _ = await pipe.execute()
+        return int(count)
+
+    async def decr(self, key: str) -> None:
+        """Возвращает одну попытку (например, после успешного входа); ниже нуля не опускается."""
+        redis_key = self._key(key)
+        if await self._redis.decr(redis_key) < 0:
+            await self._redis.incr(redis_key)
 
     async def reset(self, key: str) -> None:
         await self._redis.delete(self._key(key))

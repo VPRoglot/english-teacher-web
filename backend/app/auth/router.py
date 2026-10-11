@@ -35,22 +35,25 @@ async def login(
     ip_key = f"login-ip:{ip}"
     limiter = RateLimiter(redis)
 
-    # Лимит проверяется до проверки пароля: верный пароль не обходит исчерпанный лимит.
-    waits = [
-        await limiter.retry_after(pair_key, LOGIN_PAIR),
-        await limiter.retry_after(ip_key, LOGIN_IP),
-    ]
-    if any(w is not None for w in waits):
-        raise RateLimited(max(w for w in waits if w is not None))
+    # Попытка учитывается атомарно ДО проверки пароля: параллельная пачка запросов не проходит
+    # проверку лимита одновременно, а верный пароль не обходит исчерпанный лимит.
+    pair_count = await limiter.hit(pair_key, LOGIN_PAIR)
+    ip_count = await limiter.hit(ip_key, LOGIN_IP)
+    waits: list[int] = []
+    for key, rule, count in ((pair_key, LOGIN_PAIR, pair_count), (ip_key, LOGIN_IP, ip_count)):
+        if count > rule.limit:
+            waits.append(await limiter.retry_after(key, rule) or rule.window_seconds)
+    if waits:
+        raise RateLimited(max(waits))
 
     user = await service.authenticate(session, login=body.login, password=body.password)
     if user is None:
-        await limiter.hit(pair_key, LOGIN_PAIR)
-        await limiter.hit(ip_key, LOGIN_IP)
         raise service.InvalidCredentials()
 
     me = await service.build_me(session, user)
+    # Успешный вход не расходует бюджет: счётчик пары сбрасывается, IP получает попытку назад.
     await limiter.reset(pair_key)
+    await limiter.decr(ip_key)
     # Ротация: прежняя сессия из cookie запроса отзывается, выдаётся новая.
     old_token = request.cookies.get(SESSION_COOKIE)
     if old_token:

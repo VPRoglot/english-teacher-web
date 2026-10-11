@@ -1,9 +1,12 @@
+import asyncio
 import subprocess
 import sys
+from collections import Counter
 from datetime import UTC, datetime
 
 import pytest
 from argon2 import PasswordHasher
+from fastapi import FastAPI
 from httpx import AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -13,7 +16,8 @@ from app.auth.models import User, UserRole
 from app.auth.passwords import password_needs_rehash, verify_password
 from app.auth.service import DUMMY_PASSWORD_HASH, build_me
 from app.auth.sessions import SessionStore
-from tests.conftest import BACKEND_DIR
+from app.core.db import get_db_session
+from tests.conftest import BACKEND_DIR, open_client
 from tests.factories import (
     TEST_PASSWORD,
     login,
@@ -346,3 +350,36 @@ def test_app_import_registers_families_tables() -> None:
         [sys.executable, "-c", code], cwd=BACKEND_DIR, capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stderr
+
+
+async def test_successful_logins_do_not_consume_ip_budget(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    fam = await make_family(db_session)
+    await make_parent(db_session, fam)
+    for i in range(29):
+        assert await _attempt(client, f"user{i}@example.com") == 401
+    for _ in range(3):
+        await login(client, "parent@example.com")
+
+    assert await _attempt(client, "another@example.com") == 401  # 30-я неудача — ещё не 429
+    assert await _attempt(client, "another2@example.com") == 429
+
+
+async def test_concurrent_burst_cannot_bypass_pair_limit(app: FastAPI) -> None:
+    # Каждый запрос — своя сессия БД (как в проде); логин несуществующий, данных в БД не создаётся.
+    del app.dependency_overrides[get_db_session]
+    async with open_client(app) as c:
+        responses = await asyncio.gather(
+            *[
+                c.post(
+                    "/api/auth/login",
+                    json={"login": "nobody@example.com", "password": WRONG_PASSWORD},
+                )
+                for _ in range(10)
+            ]
+        )
+
+    codes = Counter(r.status_code for r in responses)
+    assert codes[401] == 5 and codes[429] == 5, codes
+    assert all(int(r.headers["Retry-After"]) > 0 for r in responses if r.status_code == 429)

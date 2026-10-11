@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const SUCCESS_MESSAGE = "Сохранено. Сайт обновится в течение минуты";
 
@@ -29,6 +30,16 @@ export const zodOptions = {
       return `Не более ${String(issue.maximum)} символов`;
     }
     if (issue.code === "invalid_format" && issue.format === "email") return "Некорректный email";
+    // Пустое числовое поле (valueAsNumber даёт NaN) и выход за границы диапазона.
+    if (issue.code === "invalid_type" && (issue.expected === "number" || issue.expected === "int")) {
+      return "Введите число";
+    }
+    if (issue.code === "too_small" && issue.origin === "number") {
+      return `Не меньше ${String(issue.minimum)}`;
+    }
+    if (issue.code === "too_big" && issue.origin === "number") {
+      return `Не больше ${String(issue.maximum)}`;
+    }
     return russian(issue);
   },
 };
@@ -91,6 +102,22 @@ export function TextField({
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} aria-invalid={error ? true : undefined} {...inputProps} />
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+/** Многострочный вариант `TextField`. */
+export function TextareaField({
+  id,
+  label,
+  error,
+  ...textareaProps
+}: { label: string; error?: string } & ComponentProps<typeof Textarea> & { id: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Textarea id={id} aria-invalid={error ? true : undefined} {...textareaProps} />
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );

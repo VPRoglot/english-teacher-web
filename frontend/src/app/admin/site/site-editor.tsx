@@ -7,7 +7,10 @@ import { errorMessage } from "@/lib/form-errors";
 
 import { AboutEditor } from "./about-editor";
 import { ContactsEditor } from "./contacts-editor";
+import { FaqEditor } from "./faq-editor";
 import { HeroEditor } from "./hero-editor";
+import { ReviewsEditor } from "./reviews-editor";
+import { ServicesEditor } from "./services-editor";
 
 function Skeleton() {
   return (
@@ -40,6 +43,9 @@ export function SiteEditor() {
         <>
           <HeroEditor block={blocks.hero} media={blocks.media} />
           <AboutEditor block={blocks.about} media={blocks.media} />
+          <ServicesEditor block={blocks.services} />
+          <ReviewsEditor block={blocks.reviews} media={blocks.media} />
+          <FaqEditor block={blocks.faq} />
           <ContactsEditor block={blocks.contacts} />
         </>
       ) : query.error ? (

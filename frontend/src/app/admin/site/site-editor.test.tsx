@@ -55,11 +55,14 @@ test("shows a skeleton, then editors in landing order with the site link", async
 
   expect(screen.getByRole("status", { name: "Загрузка" })).toBeInTheDocument();
 
-  const hero = await screen.findByText("Главный экран");
-  const about = screen.getByText("Обо мне");
-  const contacts = screen.getByText("Контакты");
-  expect(hero.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(about.compareDocumentPosition(contacts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await screen.findByText("Главный экран");
+  const titles = ["Главный экран", "Обо мне", "Услуги", "Отзывы", "Вопросы и ответы", "Контакты"];
+  const cards = titles.map((title) => screen.getByText(title));
+  cards.slice(1).forEach((card, index) => {
+    expect(
+      cards[index].compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 
   expect(screen.getByLabelText("Заголовок")).toHaveValue("Английский для детей");
   expect(screen.getByRole("img")).toHaveAttribute("src", "/media/site/hero.png");

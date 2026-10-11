@@ -2,6 +2,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 import structlog
 from fastapi import FastAPI
 
@@ -16,6 +17,8 @@ from app.core.redis import create_redis
 from app.core.request_id import RequestIdMiddleware
 from app.core.tasks import BrokerTaskQueue, create_broker
 from app.families import admin_router, cabinet_router
+from app.leads import public_router as leads_public_router
+from app.leads.captcha import DisabledCaptchaVerifier, YandexCaptchaVerifier
 from app.site_content import admin_router as site_admin_router
 from app.site_content import public_router as site_public_router
 from app.site_content.storage import S3MediaStorage
@@ -40,6 +43,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             broker, timeout_seconds=settings.task_enqueue_timeout_seconds
         )
         app.state.media_storage = S3MediaStorage(settings)  # без сети: клиент создаётся на запрос
+        # Клиент капчи не подключается при создании; без ключа капча отключена (dev, test).
+        captcha_client: httpx.AsyncClient | None = None
+        app.state.captcha = DisabledCaptchaVerifier()
+        if settings.smartcaptcha_server_key:
+            captcha_client = httpx.AsyncClient()
+            app.state.captcha = YandexCaptchaVerifier(
+                captcha_client, settings.smartcaptcha_server_key.get_secret_value()
+            )
         try:
             # startup() брокера идёт в Redis (создаёт consumer group): если Redis недоступен,
             # приложение всё равно стартует, а постановка задачи упадёт позже и обработается там.
@@ -51,6 +62,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             yield
         finally:
             await broker.shutdown()
+            if captcha_client is not None:
+                await captcha_client.aclose()
             await app.state.engine.dispose()
             await app.state.redis.aclose()
 
@@ -75,4 +88,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(cabinet_router.router, prefix="/api")
     app.include_router(site_admin_router.router, prefix="/api")
     app.include_router(site_public_router.router, prefix="/api")
+    app.include_router(leads_public_router.router, prefix="/api")
     return app

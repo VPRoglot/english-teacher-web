@@ -1,8 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import SecretStr, field_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     s3_addressing_style: Literal["path", "virtual"] = "path"
     # Префикс публичных URL медиа: `{media_public_base_url}/{s3_key}`.
     media_public_base_url: str = "/media"
+    # Необязательны в dev и test; в prod обязательны (см. `_require_prod_integrations`).
+    smartcaptcha_server_key: SecretStr | None = None
+    telegram_bot_token: SecretStr | None = None
+    telegram_chat_id: str | None = None
 
     @field_validator("revalidate_secret")
     @classmethod
@@ -55,6 +59,18 @@ class Settings(BaseSettings):
         if not value.startswith(("redis://", "rediss://")):
             raise ValueError("REDIS_URL должен начинаться с redis:// или rediss://")
         return value
+
+    @model_validator(mode="after")
+    def _require_prod_integrations(self) -> Self:
+        # Пустая строка (`KEY=` в .env) считается отсутствием значения.
+        if self.app_env == "prod" and not (
+            self.smartcaptcha_server_key and self.telegram_bot_token and self.telegram_chat_id
+        ):
+            raise ValueError(
+                "В production обязательны SMARTCAPTCHA_SERVER_KEY, "
+                "TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID"
+            )
+        return self
 
 
 # Корневой .env (общий с docker compose), затем .env текущей папки — он переопределяет первый.

@@ -122,3 +122,25 @@ def test_s3_credentials_are_required(name: str, monkeypatch: pytest.MonkeyPatch)
 
 def test_task_enqueue_timeout_default() -> None:
     assert make_settings().task_enqueue_timeout_seconds == 2.0
+
+
+def test_notification_and_captcha_settings_are_optional_outside_prod() -> None:
+    s = make_settings()
+    assert s.smartcaptcha_server_key is None
+    assert s.telegram_bot_token is None
+    assert s.telegram_chat_id is None
+    make_settings(app_env="test")
+
+
+def test_prod_requires_captcha_and_telegram() -> None:
+    with pytest.raises(ValidationError, match="SMARTCAPTCHA_SERVER_KEY"):
+        make_settings(app_env="prod")
+    with pytest.raises(ValidationError, match="TELEGRAM_CHAT_ID"):
+        make_settings(app_env="prod", smartcaptcha_server_key="k", telegram_bot_token="t")
+    s = make_settings(
+        app_env="prod",
+        smartcaptcha_server_key="k",
+        telegram_bot_token="t",
+        telegram_chat_id="1",
+    )
+    assert s.telegram_bot_token is not None and s.telegram_bot_token.get_secret_value() == "t"

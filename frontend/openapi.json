@@ -467,6 +467,15 @@
         "title": "ChildUpdate",
         "type": "object"
       },
+      "ContactMethod": {
+        "enum": [
+          "telegram",
+          "whatsapp",
+          "phone"
+        ],
+        "title": "ContactMethod",
+        "type": "string"
+      },
       "ContactsBlock": {
         "additionalProperties": false,
         "properties": {
@@ -993,6 +1002,160 @@
           "prefill_phone"
         ],
         "title": "InvitationInfo",
+        "type": "object"
+      },
+      "LeadAccepted": {
+        "properties": {
+          "accepted": {
+            "const": true,
+            "default": true,
+            "title": "Accepted",
+            "type": "boolean"
+          }
+        },
+        "title": "LeadAccepted",
+        "type": "object"
+      },
+      "LeadCreate": {
+        "additionalProperties": false,
+        "description": "Заявка на пробное занятие из публичной формы.",
+        "properties": {
+          "captcha_token": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captcha Token"
+          },
+          "child_age": {
+            "maximum": 18.0,
+            "minimum": 3.0,
+            "title": "Child Age",
+            "type": "integer"
+          },
+          "child_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Child Name",
+            "type": "string"
+          },
+          "consent": {
+            "const": true,
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "contact_method": {
+            "$ref": "#/components/schemas/ContactMethod"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "messenger_handle": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messenger Handle"
+          },
+          "parent_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Parent Name",
+            "type": "string"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "preferred_time": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Time"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          },
+          "utm_medium": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Medium"
+          },
+          "utm_source": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Source"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "required": [
+          "parent_name",
+          "child_name",
+          "child_age",
+          "phone",
+          "contact_method",
+          "consent"
+        ],
+        "title": "LeadCreate",
         "type": "object"
       },
       "LinkResponse": {
@@ -2858,6 +3021,47 @@
         "summary": "Set My Child Account",
         "tags": [
           "cabinet"
+        ]
+      }
+    },
+    "/api/public/leads": {
+      "post": {
+        "operationId": "submit_lead",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Submit Lead",
+        "tags": [
+          "public"
         ]
       }
     },

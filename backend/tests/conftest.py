@@ -90,6 +90,10 @@ def make_settings(**overrides: Any) -> Settings:
         "s3_bucket": MINIO_BUCKET,
         "s3_access_key": "test-access-key",
         "s3_secret_key": "test-secret-key",
+        # Необязательные ключи: None, чтобы значения из окружения разработчика не просачивались.
+        "smartcaptcha_server_key": None,
+        "telegram_bot_token": None,
+        "telegram_chat_id": None,
     }
     return Settings(**{**values, **overrides})
 

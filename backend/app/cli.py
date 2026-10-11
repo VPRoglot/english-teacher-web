@@ -68,6 +68,7 @@ def export_openapi(
     app = create_app(
         Settings(
             _env_file=None,
+            app_env="dev",  # не prod: иначе валидатор потребует ключи капчи и Telegram
             database_url="postgresql+asyncpg://openapi@localhost/openapi",
             redis_url="redis://localhost",
             revalidate_secret="openapi-placeholder-secret",  # noqa: S106

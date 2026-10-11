@@ -8,6 +8,57 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Submit Lead
+ */
+export const submitLeadBodyCaptchaTokenOneMax = 5000;
+
+export const submitLeadBodyChildAgeMin = 3;
+export const submitLeadBodyChildAgeMax = 18;
+
+export const submitLeadBodyChildNameMax = 100;
+
+export const submitLeadBodyGoalOneMax = 1000;
+
+export const submitLeadBodyMessengerHandleOneMax = 64;
+
+export const submitLeadBodyParentNameMax = 100;
+
+export const submitLeadBodyPreferredTimeOneMax = 200;
+
+export const submitLeadBodyUtmCampaignOneMax = 100;
+
+export const submitLeadBodyUtmMediumOneMax = 100;
+
+export const submitLeadBodyUtmSourceOneMax = 100;
+
+export const submitLeadBodyWebsiteOneMax = 200;
+
+
+
+export const SubmitLeadBody = zod.object({
+  "captcha_token": zod.union([zod.string().max(submitLeadBodyCaptchaTokenOneMax),zod.null()]).optional(),
+  "child_age": zod.int().min(submitLeadBodyChildAgeMin).max(submitLeadBodyChildAgeMax),
+  "child_name": zod.string().min(1).max(submitLeadBodyChildNameMax),
+  "consent": zod.literal(true).meta({ title: 'Consent' }),
+  "contact_method": zod.enum(['telegram', 'whatsapp', 'phone']),
+  "goal": zod.union([zod.string().max(submitLeadBodyGoalOneMax),zod.null()]).optional(),
+  "messenger_handle": zod.union([zod.string().max(submitLeadBodyMessengerHandleOneMax),zod.null()]).optional(),
+  "parent_name": zod.string().min(1).max(submitLeadBodyParentNameMax),
+  "phone": zod.string(),
+  "preferred_time": zod.union([zod.string().max(submitLeadBodyPreferredTimeOneMax),zod.null()]).optional(),
+  "utm_campaign": zod.union([zod.string().max(submitLeadBodyUtmCampaignOneMax),zod.null()]).optional(),
+  "utm_medium": zod.union([zod.string().max(submitLeadBodyUtmMediumOneMax),zod.null()]).optional(),
+  "utm_source": zod.union([zod.string().max(submitLeadBodyUtmSourceOneMax),zod.null()]).optional(),
+  "website": zod.union([zod.string().max(submitLeadBodyWebsiteOneMax),zod.null()]).optional()
+}).describe('Заявка на пробное занятие из публичной формы.')
+
+export const submitLeadResponseAcceptedDefault = true;
+
+export const SubmitLeadResponse = zod.object({
+  "accepted": zod.literal(true).default(submitLeadResponseAcceptedDefault).meta({ title: 'Accepted' })
+})
+
+/**
  * @summary Get Public Site
  */
 export const getPublicSiteResponseContactsWorkingHoursTextOneMax = 200;

@@ -45,6 +45,12 @@ async def list_active_children(session: AsyncSession, family_id: uuid.UUID) -> l
     return list(result)
 
 
+async def list_child_ids(session: AsyncSession, family_id: uuid.UUID) -> list[uuid.UUID]:
+    """Id всех детей семьи, включая архивных."""
+    result = await session.scalars(select(Child.id).where(Child.family_id == family_id))
+    return list(result)
+
+
 async def get_child_by_user(session: AsyncSession, user_id: uuid.UUID) -> Child | None:
     return await session.scalar(select(Child).where(Child.user_id == user_id))
 

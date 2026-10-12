@@ -262,3 +262,28 @@ async def archive_series(session: AsyncSession, series_id: uuid.UUID, *, now: da
         )
     )
     await session.flush()
+
+
+async def archive_child_series(
+    session: AsyncSession, child_ids: Collection[uuid.UUID], *, now: datetime
+) -> int:
+    """Завершает каждую активную серию этих детей; возвращает число завершённых серий.
+
+    Серии блокируются в порядке id, поэтому параллельные архивы не взаимоблокируются. Серия,
+    которую успели завершить между выборкой и блокировкой, пропускается.
+    """
+    if not child_ids:
+        return 0
+    series_ids = await session.scalars(
+        select(LessonSeries.id)
+        .where(LessonSeries.child_id.in_(child_ids), LessonSeries.archived_at.is_(None))
+        .order_by(LessonSeries.id)
+    )
+    ended = 0
+    for series_id in list(series_ids):
+        try:
+            await archive_series(session, series_id, now=now)
+        except SeriesArchived:
+            continue
+        ended += 1
+    return ended

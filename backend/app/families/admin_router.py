@@ -22,6 +22,8 @@ from app.families.schemas import (
     InvitationCreate,
     UserStatusUpdate,
 )
+from app.lessons.admin_router import Now
+from app.lessons.series_service import archive_child_series
 
 router = APIRouter(prefix="/admin", tags=["admin"], responses=API_ERROR_RESPONSES)
 
@@ -54,8 +56,15 @@ async def update_family(
     _: TutorUser,
     session: DbSession,
     store: SessionStoreDep,
+    now: Now,
 ) -> FamilyDetail:
-    return await families_service.update_family(session, family_id, body, sessions=store)
+    family = await families_service.get_family(session, family_id)
+    was_active = family is not None and family.archived_at is None
+    detail = await families_service.update_family(session, family_id, body, sessions=store)
+    if body.archived is True and was_active:
+        child_ids = await families_service.list_child_ids(session, family_id)
+        await archive_child_series(session, child_ids, now=now)
+    return detail
 
 
 @router.post("/families/{family_id}/invitations", status_code=201)
@@ -93,8 +102,13 @@ async def update_child(
     _: TutorUser,
     session: DbSession,
     store: SessionStoreDep,
+    now: Now,
 ) -> ChildDetail:
-    return await families_service.update_child(session, child_id, body, sessions=store)
+    was_active = (await families_service.get_child(session, child_id)).archived_at is None
+    detail = await families_service.update_child(session, child_id, body, sessions=store)
+    if body.archived is True and was_active:
+        await archive_child_series(session, [child_id], now=now)
+    return detail
 
 
 @router.post("/children/{child_id}/account")

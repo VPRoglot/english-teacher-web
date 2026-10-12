@@ -37,7 +37,7 @@ async def login(
     store: SessionStoreDep,
     redis: RedisClient,
 ) -> MeResponse:
-    # За прокси IP берётся из `request.client` — проброс X-Forwarded-For настраивается отдельно.
+    # За доверенным прокси `request.client` уже содержит реальный IP (ProxyHeadersMiddleware).
     ip = request.client.host if request.client else "unknown"
     pair_key = f"login:{service.normalize_login(body.login)}:{ip}"
     ip_key = f"login-ip:{ip}"

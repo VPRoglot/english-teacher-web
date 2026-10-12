@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import httpx
 import structlog
 from fastapi import FastAPI
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.auth import router as auth_router
 from app.core import csrf, health
@@ -85,6 +86,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(CsrfMiddleware)
     app.add_middleware(UploadLimitMiddleware)  # снаружи CSRF и авторизации
     app.add_middleware(RequestIdMiddleware)
+    if settings.forwarded_allow_ips:  # самым внешним слоем: IP и схема нужны всем остальным
+        app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=settings.forwarded_allow_ips)
     app.include_router(health.router, prefix="/api")
     app.include_router(csrf.router, prefix="/api")
     app.include_router(auth_router.router, prefix="/api")

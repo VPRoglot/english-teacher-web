@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -132,15 +133,71 @@ def test_notification_and_captcha_settings_are_optional_outside_prod() -> None:
     make_settings(app_env="test")
 
 
+def _prod(**overrides: Any) -> Settings:
+    values: dict[str, Any] = {
+        "app_env": "prod",
+        "smartcaptcha_server_key": "k",
+        "telegram_bot_token": "t",
+        "telegram_chat_id": "1",
+        "public_base_url": "https://tutor.example.ru",
+        "revalidate_secret": "r4nd0m-revalidate-secret",
+        "database_url": "postgresql+asyncpg://u:r4nd0m-pass@h/db",
+        "s3_secret_key": "r4nd0m-s3-secret",
+    }
+    return make_settings(**{**values, **overrides})
+
+
+def test_prod_accepts_valid() -> None:
+    assert _prod().public_base_url == "https://tutor.example.ru"
+
+
+def test_prod_rejects_http_public_base_url() -> None:
+    with pytest.raises(ValidationError, match="PUBLIC_BASE_URL"):
+        _prod(public_base_url="http://example.ru")
+
+
+@pytest.mark.parametrize("url", ["https://localhost", "https://127.0.0.1:8443", "https://[::1]"])
+def test_prod_rejects_localhost_public_base_url(url: str) -> None:
+    with pytest.raises(ValidationError, match="PUBLIC_BASE_URL"):
+        _prod(public_base_url=url)
+
+
+def test_prod_requires_secure_cookie() -> None:
+    with pytest.raises(ValidationError, match="SESSION_COOKIE_SECURE"):
+        _prod(session_cookie_secure=False)
+
+
+@pytest.mark.parametrize(
+    ("name", "overrides"),
+    [
+        ("REVALIDATE_SECRET", {"revalidate_secret": "xx-change-me-xxxxxxxx"}),
+        ("DATABASE_URL", {"database_url": "postgresql+asyncpg://u:change-me@h/db"}),
+        ("S3_SECRET_KEY", {"s3_secret_key": "change-me"}),
+    ],
+)
+def test_prod_rejects_placeholder_secrets(name: str, overrides: dict[str, str]) -> None:
+    with pytest.raises(ValidationError, match=name):
+        _prod(**overrides)
+
+
+def test_dev_allows_localhost() -> None:
+    s = make_settings(app_env="dev", session_cookie_secure=False)
+    assert s.public_base_url == "http://localhost:3000"
+
+
+def test_forwarded_allow_ips_default_is_empty() -> None:
+    assert make_settings().forwarded_allow_ips == ""
+
+
 def test_prod_requires_captcha_and_telegram() -> None:
+    missing: dict[str, Any] = {
+        "smartcaptcha_server_key": None,
+        "telegram_bot_token": None,
+        "telegram_chat_id": None,
+    }
     with pytest.raises(ValidationError, match="SMARTCAPTCHA_SERVER_KEY"):
-        make_settings(app_env="prod")
+        _prod(**missing)
     with pytest.raises(ValidationError, match="TELEGRAM_CHAT_ID"):
-        make_settings(app_env="prod", smartcaptcha_server_key="k", telegram_bot_token="t")
-    s = make_settings(
-        app_env="prod",
-        smartcaptcha_server_key="k",
-        telegram_bot_token="t",
-        telegram_chat_id="1",
-    )
+        _prod(**{**missing, "smartcaptcha_server_key": "k", "telegram_bot_token": "t"})
+    s = _prod()
     assert s.telegram_bot_token is not None and s.telegram_bot_token.get_secret_value() == "t"

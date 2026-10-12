@@ -43,7 +43,7 @@ async def submit_lead(
     captcha: CaptchaDep,
     redis: RedisClient,
 ) -> LeadAccepted:
-    # За прокси IP берётся из `request.client` — проброс X-Forwarded-For настраивается отдельно.
+    # За доверенным прокси `request.client` уже содержит реальный IP (ProxyHeadersMiddleware).
     ip = request.client.host if request.client else None
     limiter = RateLimiter(redis)
     key = f"lead:ip:{ip or 'unknown'}"

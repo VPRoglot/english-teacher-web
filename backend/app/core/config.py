@@ -1,9 +1,13 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self
+from urllib.parse import urlparse
 
 from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+_PLACEHOLDER = "change-me"
 
 
 class Settings(BaseSettings):
@@ -33,6 +37,9 @@ class Settings(BaseSettings):
     smartcaptcha_server_key: SecretStr | None = None
     telegram_bot_token: SecretStr | None = None
     telegram_chat_id: str | None = None
+    # Доверенные адреса прокси для X-Forwarded-* (список через запятую или `*`).
+    # Пусто — заголовки игнорируются; включать только за nginx, который перезаписывает XFF.
+    forwarded_allow_ips: str = ""
 
     @field_validator("revalidate_secret")
     @classmethod
@@ -70,6 +77,24 @@ class Settings(BaseSettings):
                 "В production обязательны SMARTCAPTCHA_SERVER_KEY, "
                 "TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _require_prod_safety(self) -> Self:
+        if self.app_env != "prod":
+            return self
+        host = urlparse(self.public_base_url).hostname
+        if not self.public_base_url.startswith("https://") or host in _LOCAL_HOSTS:
+            raise ValueError("PUBLIC_BASE_URL в production: только https и не localhost")
+        if not self.session_cookie_secure:
+            raise ValueError("SESSION_COOKIE_SECURE в production должен быть включён")
+        for name, value in (
+            ("REVALIDATE_SECRET", self.revalidate_secret.get_secret_value()),
+            ("DATABASE_URL", self.database_url),
+            ("S3_SECRET_KEY", self.s3_secret_key.get_secret_value()),
+        ):
+            if _PLACEHOLDER in value:
+                raise ValueError(f"{name} в production не может содержать заглушку {_PLACEHOLDER}")
         return self
 
 

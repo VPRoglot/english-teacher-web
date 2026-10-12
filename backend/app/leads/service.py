@@ -175,6 +175,11 @@ def _add_history(
     )
 
 
+async def ensure_lead_visible(session: AsyncSession, lead_id: uuid.UUID) -> None:
+    """Заявка существует и не обезличена, иначе `LeadNotFound` (для читателей из других модулей)."""
+    await _get_lead(session, lead_id)
+
+
 async def get_lead_detail(session: AsyncSession, lead_id: uuid.UUID) -> LeadDetail:
     return await _detail(session, await _get_lead(session, lead_id))
 

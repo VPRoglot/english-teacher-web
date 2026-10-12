@@ -73,8 +73,9 @@ async def _saved(
     session: AsyncSession,
     series: LessonSeries,
     *,
-    created: int,
-    lessons: Collection[Lesson],
+    created: Collection[Lesson] = (),
+    updated: Collection[Lesson] = (),
+    removed: int = 0,
     tz: ZoneInfo,
 ) -> SeriesSaved:
     child = await session.get(Child, series.child_id)
@@ -82,8 +83,10 @@ async def _saved(
         raise RuntimeError(f"У серии {series.id} нет ученика")
     return SeriesSaved(
         series=_detail(series, child.full_name),
-        lessons_created=created,
-        warnings=await _warnings(session, lessons, tz=tz),
+        lessons_created=len(created),
+        lessons_updated=len(updated),
+        lessons_removed=removed,
+        warnings=await _warnings(session, [*created, *updated], tz=tz),
     )
 
 
@@ -105,7 +108,7 @@ async def list_series(
 async def create_series(session: AsyncSession, data: SeriesCreate, *, now: datetime) -> SeriesSaved:
     """Серия ребёнка; занятия на 8 недель вперёд создаются сразу, в той же транзакции."""
     child = await families_service.get_active_child(session, data.child_id)
-    tz = await get_timezone(session)
+    tz = await get_timezone(session, lock=True)
     series = LessonSeries(
         child_id=child.id,
         rrule=data.rrule,
@@ -118,7 +121,7 @@ async def create_series(session: AsyncSession, data: SeriesCreate, *, now: datet
     session.add(series)
     await session.flush()
     created = await materialize_series(session, series, tz=tz, now=now)
-    return await _saved(session, series, created=len(created), lessons=created, tz=tz)
+    return await _saved(session, series, created=created, tz=tz)
 
 
 @dataclass(frozen=True)
@@ -167,13 +170,14 @@ async def update_series(
     новую серию), прошедшие, отмеченные и отсоединённые остаются у прежней серии, удалённые
     не воскресают. Правка, не меняющая ни одного параметра, серию не разделяет.
     """
+    # Порядок блокировок как у смены пояса: настройки (FOR SHARE) → серия.
+    tz = await get_timezone(session, lock=True)
     series = await lock_series(session, series_id)
     if series is None:
         raise SeriesNotFound
     if series.archived_at is not None:
         raise SeriesArchived
 
-    tz = await get_timezone(session)
     if from_day < now.astimezone(tz).date():
         raise SeriesDateInvalid(["query", "from"], "Дата не может быть в прошлом")
     if series.ends_on is not None and from_day > series.ends_on:
@@ -190,7 +194,7 @@ async def update_series(
         series.ends_on,
     )
     if rule == current:
-        return await _saved(session, series, created=0, lessons=[], tz=tz)
+        return await _saved(session, series, tz=tz)
 
     previous = series_shape(series)
     if from_day <= series.starts_on:
@@ -230,8 +234,9 @@ async def update_series(
     return await _saved(
         session,
         target,
-        created=len(result.created),
-        lessons=[*result.created, *result.updated],
+        created=result.created,
+        updated=result.updated,
+        removed=result.removed,
         tz=tz,
     )
 

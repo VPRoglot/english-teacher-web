@@ -213,9 +213,7 @@ async def schedule_trial(
 
 async def list_trial_lessons(session: AsyncSession, lead_id: uuid.UUID) -> list[AdminLessonItem]:
     """Все пробные занятия заявки по возрастанию времени; нет заявки — `LeadNotFound`."""
-    known = exists().where(Lead.id == lead_id, Lead.anonymized_at.is_(None))
-    if not await session.scalar(select(known)):
-        raise leads_service.LeadNotFound
+    await leads_service.ensure_lead_visible(session, lead_id)
     stmt = _items_stmt().where(Lesson.lead_id == lead_id, Lesson.kind == LessonKind.TRIAL)
     return await _run_items(session, stmt)
 
@@ -300,8 +298,8 @@ async def delete_lesson(session: AsyncSession, lesson_id: uuid.UUID, *, now: dat
 async def save_notes(
     session: AsyncSession, lesson_id: uuid.UUID, data: LessonNotesUpdate
 ) -> LessonNotes:
-    if not await session.scalar(select(exists().where(Lesson.id == lesson_id))):
-        raise LessonNotFound
+    # Блокировка занятия: заметки не пишутся в строку, которую параллельно удаляют.
+    await _lock_lesson(session, lesson_id)
     stmt = pg_insert(LessonNote).values(
         lesson_id=lesson_id, shared_text=data.shared_text, private_text=data.private_text
     )

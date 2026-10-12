@@ -101,3 +101,22 @@ async def test_anonymous_requests_are_401(client: AsyncClient) -> None:
     assert (await client.get("/api/admin/settings")).status_code == 401
     assert (await client.put("/api/admin/settings", json=body)).status_code == 401
     assert (await client.get("/api/me/schedule-settings")).status_code == 401
+
+
+def _settings_selects(sql_log: list[str]) -> list[str]:
+    return [s for s in sql_log if "FROM tutor_settings" in s and s.lstrip().startswith("SELECT")]
+
+
+async def test_settings_update_reads_the_row_for_update(
+    tutor_client: AsyncClient, sql_log: list[str]
+) -> None:
+    r = await tutor_client.put("/api/admin/settings", json=DEFAULTS)
+
+    assert r.status_code == 200
+    selects = _settings_selects(sql_log)
+    assert selects and all(s.rstrip().endswith("FOR UPDATE") for s in selects)
+
+
+async def test_settings_read_is_not_locked(tutor_client: AsyncClient, sql_log: list[str]) -> None:
+    assert (await tutor_client.get("/api/admin/settings")).status_code == 200
+    assert not any("FOR " in s for s in _settings_selects(sql_log))

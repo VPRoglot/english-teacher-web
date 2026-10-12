@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import select
@@ -47,3 +48,19 @@ async def test_schedule_trial_status_rejects_wrong_status(
 async def test_schedule_trial_status_unknown_lead(db_session: AsyncSession) -> None:
     with pytest.raises(service.LeadNotFound):
         await service.schedule_trial_status(db_session, uuid.uuid4(), comment="x")
+
+
+async def test_ensure_lead_visible_accepts_existing_lead(db_session: AsyncSession) -> None:
+    lead = await make_lead(db_session)
+
+    await service.ensure_lead_visible(db_session, lead.id)
+
+
+async def test_ensure_lead_visible_rejects_unknown_and_anonymized(
+    db_session: AsyncSession,
+) -> None:
+    anonymized = await make_lead(db_session, anonymized_at=datetime.now(UTC))
+
+    for lead_id in (uuid.uuid4(), anonymized.id):
+        with pytest.raises(service.LeadNotFound):
+            await service.ensure_lead_visible(db_session, lead_id)

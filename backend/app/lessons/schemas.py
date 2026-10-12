@@ -217,6 +217,10 @@ class SeriesDetail(BaseModel):
 class SeriesSaved(BaseModel):
     series: SeriesDetail
     lessons_created: int
+    # Правка серии: сколько занятий изменено на месте и сколько удалено, потому что их даты
+    # ушли из расписания. При создании серии оба равны 0.
+    lessons_updated: int
+    lessons_removed: int
     warnings: list[OverlapWarning]
 
 

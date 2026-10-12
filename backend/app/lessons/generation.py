@@ -153,7 +153,10 @@ async def shift_series_timezone(
             Lesson.occurrence_date.is_not(None),
             Lesson.starts_at > now,
         )
-        .order_by(Lesson.starts_at)
+        # Блокировка в порядке id (серия уже заблокирована: серия → занятия) — без взаимоблокировок
+        # с другими операциями над занятиями серии; условия перепроверяются по свежей строке.
+        .order_by(Lesson.id)
+        .with_for_update()
         .execution_options(populate_existing=True)
     )
     targets: list[tuple[Lesson, datetime]] = []
@@ -163,6 +166,7 @@ async def shift_series_timezone(
         new_start = _local_instant(lesson.occurrence_date, series.local_start_time, new_tz)
         if new_start != lesson.starts_at:
             targets.append((lesson, new_start))
+    targets.sort(key=lambda target: target[0].starts_at)
     # Сдвиг на фиксированное смещение в сторону конца: идём с конца, чтобы новый момент
     # одного занятия не упирался в ещё не сдвинутое соседнее.
     if targets and targets[0][1] > targets[0][0].starts_at:
@@ -205,6 +209,7 @@ def series_shape(series: LessonSeries) -> SeriesShape:
 class Reconciled:
     created: list[Lesson]
     updated: list[Lesson]  # существующие строки, изменённые на месте
+    removed: int  # будущие занятия, удалённые потому, что их дата ушла из расписания
 
 
 def _is_replaceable(lesson: Lesson, now: datetime) -> bool:
@@ -232,7 +237,8 @@ async def reconcile_series(
     сверяются (при разделении — старая серия), `previous` — снимок правила до правки.
     Для каждой даты нового расписания:
     - будущее неотмеченное неотсоединённое занятие правится на месте (время, длительность,
-      ссылка, серия) — id и заметки сохраняются;
+      ссылка, серия) — id и заметки сохраняются; это верно и для сегодняшнего занятия, чей
+      новый момент уже прошёл (оно становится «нужно отметить», но не удаляется);
     - отмеченное, отсоединённое или начавшееся занятие остаётся, двойник не создаётся;
     - дата, которую раньше давало правило и по которой занятия нет, — удалена репетитором
       и не создаётся заново;
@@ -245,11 +251,10 @@ async def reconcile_series(
     start = max(from_day, series.starts_on, today)
     horizon = today + timedelta(days=HORIZON_DAYS)
 
-    wanted = {
-        day: moment
-        for day, moment in _dated_moments(series, tz=tz, first_day=start, last_day=horizon)
-        if moment >= now
-    }
+    # Все даты нового расписания, в том числе сегодняшняя с уже прошедшим новым временем:
+    # будущее занятие на такой дате правится на месте, а не удаляется; новое на прошлый
+    # момент не создаётся (см. ниже).
+    wanted = dict(_dated_moments(series, tz=tz, first_day=start, last_day=horizon))
     previous_days: set[date] = set()
     if previous.generated_through is not None:
         previous_days = {
@@ -262,6 +267,11 @@ async def reconcile_series(
     stmt = (
         select(Lesson)
         .where(Lesson.series_id == source.id, Lesson.occurrence_date >= start)
+        # Строки блокируются в порядке id (серии уже заблокированы) и перечитываются:
+        # решение по каждому занятию принимается по его актуальным статусу, отсоединённости
+        # и времени, а не по устаревшему объекту в сессии.
+        .order_by(Lesson.id)
+        .with_for_update()
         .execution_options(populate_existing=True)
     )
     existing = {
@@ -270,9 +280,11 @@ async def reconcile_series(
         if lesson.occurrence_date is not None
     }
 
+    removed = 0
     for day, lesson in existing.items():
         if day not in wanted and _is_replaceable(lesson, now):
             await session.delete(lesson)
+            removed += 1
     await session.flush()
 
     updated: list[Lesson] = []
@@ -280,7 +292,7 @@ async def reconcile_series(
     for day, moment in sorted(wanted.items()):
         current = existing.get(day)
         if current is None:
-            if day not in previous_days:
+            if moment >= now and day not in previous_days:
                 to_insert.append((day, moment))
         elif _is_replaceable(current, now) and await _apply_series_to_lesson(
             session, current, series, moment
@@ -290,7 +302,7 @@ async def reconcile_series(
 
     series.generated_through = max(series.generated_through or start - timedelta(days=1), horizon)
     await session.flush()
-    return Reconciled(created=created, updated=updated)
+    return Reconciled(created=created, updated=updated, removed=removed)
 
 
 async def _apply_series_to_lesson(

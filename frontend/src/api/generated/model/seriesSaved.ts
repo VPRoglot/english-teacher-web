@@ -9,6 +9,8 @@ import type { SeriesDetail } from './seriesDetail';
 
 export interface SeriesSaved {
   lessons_created: number;
+  lessons_removed: number;
+  lessons_updated: number;
   series: SeriesDetail;
   warnings: OverlapWarning[];
 }

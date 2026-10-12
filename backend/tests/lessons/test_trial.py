@@ -215,6 +215,17 @@ async def test_trial_lessons_list_and_unknown_lead(
         assert resp.json()["error"]["code"] == "lead_not_found"
 
 
+async def test_trial_lessons_of_anonymized_lead_is_404(
+    tutor_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    lead = await make_lead(db_session, anonymized_at=datetime.now(UTC))
+
+    r = await tutor_client.get(f"/api/admin/leads/{lead.id}/trial-lessons")
+
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "lead_not_found"
+
+
 PATHS = [
     ("POST", "/api/admin/leads/{id}/trial"),
     ("GET", "/api/admin/leads/{id}/trial-lessons"),

@@ -15,6 +15,7 @@ from app.lessons.generation import (
     materialize_series,
     reconcile_series,
     series_shape,
+    shift_series_timezone,
 )
 from app.lessons.models import Lesson, LessonKind, LessonNote, LessonSeries, LessonStatus
 from app.lessons.schemas import TutorSettingsUpdate
@@ -574,3 +575,113 @@ async def test_materialize_all_continues_after_a_failing_series_and_then_raises(
     assert await materialize_all(sessionmaker, now=NOW) == 8
     total = await db_session.scalar(select(func.count()).select_from(Lesson))
     assert total == 16
+
+
+def _locking_selects(sql_log: list[str]) -> list[str]:
+    return [
+        statement
+        for statement in sql_log
+        if statement.lstrip().upper().startswith("SELECT")
+        and "FROM lessons" in statement
+        and "lessons.series_id =" in statement
+    ]
+
+
+async def test_reconcile_locks_existing_lessons_in_id_order(
+    db_session: AsyncSession, child: Child, sql_log: list[str]
+) -> None:
+    series, _ = await _materialized(db_session, child)
+    previous = series_shape(series)
+    series.duration_min = 30
+    sql_log.clear()
+
+    await reconcile_series(
+        db_session, series, previous=previous, from_day=date(2026, 10, 12), tz=MSK, now=NOW
+    )
+
+    selects = _locking_selects(sql_log)
+    assert len(selects) == 1
+    assert "FOR UPDATE" in selects[0]
+    assert "ORDER BY lessons.id" in selects[0]
+
+
+async def test_timezone_shift_locks_lessons_in_id_order(
+    db_session: AsyncSession, child: Child, sql_log: list[str]
+) -> None:
+    series, _ = await _materialized(db_session, child)
+    sql_log.clear()
+
+    await shift_series_timezone(
+        db_session, series, old_tz=MSK, new_tz=ZoneInfo("Asia/Tokyo"), now=NOW
+    )
+
+    selects = _locking_selects(sql_log)
+    assert len(selects) == 1
+    assert "FOR UPDATE" in selects[0]
+    assert "ORDER BY lessons.id" in selects[0]
+
+
+async def test_reconcile_decides_by_locked_row_state(
+    db_session: AsyncSession, child: Child, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    """Строки перечитываются под блокировкой: устаревший объект в сессии не решает судьбу."""
+    series, created = await _materialized(db_session, child)
+    target = created[0]
+    previous = series_shape(series)
+    # Другая сессия отменила занятие, а в этой сессии объект ещё «scheduled».
+    async with sessionmaker() as other:
+        row = await other.get(Lesson, target.id)
+        assert row is not None
+        row.status = LessonStatus.CANCELLED
+        await other.commit()
+    assert target.status is LessonStatus.SCHEDULED  # устаревшее значение в identity map
+
+    series.local_start_time = time(12, 0)
+    await reconcile_series(
+        db_session, series, previous=previous, from_day=date(2026, 10, 12), tz=MSK, now=NOW
+    )
+
+    row = await db_session.get(Lesson, target.id, populate_existing=True)
+    assert row is not None
+    assert row.status is LessonStatus.CANCELLED
+    assert row.starts_at == datetime(2026, 10, 15, 7, tzinfo=UTC)  # не тронуто: 10:00 MSK
+
+
+async def test_reconcile_updates_todays_lesson_in_place_when_new_time_has_passed(
+    db_session: AsyncSession, child: Child
+) -> None:
+    series, created = await _materialized(
+        db_session, child, rrule="FREQ=WEEKLY;BYDAY=MO", local_start_time=time(18, 0)
+    )
+    today_lesson = created[0]  # пн 12.10 18:00 MSK = 15:00 UTC, ещё впереди (NOW = 09:00 UTC)
+    assert today_lesson.starts_at == datetime(2026, 10, 12, 15, tzinfo=UTC)
+    await _add_note(db_session, today_lesson, "заметка на сегодня")
+    previous = series_shape(series)
+
+    series.local_start_time = time(11, 0)  # 11:00 MSK = 08:00 UTC — раньше now
+    result = await reconcile_series(
+        db_session, series, previous=previous, from_day=date(2026, 10, 12), tz=MSK, now=NOW
+    )
+
+    row = await db_session.get(Lesson, today_lesson.id, populate_existing=True)
+    assert row is not None  # занятие не удалено
+    assert row.starts_at == datetime(2026, 10, 12, 8, tzinfo=UTC)
+    assert today_lesson.id in {lesson.id for lesson in result.updated}
+    assert result.removed == 0
+    note = await db_session.get(LessonNote, today_lesson.id)
+    assert note is not None and note.shared_text == "заметка на сегодня"
+    assert len(await _lessons(db_session, series.id)) == len(created)
+
+
+async def test_reconcile_counts_removed_lessons(db_session: AsyncSession, child: Child) -> None:
+    series, created = await _materialized(db_session, child)
+    previous = series_shape(series)
+    series.rrule = "FREQ=WEEKLY;BYDAY=MO"  # четверги уходят из расписания
+
+    result = await reconcile_series(
+        db_session, series, previous=previous, from_day=date(2026, 10, 12), tz=MSK, now=NOW
+    )
+
+    thursdays = [lesson for lesson in created if lesson.starts_at.weekday() == 3]
+    assert result.removed == len(thursdays) == 8
+    assert result.created == []

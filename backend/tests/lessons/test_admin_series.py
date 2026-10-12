@@ -97,6 +97,7 @@ async def test_create_series_materializes_eight_weeks(
     series = body["series"]
     assert series["rrule"] == "FREQ=WEEKLY;BYDAY=TU,FR"
     assert body["lessons_created"] == 16
+    assert body["lessons_updated"] == 0 and body["lessons_removed"] == 0
     assert body["warnings"] == []
     assert series["child_id"] == str(child.id)
     assert series["child_name"] == child.full_name
@@ -127,6 +128,41 @@ async def test_create_copies_meeting_url_and_ends_on(
     assert {
         lesson.meeting_url for lesson in await lessons_of(db_session, body["series"]["id"])
     } == {"https://meet.example/room"}
+
+
+def _share_locked_settings(sql_log: list[str]) -> list[int]:
+    return [
+        i
+        for i, s in enumerate(sql_log)
+        if "FROM tutor_settings" in s and s.rstrip().endswith("FOR SHARE")
+    ]
+
+
+async def test_create_reads_timezone_under_share_lock(
+    tutor_client: AsyncClient, child: Child, sql_log: list[str]
+) -> None:
+    await create(tutor_client, child)
+
+    assert _share_locked_settings(sql_log)
+
+
+async def test_update_takes_settings_lock_before_series_lock(
+    tutor_client: AsyncClient, child: Child, sql_log: list[str]
+) -> None:
+    """Порядок блокировок тот же, что у смены пояса (настройки → серии): нет взаимоблокировки."""
+    created = await create(tutor_client, child, starts_on="2026-10-19")
+    sql_log.clear()
+
+    r = await tutor_client.patch(
+        patch_url(created["series"]["id"], "2026-10-19"), json={"duration_min": 45}
+    )
+
+    assert r.status_code == 200
+    shared = _share_locked_settings(sql_log)
+    series_lock = next(
+        i for i, s in enumerate(sql_log) if "FROM lesson_series" in s and "FOR UPDATE" in s
+    )
+    assert shared and shared[0] < series_lock
 
 
 @pytest.mark.parametrize(
@@ -220,6 +256,7 @@ async def test_split_this_and_following(
     assert new["rrule"] == "FREQ=WEEKLY;BYDAY=TU" and new["child_id"] == str(child.id)
     assert new["meeting_url"] == "https://meet.example/old"
     assert body["lessons_created"] == 0 and body["warnings"] == []
+    assert body["lessons_updated"] == 5 and body["lessons_removed"] == 0
 
     old = await reload_series(db_session, old_id)
     assert old.ends_on == date(2026, 10, 19) and old.archived_at is None
@@ -290,6 +327,8 @@ async def test_split_can_change_days_and_end(
         date(2026, 11, 18),
     ]
     assert body["lessons_created"] == 4
+    assert body["lessons_updated"] == 0
+    assert body["lessons_removed"] == 6  # вторники 27.10 … 01.12 ушли из расписания
     assert body["series"]["ends_on"] == "2026-11-18"
     old_rows = await by_date(db_session, old_id)
     assert sorted(old_rows) == [date(2026, 10, 13), date(2026, 10, 20)]
@@ -312,6 +351,7 @@ async def test_edit_from_series_start_updates_in_place(
     body = r.json()
     assert body["series"]["id"] == series_id
     assert body["lessons_created"] == 0
+    assert body["lessons_updated"] == 7 and body["lessons_removed"] == 0
     rows = await lessons_of(db_session, series_id)
     assert {lesson.id for lesson in rows} == set(before)  # те же занятия
     assert {lesson.starts_at.timetz() for lesson in rows} == {time(16, 0, tzinfo=UTC)}

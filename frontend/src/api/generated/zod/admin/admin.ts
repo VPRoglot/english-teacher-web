@@ -793,6 +793,8 @@ export const CreateSeriesBody = zod.object({
 
 export const CreateSeriesResponse = zod.object({
   "lessons_created": zod.int(),
+  "lessons_removed": zod.int(),
+  "lessons_updated": zod.int(),
   "series": zod.object({
   "archived_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
   "child_id": zod.uuid(),
@@ -853,6 +855,8 @@ export const UpdateSeriesBody = zod.object({
 
 export const UpdateSeriesResponse = zod.object({
   "lessons_created": zod.int(),
+  "lessons_removed": zod.int(),
+  "lessons_updated": zod.int(),
   "series": zod.object({
   "archived_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
   "child_id": zod.uuid(),

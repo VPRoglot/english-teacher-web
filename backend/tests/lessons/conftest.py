@@ -1,9 +1,10 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 from taskiq import Context, InMemoryBroker, TaskiqMessage, TaskiqState
 
@@ -86,6 +87,21 @@ async def make_lesson(
     session.add(lesson)
     await session.flush()
     return lesson
+
+
+@pytest.fixture
+def sql_log(db_session: AsyncSession) -> Iterator[list[str]]:
+    """Тексты SQL-запросов, выполненных на соединении тестовой сессии (по порядку)."""
+    assert isinstance(db_session.bind, AsyncConnection)
+    statements: list[str] = []
+
+    def record(conn: Any, cursor: Any, statement: str, *args: Any) -> None:
+        statements.append(statement)
+
+    connection = db_session.bind.sync_connection
+    event.listen(connection, "before_cursor_execute", record)
+    yield statements
+    event.remove(connection, "before_cursor_execute", record)
 
 
 @pytest.fixture

@@ -253,13 +253,13 @@ async def test_list_by_range_and_child(
     other = await make_child(db_session, family, full_name="Петя")
     lead = await make_lead(db_session, child_name="Лена")
     base = datetime(2026, 10, 20, 12, tzinfo=UTC)
-    before = await make_lesson(db_session, child=child, starts_at=base - timedelta(days=1))
+    # Вне диапазона: накануне, ровно на конце (конец исключён) и позже.
+    await make_lesson(db_session, child=child, starts_at=base - timedelta(days=1))
     inside_late = await make_lesson(db_session, child=other, starts_at=base + timedelta(hours=5))
     inside_early = await make_lesson(db_session, child=child, starts_at=base)
     trial = await make_lesson(db_session, lead=lead, starts_at=base + timedelta(hours=2))
-    edge = await make_lesson(db_session, child=child, starts_at=base + timedelta(days=1))
-    after = await make_lesson(db_session, child=child, starts_at=base + timedelta(days=3))
-    assert {before.id, edge.id, after.id}
+    await make_lesson(db_session, child=child, starts_at=base + timedelta(days=1))
+    await make_lesson(db_session, child=child, starts_at=base + timedelta(days=3))
 
     query = {"from": iso(base), "to": iso(base + timedelta(days=1))}
     r = await tutor_client.get("/api/admin/lessons", params=query)

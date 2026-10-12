@@ -2862,6 +2862,14 @@
             "title": "Lessons Created",
             "type": "integer"
           },
+          "lessons_removed": {
+            "title": "Lessons Removed",
+            "type": "integer"
+          },
+          "lessons_updated": {
+            "title": "Lessons Updated",
+            "type": "integer"
+          },
           "series": {
             "$ref": "#/components/schemas/SeriesDetail"
           },
@@ -2876,6 +2884,8 @@
         "required": [
           "series",
           "lessons_created",
+          "lessons_updated",
+          "lessons_removed",
           "warnings"
         ],
         "title": "SeriesSaved",

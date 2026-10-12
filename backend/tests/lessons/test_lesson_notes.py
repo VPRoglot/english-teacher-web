@@ -83,3 +83,16 @@ async def test_notes_of_unknown_lesson_is_404(tutor_client: AsyncClient) -> None
         f"/api/admin/lessons/{uuid.uuid4()}/notes", json={"shared_text": "", "private_text": ""}
     )
     assert r.status_code == 404 and r.json()["error"]["code"] == "lesson_not_found"
+
+
+async def test_notes_lock_the_lesson_before_upsert(
+    tutor_client: AsyncClient, lesson: Lesson, sql_log: list[str]
+) -> None:
+    r = await tutor_client.put(
+        f"/api/admin/lessons/{lesson.id}/notes", json={"shared_text": "x", "private_text": "y"}
+    )
+
+    assert r.status_code == 200
+    lock = next(i for i, s in enumerate(sql_log) if "FROM lessons" in s and "FOR UPDATE" in s)
+    upsert = next(i for i, s in enumerate(sql_log) if "INSERT INTO lesson_notes" in s)
+    assert lock < upsert

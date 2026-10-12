@@ -7,7 +7,9 @@ import {
   formatDateTime,
   formatLessonWhen,
   formatTime,
+  nextHourParts,
   timeZoneNote,
+  todayInZone,
   utcToZonedParts,
   zonedToUtcIso,
 } from "./datetime";
@@ -61,6 +63,17 @@ test("lesson end time may fall on the next day", () => {
   expect(formatLessonWhen("2026-10-20T20:30:00Z", 60, "Europe/Moscow")).toBe(
     "вт, 20 окт., 23:30–00:30",
   );
+});
+
+test("today and the next full hour are taken in the given zone", () => {
+  const now = new Date("2026-10-20T20:30:00Z");
+  expect(todayInZone("Europe/Moscow", now)).toBe("2026-10-20");
+  expect(todayInZone("Asia/Yekaterinburg", now)).toBe("2026-10-21");
+  expect(nextHourParts("Europe/Moscow", now)).toEqual({ date: "2026-10-21", time: "00:00" });
+  expect(nextHourParts("Europe/Moscow", new Date("2026-10-20T15:00:00Z"))).toEqual({
+    date: "2026-10-20",
+    time: "19:00",
+  });
 });
 
 test("browser zone is a non-empty IANA name", () => {

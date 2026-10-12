@@ -47,6 +47,17 @@ export function utcToZonedParts(iso: string, tz: string): { date: string; time: 
   return { date: moment.toFormat("yyyy-MM-dd"), time: moment.toFormat("HH:mm") };
 }
 
+/** Сегодняшняя дата (`yyyy-MM-dd`) в поясе `tz`. `now` можно подставить явно (в тестах). */
+export function todayInZone(tz: string, now: Date = new Date()): string {
+  return DateTime.fromJSDate(now, { zone: tz }).toFormat("yyyy-MM-dd");
+}
+
+/** Ближайший полный час после `now`: местные дата и время в поясе `tz`. */
+export function nextHourParts(tz: string, now: Date = new Date()): { date: string; time: string } {
+  const next = DateTime.fromJSDate(now, { zone: tz }).startOf("hour").plus({ hours: 1 });
+  return { date: next.toFormat("yyyy-MM-dd"), time: next.toFormat("HH:mm") };
+}
+
 /** IANA-имя пояса браузера. */
 export function browserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;

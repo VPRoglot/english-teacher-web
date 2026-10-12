@@ -69,6 +69,7 @@ function lessonSaved(warnings: unknown[] = []) {
 }
 
 let timezone = "Europe/Moscow";
+let settingsFail = false;
 let fetchMock: ReturnType<typeof vi.fn>;
 let lessonResponse: () => Response;
 let client: QueryClient;
@@ -77,6 +78,9 @@ const onOpenChange = vi.fn();
 function stubApi() {
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === "/api/admin/settings") {
+      if (settingsFail) {
+        return jsonResponse(500, { error: { code: "boom", message: "Сбой", details: {} } });
+      }
       return jsonResponse(200, { timezone, cancel_policy_hours: 24 });
     }
     if (url.startsWith("/api/admin/families") && init?.method === "GET") {
@@ -112,7 +116,7 @@ function posts(url: string): unknown[] {
     .map(([, init]) => JSON.parse((init as RequestInit).body as string));
 }
 
-function renderDialog(initial = { date: "2026-10-20", time: "18:00" }) {
+function renderDialogNow(initial = { date: "2026-10-20", time: "18:00" }) {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.spyOn(client, "invalidateQueries");
   return render(
@@ -122,11 +126,19 @@ function renderDialog(initial = { date: "2026-10-20", time: "18:00" }) {
   );
 }
 
+/** Рендерит диалог и ждёт пояс репетитора: до этого отправка заблокирована. */
+async function renderDialog(initial = { date: "2026-10-20", time: "18:00" }) {
+  const view = renderDialogNow(initial);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Создать" })).toBeEnabled());
+  return view;
+}
+
 beforeEach(() => {
   toastSuccess.mockReset();
   toastWarning.mockReset();
   onOpenChange.mockReset();
   timezone = "Europe/Moscow";
+  settingsFail = false;
   lessonResponse = () => jsonResponse(201, lessonSaved());
   document.cookie = "csrf_token=t";
   stubApi();
@@ -144,7 +156,7 @@ async function chooseStudent(user: ReturnType<typeof userEvent.setup>, childId: 
 }
 
 test("lists active children as «Семья — ребёнок»", async () => {
-  renderDialog();
+  await renderDialog();
   const select = await screen.findByLabelText("Ученик");
   await waitFor(() => expect(select.querySelectorAll("option")).toHaveLength(4));
   expect(
@@ -153,7 +165,7 @@ test("lists active children as «Семья — ребёнок»", async () => {
 });
 
 test("prefills the date and time of the clicked slot", async () => {
-  renderDialog({ date: "2026-10-20", time: "20:00" });
+  await renderDialog({ date: "2026-10-20", time: "20:00" });
   expect(await screen.findByLabelText("Дата")).toHaveValue("2026-10-20");
   expect(screen.getByLabelText("Время")).toHaveValue("20:00");
   expect(screen.getByLabelText("Длительность, мин")).toHaveValue(60);
@@ -161,7 +173,7 @@ test("prefills the date and time of the clicked slot", async () => {
 
 test("one-off lesson converts tutor-zone time to UTC", async () => {
   const user = userEvent.setup();
-  renderDialog({ date: "2026-10-19", time: "10:00" });
+  await renderDialog({ date: "2026-10-19", time: "10:00" });
 
   await chooseStudent(user, "c1");
   fireEvent.change(screen.getByLabelText("Дата"), { target: { value: "2026-10-20" } });
@@ -182,7 +194,7 @@ test("one-off lesson converts tutor-zone time to UTC", async () => {
 test("uses the tutor zone, not the browser zone", async () => {
   timezone = "Asia/Yekaterinburg";
   const user = userEvent.setup();
-  renderDialog({ date: "2026-10-20", time: "20:00" });
+  await renderDialog({ date: "2026-10-20", time: "20:00" });
 
   await chooseStudent(user, "c3");
   // The zone settings arrive asynchronously; wait for them before submitting.
@@ -201,7 +213,7 @@ test("uses the tutor zone, not the browser zone", async () => {
 
 test("requires a student", async () => {
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   await user.click(await screen.findByRole("button", { name: "Создать" }));
 
@@ -211,7 +223,7 @@ test("requires a student", async () => {
 
 test("validates the duration range", async () => {
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   await chooseStudent(user, "c1");
   fireEvent.change(screen.getByLabelText("Длительность, мин"), { target: { value: "10" } });
@@ -235,7 +247,7 @@ test("overlap warnings become toasts", async () => {
       ]),
     );
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   await chooseStudent(user, "c1");
   await user.click(screen.getByRole("button", { name: "Создать" }));
@@ -250,7 +262,7 @@ test("a conflict is shown in the form and the dialog stays open", async () => {
   lessonResponse = () =>
     jsonResponse(409, { error: { code: "child_archived", message: "Ученик в архиве", details: {} } });
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   await chooseStudent(user, "c1");
   await user.click(screen.getByRole("button", { name: "Создать" }));
@@ -262,7 +274,7 @@ test("a conflict is shown in the form and the dialog stays open", async () => {
 
 test("the regular tab creates a series for the chosen student with the slot prefilled", async () => {
   const user = userEvent.setup();
-  renderDialog({ date: "2026-10-20", time: "18:00" });
+  await renderDialog({ date: "2026-10-20", time: "18:00" });
 
   await chooseStudent(user, "c1");
   await user.click(screen.getByRole("button", { name: "Регулярное" }));
@@ -282,9 +294,40 @@ test("the regular tab creates a series for the chosen student with the slot pref
   expect(posts("/api/admin/lessons")).toHaveLength(0);
 });
 
+test("the one-off submit is disabled until the tutor time zone is loaded", async () => {
+  settingsFail = true;
+  const user = userEvent.setup();
+  renderDialogNow();
+
+  await chooseStudent(user, "c1");
+  await waitFor(() =>
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
+  );
+  const submit = screen.getByRole("button", { name: "Создать" });
+  expect(submit).toBeDisabled();
+  await user.click(submit);
+  expect(posts("/api/admin/lessons")).toHaveLength(0);
+});
+
+test("the regular submit is disabled until the tutor time zone is loaded", async () => {
+  settingsFail = true;
+  const user = userEvent.setup();
+  renderDialogNow();
+
+  await chooseStudent(user, "c1");
+  await user.click(screen.getByRole("button", { name: "Регулярное" }));
+  await waitFor(() =>
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
+  );
+  const submit = screen.getByRole("button", { name: "Создать" });
+  expect(submit).toBeDisabled();
+  await user.click(submit);
+  expect(posts("/api/admin/series")).toHaveLength(0);
+});
+
 test("the regular tab also requires a student", async () => {
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   await user.click(await screen.findByRole("button", { name: "Регулярное" }));
   await user.click(screen.getByRole("button", { name: "Создать" }));

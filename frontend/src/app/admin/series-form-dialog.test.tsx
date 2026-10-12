@@ -13,6 +13,8 @@ vi.mock("sonner", () => ({
 }));
 
 import type { SeriesDetail } from "@/api/generated/model";
+import { ApiError } from "@/lib/api-fetch";
+import { todayInZone } from "@/lib/datetime";
 
 import { SeriesFormDialog } from "./series-form-dialog";
 
@@ -42,6 +44,7 @@ const SAVED = {
 
 let fetchMock: ReturnType<typeof vi.fn>;
 let postResponse: () => Response;
+let settingsResponse: () => Response;
 let client: QueryClient;
 const onSaved = vi.fn();
 const onOpenChange = vi.fn();
@@ -49,7 +52,7 @@ const onOpenChange = vi.fn();
 function stubApi() {
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === "/api/admin/settings") {
-      return jsonResponse(200, { timezone: "Europe/Moscow", cancel_policy_hours: 24 });
+      return settingsResponse();
     }
     if (url === "/api/admin/series" && init?.method === "POST") return postResponse();
     throw new Error(`unexpected fetch ${url}`);
@@ -63,7 +66,7 @@ function posts(): unknown[] {
     .map(([, init]) => JSON.parse((init as RequestInit).body as string));
 }
 
-function renderDialog(props: Partial<React.ComponentProps<typeof SeriesFormDialog>> = {}) {
+function renderDialogNow(props: Partial<React.ComponentProps<typeof SeriesFormDialog>> = {}) {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.spyOn(client, "invalidateQueries");
   return render(
@@ -80,7 +83,17 @@ function renderDialog(props: Partial<React.ComponentProps<typeof SeriesFormDialo
   );
 }
 
+/** Рендерит диалог и ждёт, пока загрузится пояс репетитора и отправка станет доступна. */
+async function renderDialog(props: Partial<React.ComponentProps<typeof SeriesFormDialog>> = {}) {
+  const view = renderDialogNow(props);
+  const name = props.mode === "edit" ? "Сохранить" : "Создать";
+  await waitFor(() => expect(screen.getByRole("button", { name })).toBeEnabled());
+  return view;
+}
+
 beforeEach(() => {
+  settingsResponse = () =>
+    jsonResponse(200, { timezone: "Europe/Moscow", cancel_policy_hours: 24 });
   toastSuccess.mockReset();
   toastWarning.mockReset();
   onSaved.mockReset();
@@ -97,7 +110,7 @@ afterEach(() => {
 
 test("creates weekly series with canonical rule", async () => {
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   await user.click(await screen.findByRole("checkbox", { name: "пт" }));
   await user.click(screen.getByRole("checkbox", { name: "вт" }));
@@ -120,7 +133,7 @@ test("creates weekly series with canonical rule", async () => {
 
 test("sends the interval, end date and link when they are filled", async () => {
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   await user.click(await screen.findByRole("checkbox", { name: "пн" }));
   await user.selectOptions(screen.getByLabelText("Повтор"), "2");
@@ -144,7 +157,7 @@ test("sends the interval, end date and link when they are filled", async () => {
 
 test("requires at least one weekday", async () => {
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   fireEvent.change(await screen.findByLabelText("Время"), { target: { value: "18:00" } });
   fireEvent.change(screen.getByLabelText("Начало"), { target: { value: "2026-10-12" } });
@@ -156,7 +169,7 @@ test("requires at least one weekday", async () => {
 
 test("rejects an end date before the start date", async () => {
   const user = userEvent.setup();
-  renderDialog();
+  await renderDialog();
 
   await user.click(await screen.findByRole("checkbox", { name: "вт" }));
   fireEvent.change(screen.getByLabelText("Время"), { target: { value: "18:00" } });
@@ -169,7 +182,7 @@ test("rejects an end date before the start date", async () => {
 });
 
 test("prefills the weekday, time and start date from the clicked slot", async () => {
-  renderDialog({ initial: { date: "2026-10-20", time: "18:00" } });
+  await renderDialog({ initial: { date: "2026-10-20", time: "18:00" } });
 
   expect(await screen.findByRole("checkbox", { name: "вт" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: "пн" })).not.toBeChecked();
@@ -188,7 +201,7 @@ test("overlap warnings become separate toasts", async () => {
       ],
     });
   const user = userEvent.setup();
-  renderDialog({ initial: { date: "2026-10-20", time: "18:00" } });
+  await renderDialog({ initial: { date: "2026-10-20", time: "18:00" } });
 
   await user.click(await screen.findByRole("button", { name: "Создать" }));
 
@@ -202,7 +215,7 @@ test("shows an API error in the form and keeps the dialog open", async () => {
   postResponse = () =>
     jsonResponse(409, { error: { code: "child_archived", message: "Ученик в архиве", details: {} } });
   const user = userEvent.setup();
-  renderDialog({ initial: { date: "2026-10-20", time: "18:00" } });
+  await renderDialog({ initial: { date: "2026-10-20", time: "18:00" } });
 
   await user.click(await screen.findByRole("button", { name: "Создать" }));
 
@@ -221,7 +234,7 @@ test("puts a 422 field error on the field", async () => {
       },
     });
   const user = userEvent.setup();
-  renderDialog({ initial: { date: "2026-10-20", time: "18:00" } });
+  await renderDialog({ initial: { date: "2026-10-20", time: "18:00" } });
 
   await user.click(await screen.findByRole("button", { name: "Создать" }));
 
@@ -239,7 +252,7 @@ test("edit mode asks for the date to change from instead of the start date", asy
   };
   const onEditSubmit = vi.fn();
   const user = userEvent.setup();
-  renderDialog({ mode: "edit", series, onEditSubmit });
+  await renderDialog({ mode: "edit", series, onEditSubmit });
 
   expect(await screen.findByLabelText("Изменить начиная с")).toBeInTheDocument();
   expect(screen.queryByLabelText("Начало")).not.toBeInTheDocument();
@@ -265,4 +278,109 @@ test("edit mode asks for the date to change from instead of the start date", asy
     ends_on: "2026-12-01",
   });
   expect(posts()).toHaveLength(0);
+});
+
+const EDIT_SERIES: SeriesDetail = { ...SAVED.series, ends_on: null };
+
+test("create submit is disabled until the tutor time zone is loaded", async () => {
+  settingsResponse = () =>
+    jsonResponse(500, { error: { code: "boom", message: "Сбой", details: {} } });
+  const user = userEvent.setup();
+  renderDialogNow({ initial: { date: "2026-10-20", time: "18:00" } });
+
+  const submit = await screen.findByRole("button", { name: "Создать" });
+  await waitFor(() =>
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
+  );
+  expect(submit).toBeDisabled();
+  await user.click(submit);
+  expect(posts()).toHaveLength(0);
+});
+
+test("create submit becomes enabled once the settings arrive", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  fetchMock.mockImplementation(async (url: string) => {
+    if (url === "/api/admin/settings") {
+      await gate;
+      return settingsResponse();
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  });
+  renderDialogNow({ initial: { date: "2026-10-20", time: "18:00" } });
+
+  expect(await screen.findByRole("button", { name: "Создать" })).toBeDisabled();
+  release();
+  await waitFor(() => expect(screen.getByRole("button", { name: "Создать" })).toBeEnabled());
+});
+
+test("edit submit is disabled until the tutor time zone is loaded", async () => {
+  settingsResponse = () =>
+    jsonResponse(500, { error: { code: "boom", message: "Сбой", details: {} } });
+  const onEditSubmit = vi.fn();
+  const user = userEvent.setup();
+  renderDialogNow({ mode: "edit", series: EDIT_SERIES, onEditSubmit });
+
+  const submit = await screen.findByRole("button", { name: "Сохранить" });
+  await waitFor(() =>
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
+  );
+  expect(submit).toBeDisabled();
+  await user.click(submit);
+  expect(onEditSubmit).not.toHaveBeenCalled();
+});
+
+test("edit mode defaults «Изменить начиная с» to today in the tutor zone", async () => {
+  settingsResponse = () =>
+    jsonResponse(200, { timezone: "Pacific/Kiritimati", cancel_policy_hours: 24 });
+  await renderDialog({ mode: "edit", series: EDIT_SERIES, onEditSubmit: vi.fn() });
+
+  await waitFor(() =>
+    expect(screen.getByLabelText("Изменить начиная с")).toHaveValue(
+      todayInZone("Pacific/Kiritimati"),
+    ),
+  );
+});
+
+test("edit mode closes after a successful async submit", async () => {
+  const onEditSubmit = vi.fn(async () => {});
+  const user = userEvent.setup();
+  await renderDialog({ mode: "edit", series: EDIT_SERIES, onEditSubmit });
+
+  await user.click(screen.getByRole("button", { name: "Сохранить" }));
+
+  await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+  expect(onOpenChange).toHaveBeenCalledWith(false);
+});
+
+test("edit mode puts a rejected submit's 422 on the «Изменить начиная с» field", async () => {
+  const onEditSubmit = vi.fn(async () => {
+    throw new ApiError(422, "validation_error", "Ошибка", {
+      fields: [{ loc: ["query", "from"], message: "Дата в прошлом" }],
+    });
+  });
+  const user = userEvent.setup();
+  await renderDialog({ mode: "edit", series: EDIT_SERIES, onEditSubmit });
+
+  await user.click(screen.getByRole("button", { name: "Сохранить" }));
+
+  const message = await screen.findByText("Дата в прошлом");
+  expect(message.closest("div")).toContainElement(screen.getByLabelText("Изменить начиная с"));
+  expect(onSaved).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Сохранить" })).toBeEnabled();
+});
+
+test("edit mode shows another rejection as a form error", async () => {
+  const onEditSubmit = vi.fn(async () => {
+    throw new ApiError(409, "series_archived", "Расписание уже завершено");
+  });
+  const user = userEvent.setup();
+  await renderDialog({ mode: "edit", series: EDIT_SERIES, onEditSubmit });
+
+  await user.click(screen.getByRole("button", { name: "Сохранить" }));
+
+  expect(await screen.findByText("Расписание уже завершено")).toBeInTheDocument();
+  expect(onSaved).not.toHaveBeenCalled();
 });

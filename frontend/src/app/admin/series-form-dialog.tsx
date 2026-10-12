@@ -26,7 +26,7 @@ import { todayInZone } from "@/lib/datetime";
 import { applyApiErrors } from "@/lib/form-errors";
 import { buildRule, parseRule, WEEKDAYS } from "@/lib/lesson-format";
 import { invalidateSchedule, lessonsCount, toastWarnings } from "@/lib/lesson-mutations";
-import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
+import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
 
 const INTERVAL_LABELS: Record<string, string> = {
   "1": "каждую неделю",
@@ -35,7 +35,7 @@ const INTERVAL_LABELS: Record<string, string> = {
   "4": "раз в 4 недели",
 };
 
-const FIELDS = ["time", "duration_min", "meeting_url", "starts_on", "ends_on"] as const;
+const FIELDS = ["time", "duration_min", "meeting_url", "starts_on", "ends_on", "from"] as const;
 
 type Mode = "create" | "edit";
 
@@ -49,11 +49,11 @@ function makeSchema(mode: Mode) {
       meeting_url: meetingUrlShape,
       starts_on: z.string(),
       ends_on: z.string(),
-      edit_from: z.string(),
+      from: z.string(),
     })
     .superRefine((values, ctx) => {
-      const bound = mode === "create" ? values.starts_on : values.edit_from;
-      const boundField = mode === "create" ? "starts_on" : "edit_from";
+      const bound = mode === "create" ? values.starts_on : values.from;
+      const boundField = mode === "create" ? "starts_on" : "from";
       if (!bound) {
         ctx.addIssue({ code: "custom", path: [boundField], message: "Укажите дату" });
       } else if (values.ends_on && values.ends_on < bound) {
@@ -71,7 +71,7 @@ function makeSchema(mode: Mode) {
 
 type Values = z.infer<ReturnType<typeof makeSchema>>;
 
-/** Что собрала форма в режиме правки; отправку (`PATCH /admin/series/{id}`) подключает страница семьи. */
+/** Что собрала форма в режиме правки; отправку (`PATCH /admin/series/{id}`) подключает вызывающий. */
 export type SeriesEditValues = {
   from: string;
   rrule: string;
@@ -90,7 +90,11 @@ export type SeriesFormProps = {
   /** Создание: местные день и время клика — из них предзаполняются день недели, время и «Начало». */
   initial?: { date: string; time: string };
   onSaved?: () => void;
-  onEditSubmit?: (values: SeriesEditValues) => void;
+  /**
+   * Правка: отправляет вызывающий. Ожидается `Promise`: пока он выполняется, кнопка недоступна;
+   * успех закрывает форму (`onSaved`), `ApiError` ложится на поля (422) или в общую ошибку формы.
+   */
+  onEditSubmit?: (values: SeriesEditValues) => Promise<unknown> | void;
   /** Вызывается вместо отправки, если `childId` не задан. */
   onChildMissing?: () => void;
 };
@@ -120,7 +124,7 @@ function defaultValues(
       meeting_url: series.meeting_url ?? "",
       starts_on: series.starts_on,
       ends_on: series.ends_on ?? "",
-      edit_from: today,
+      from: today,
     };
   }
   const day = initial ? weekdayCode(initial.date) : null;
@@ -132,12 +136,24 @@ function defaultValues(
     meeting_url: "",
     starts_on: initial?.date ?? today,
     ends_on: "",
-    edit_from: today,
+    from: today,
   };
 }
 
-/** Форма регулярного расписания: создание (`POST /admin/series`) или поля для правки. */
-export function SeriesForm({
+/**
+ * Форма регулярного расписания: создание (`POST /admin/series`) или поля для правки.
+ * Пока пояс репетитора не загружен, отправка заблокирована; форма пересоздаётся, когда пояс
+ * появился, чтобы даты по умолчанию («Начало», «Изменить начиная с») считались в настоящем поясе.
+ */
+export function SeriesForm(props: SeriesFormProps) {
+  const timeZone = useTutorTimeZone("admin");
+  const ready = useTutorTimeZoneReady("admin");
+  return (
+    <SeriesFormBody key={`${ready}:${timeZone}`} {...props} timeZone={timeZone} ready={ready} />
+  );
+}
+
+function SeriesFormBody({
   mode,
   childId = null,
   series,
@@ -145,13 +161,16 @@ export function SeriesForm({
   onSaved,
   onEditSubmit,
   onChildMissing,
-}: SeriesFormProps) {
+  timeZone,
+  ready,
+}: SeriesFormProps & { timeZone: string; ready: boolean }) {
   const queryClient = useQueryClient();
-  const timeZone = useTutorTimeZone("admin");
   const createSeries = useCreateSeries();
+  const [editPending, setEditPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const schema = useMemo(() => makeSchema(mode), [mode]);
   const idPrefix = `series-${series?.id ?? "new"}`;
+  const pending = createSeries.isPending || editPending;
 
   const {
     register,
@@ -164,14 +183,26 @@ export function SeriesForm({
     defaultValues: defaultValues(mode, series, initial, todayInZone(timeZone)),
   });
 
+  async function submitEdit(values: SeriesEditValues) {
+    setEditPending(true);
+    try {
+      await onEditSubmit?.(values);
+      onSaved?.();
+    } catch (error) {
+      setFormError(applyApiErrors(error, setError, FIELDS));
+    } finally {
+      setEditPending(false);
+    }
+  }
+
   function onSubmit(values: Values) {
     setFormError(null);
     const rrule = buildRule({ days: values.days, interval: toInterval(values.interval) });
     const localStartTime = values.time.slice(0, 5);
 
     if (mode === "edit") {
-      onEditSubmit?.({
-        from: values.edit_from,
+      void submitEdit({
+        from: values.from,
         rrule,
         local_start_time: localStartTime,
         duration_min: values.duration_min,
@@ -288,11 +319,11 @@ export function SeriesForm({
             <Input
               id={`${idPrefix}-from`}
               type="date"
-              aria-invalid={errors.edit_from ? true : undefined}
-              {...register("edit_from")}
+              aria-invalid={errors.from ? true : undefined}
+              {...register("from")}
             />
-            {errors.edit_from && (
-              <p className="text-sm text-destructive">{errors.edit_from.message}</p>
+            {errors.from && (
+              <p className="text-sm text-destructive">{errors.from.message}</p>
             )}
           </div>
         )}
@@ -307,8 +338,8 @@ export function SeriesForm({
           {errors.ends_on && <p className="text-sm text-destructive">{errors.ends_on.message}</p>}
         </div>
       </div>
-      <Button type="submit" disabled={createSeries.isPending}>
-        {createSeries.isPending ? "Сохраняем…" : mode === "create" ? "Создать" : "Сохранить"}
+      <Button type="submit" disabled={pending || !ready}>
+        {pending ? "Сохраняем…" : mode === "create" ? "Создать" : "Сохранить"}
       </Button>
     </form>
   );

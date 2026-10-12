@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { zonedToUtcIso } from "@/lib/datetime";
 import { applyApiErrors, errorMessage } from "@/lib/form-errors";
 import { invalidateSchedule, toastWarnings } from "@/lib/lesson-mutations";
-import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
+import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
 
 import { SeriesForm } from "../series-form-dialog";
 
@@ -53,6 +53,7 @@ function OneOffForm({
 }) {
   const queryClient = useQueryClient();
   const timeZone = useTutorTimeZone("admin");
+  const ready = useTutorTimeZoneReady("admin");
   const createLesson = useCreateLesson();
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -120,7 +121,7 @@ function OneOffForm({
           <p className="text-sm text-destructive">{errors.meeting_url.message}</p>
         )}
       </div>
-      <Button type="submit" disabled={createLesson.isPending}>
+      <Button type="submit" disabled={createLesson.isPending || !ready}>
         {createLesson.isPending ? "Сохраняем…" : "Создать"}
       </Button>
     </form>

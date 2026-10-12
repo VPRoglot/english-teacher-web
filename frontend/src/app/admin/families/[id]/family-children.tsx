@@ -12,6 +12,7 @@ import { errorMessage } from "@/lib/form-errors";
 
 import { ChildAccountDialog } from "./child-account-dialog";
 import { ChildFormDialog } from "./child-form-dialog";
+import { ChildSeries } from "./child-series";
 import { ResetLinkButton } from "./reset-link-button";
 import { useRefreshFamily } from "./use-refresh-family";
 
@@ -79,6 +80,7 @@ function ChildCard({ child, familyId }: { child: ChildDetail; familyId: string }
             {archived ? "Вернуть" : "В архив"}
           </Button>
         </div>
+        {!archived && <ChildSeries child={child} />}
       </CardContent>
     </Card>
   );

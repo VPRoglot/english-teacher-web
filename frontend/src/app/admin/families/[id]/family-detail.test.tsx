@@ -61,6 +61,7 @@ type Family = {
 };
 
 let family: Family;
+let seriesList: unknown[];
 let routes: Record<string, (body: unknown) => Response>;
 let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -68,6 +69,10 @@ function stubApi() {
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const key = `${init?.method ?? "GET"} ${url}`;
     if (key === "GET /api/admin/families/f1") return jsonResponse(200, family);
+    if (key === "GET /api/admin/series?child_id=c1") return jsonResponse(200, seriesList);
+    if (key === "GET /api/admin/settings") {
+      return jsonResponse(200, { timezone: "Europe/Moscow", cancel_policy_hours: 24 });
+    }
     const handler = routes[key];
     if (!handler) throw new Error(`unexpected fetch ${key}`);
     return handler(init?.body ? JSON.parse(String(init.body)) : undefined);
@@ -111,6 +116,7 @@ beforeEach(() => {
     pending_invitation: null,
   };
   routes = {};
+  seriesList = [];
 });
 
 afterEach(() => {
@@ -421,6 +427,39 @@ test("архивация и возврат ребёнка", async () => {
   await waitFor(() =>
     expect(bodyOf(calls("PATCH", "/api/admin/children/c1")[1])).toEqual({ archived: false }),
   );
+});
+
+test("у активного ребёнка есть блок расписания с сериями", async () => {
+  seriesList = [
+    {
+      id: "s1",
+      child_id: "c1",
+      child_name: "Петя",
+      rrule: "FREQ=WEEKLY;BYDAY=TU,FR",
+      local_start_time: "18:00:00",
+      duration_min: 60,
+      meeting_url: null,
+      starts_on: "2026-10-12",
+      ends_on: null,
+      archived_at: null,
+    },
+  ];
+  stubApi();
+  renderDetail();
+  await screen.findByRole("heading", { name: "Семья Ивановых" });
+  const children = sectionOf("Дети");
+  expect(await within(children).findByText("по вт и пт в 18:00, 60 мин")).toBeInTheDocument();
+  expect(within(children).getByRole("heading", { name: "Расписание" })).toBeInTheDocument();
+  expect(calls("GET", "/api/admin/series?child_id=c1")).toHaveLength(1);
+});
+
+test("у ребёнка в архиве блока расписания нет, серии не запрашиваются", async () => {
+  family.children = [{ ...child, archived_at: "2026-10-01T10:00:00Z" }];
+  stubApi();
+  renderDetail();
+  await screen.findByRole("button", { name: "Вернуть ребёнка" });
+  expect(screen.queryByRole("heading", { name: "Расписание" })).not.toBeInTheDocument();
+  expect(calls("GET", "/api/admin/series?child_id=c1")).toHaveLength(0);
 });
 
 test("несуществующая семья", async () => {

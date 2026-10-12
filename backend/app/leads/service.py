@@ -196,6 +196,22 @@ async def update_lead(session: AsyncSession, lead_id: uuid.UUID, data: LeadUpdat
     return await _detail(session, lead)
 
 
+async def schedule_trial_status(session: AsyncSession, lead_id: uuid.UUID, *, comment: str) -> Lead:
+    """Переводит заявку в `trial_scheduled` (вызывается при назначении пробного занятия).
+
+    Заявка блокируется (`FOR UPDATE`): повторное назначение ждёт и затем видит новый статус,
+    поэтому из двух параллельных запросов успешен один. Допустимость перехода берётся из
+    таблицы переходов; при отказе ничего не меняется.
+    """
+    lead = await _get_lead(session, lead_id, lock=True)
+    if not can_transition(lead.status, LeadStatus.TRIAL_SCHEDULED):
+        raise InvalidStatusTransition
+    _add_history(session, lead, LeadStatus.TRIAL_SCHEDULED, comment)
+    lead.status = LeadStatus.TRIAL_SCHEDULED
+    await session.flush()
+    return lead
+
+
 async def convert_lead(
     session: AsyncSession,
     lead_id: uuid.UUID,

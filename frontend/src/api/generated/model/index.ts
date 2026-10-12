@@ -84,6 +84,7 @@ export * from './seriesUpdate';
 export * from './serviceItem';
 export * from './servicesBlock';
 export * from './siteBlocksAdmin';
+export * from './trialCreate';
 export * from './tutorSettingsUpdate';
 export * from './updateSeriesParams';
 export * from './userRole';

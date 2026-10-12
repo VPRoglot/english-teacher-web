@@ -65,6 +65,7 @@ import type {
   SeriesUpdate,
   ServicesBlock,
   SiteBlocksAdmin,
+  TrialCreate,
   TutorSettingsUpdate,
   UpdateSeriesParams,
   UserStatusUpdate
@@ -1210,7 +1211,195 @@ export const useConvertLead = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getConvertLeadMutationOptions(options), queryClient);
     }
-    export const getListLessonsUrl = (params: ListLessonsParams,) => {
+    export const getScheduleTrialUrl = (leadId: string,) => {
+
+
+
+
+  return `/api/admin/leads/${leadId}/trial`
+}
+
+/**
+ * @summary Schedule Trial
+ */
+export const scheduleTrial = async (leadId: string,
+    trialCreate: TrialCreate, options?: Parameters<typeof apiFetch>[1]): Promise<LessonSaved> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<LessonSaved>(getScheduleTrialUrl(leadId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(trialCreate)
+  }
+);}
+
+
+
+
+
+export const getScheduleTrialMutationKey = () => ['scheduleTrial'] as const;
+
+export const getScheduleTrialMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scheduleTrial>>, TError,ScheduleTrialMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof scheduleTrial>>, TError,ScheduleTrialMutationVariables, TContext> => {
+
+const mutationKey = getScheduleTrialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scheduleTrial>>, ScheduleTrialMutationVariables> = (props) => {
+          const {leadId,data} = props ?? {};
+
+          return  scheduleTrial(leadId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScheduleTrialMutationResult = NonNullable<Awaited<ReturnType<typeof scheduleTrial>>>
+    export type ScheduleTrialMutationBody = BodyType<TrialCreate>
+    export type ScheduleTrialMutationError = ErrorType<ErrorResponse>
+    export type ScheduleTrialMutationVariables = {leadId: string;data: BodyType<TrialCreate>}
+
+    /**
+ * @summary Schedule Trial
+ */
+export const useScheduleTrial = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scheduleTrial>>, TError,ScheduleTrialMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scheduleTrial>>,
+        TError,
+        ScheduleTrialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getScheduleTrialMutationOptions(options), queryClient);
+    }
+    export const getListTrialLessonsUrl = (leadId: string,) => {
+
+
+
+
+  return `/api/admin/leads/${leadId}/trial-lessons`
+}
+
+/**
+ * @summary List Trial Lessons
+ */
+export const listTrialLessons = async (leadId: string, options?: Parameters<typeof apiFetch>[1]): Promise<AdminLessonItem[]> => {
+
+  return apiFetch<AdminLessonItem[]>(getListTrialLessonsUrl(leadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTrialLessonsQueryKey = (leadId: string,) => {
+    return [
+    `/api/admin/leads/${leadId}/trial-lessons`
+    ] as const;
+    }
+
+
+export const getListTrialLessonsQueryOptions = <TData = Awaited<ReturnType<typeof listTrialLessons>>, TError = ErrorType<ErrorResponse>>(leadId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrialLessons>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTrialLessonsQueryKey(leadId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTrialLessons>>> = ({ signal }) => listTrialLessons(leadId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: leadId !== null && leadId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTrialLessons>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListTrialLessonsQueryResult = NonNullable<Awaited<ReturnType<typeof listTrialLessons>>>
+export type ListTrialLessonsQueryError = ErrorType<ErrorResponse>
+
+
+export function useListTrialLessons<TData = Awaited<ReturnType<typeof listTrialLessons>>, TError = ErrorType<ErrorResponse>>(
+ leadId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrialLessons>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTrialLessons>>,
+          TError,
+          Awaited<ReturnType<typeof listTrialLessons>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTrialLessons<TData = Awaited<ReturnType<typeof listTrialLessons>>, TError = ErrorType<ErrorResponse>>(
+ leadId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrialLessons>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTrialLessons>>,
+          TError,
+          Awaited<ReturnType<typeof listTrialLessons>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTrialLessons<TData = Awaited<ReturnType<typeof listTrialLessons>>, TError = ErrorType<ErrorResponse>>(
+ leadId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrialLessons>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Trial Lessons
+ */
+
+export function useListTrialLessons<TData = Awaited<ReturnType<typeof listTrialLessons>>, TError = ErrorType<ErrorResponse>>(
+ leadId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrialLessons>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListTrialLessonsQueryOptions(leadId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getListLessonsUrl = (params: ListLessonsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {

@@ -23,6 +23,7 @@ from app.lessons.schemas import (
     SeriesDetail,
     SeriesSaved,
     SeriesUpdate,
+    TrialCreate,
     TutorSettingsUpdate,
 )
 
@@ -129,3 +130,17 @@ async def archive_series(
 ) -> Response:
     await series_service.archive_series(session, series_id, now=now)
     return Response(status_code=204)
+
+
+@router.post("/leads/{lead_id}/trial", status_code=201)
+async def schedule_trial(
+    lead_id: uuid.UUID, body: TrialCreate, _: TutorUser, session: DbSession, now: Now
+) -> LessonSaved:
+    return await lessons_service.schedule_trial(session, lead_id, body, now=now)
+
+
+@router.get("/leads/{lead_id}/trial-lessons")
+async def list_trial_lessons(
+    lead_id: uuid.UUID, _: TutorUser, session: DbSession
+) -> list[AdminLessonItem]:
+    return await lessons_service.list_trial_lessons(session, lead_id)

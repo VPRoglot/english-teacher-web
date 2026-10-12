@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.families import service as families_service
 from app.families.models import Child, Family
+from app.leads import service as leads_service
 from app.leads.models import Lead
 from app.lessons.errors import (
     LessonNotDeletable,
@@ -30,6 +31,7 @@ from app.lessons.schemas import (
     LessonStudent,
     LessonUpdate,
     OverlapWarning,
+    TrialCreate,
 )
 from app.lessons.tutor_settings import get_timezone
 
@@ -101,25 +103,30 @@ def _joined(*columns: Any) -> Select[Any]:
     )
 
 
-async def list_admin_lessons(
-    session: AsyncSession, *, start: datetime, end: datetime, child_id: uuid.UUID | None
-) -> list[AdminLessonItem]:
-    """Занятия с `starts_at ∈ [start, end)` по возрастанию времени."""
+def _items_stmt() -> Select[Any]:
+    """Выборка карточек занятий по возрастанию времени; условия добавляет вызывающий."""
     has_notes = exists().where(
         LessonNote.lesson_id == Lesson.id,
         or_(LessonNote.shared_text != "", LessonNote.private_text != ""),
     )
-    stmt = (
-        _joined(has_notes)
-        .where(Lesson.starts_at >= start, Lesson.starts_at < end)
-        .order_by(Lesson.starts_at, Lesson.id)
-    )
-    if child_id is not None:
-        stmt = stmt.where(Lesson.child_id == child_id)
+    return _joined(has_notes).order_by(Lesson.starts_at, Lesson.id)
+
+
+async def _run_items(session: AsyncSession, stmt: Select[Any]) -> list[AdminLessonItem]:
     return [
         AdminLessonItem(**_item_data(lesson, child, family, lead, has_notes=noted))
         for lesson, child, family, lead, noted in await session.execute(stmt)
     ]
+
+
+async def list_admin_lessons(
+    session: AsyncSession, *, start: datetime, end: datetime, child_id: uuid.UUID | None
+) -> list[AdminLessonItem]:
+    """Занятия с `starts_at ∈ [start, end)` по возрастанию времени."""
+    stmt = _items_stmt().where(Lesson.starts_at >= start, Lesson.starts_at < end)
+    if child_id is not None:
+        stmt = stmt.where(Lesson.child_id == child_id)
+    return await _run_items(session, stmt)
 
 
 async def get_admin_lesson(session: AsyncSession, lesson_id: uuid.UUID) -> AdminLessonDetail:
@@ -169,6 +176,45 @@ async def create_lesson(session: AsyncSession, data: LessonCreate, *, now: datet
     session.add(lesson)
     await session.flush()
     return await _saved(session, lesson.id, warnings)
+
+
+async def schedule_trial(
+    session: AsyncSession, lead_id: uuid.UUID, data: TrialCreate, *, now: datetime
+) -> LessonSaved:
+    """Пробное занятие заявки (уточнение 11): заявка уходит в `trial_scheduled`.
+
+    Статус меняется первым: он блокирует заявку и отсекает повторный запрос (409) до создания
+    занятия. Время может быть любым, в том числе прошедшим, поэтому `now` не используется
+    (параметр — для единообразия с остальными операциями). Пересечения — только предупреждения.
+    """
+    tz = await get_timezone(session)
+    local = data.starts_at.astimezone(tz)
+    lead = await leads_service.schedule_trial_status(
+        session, lead_id, comment=f"Пробное занятие {local:%d.%m.%Y %H:%M}"
+    )
+    warnings = await find_overlaps(
+        session, starts_at=data.starts_at, duration_min=data.duration_min, tz=tz
+    )
+    lesson = Lesson(
+        lead_id=lead.id,
+        child_id=None,
+        kind=LessonKind.TRIAL,
+        starts_at=data.starts_at,
+        duration_min=data.duration_min,
+        meeting_url=str(data.meeting_url) if data.meeting_url else None,
+    )
+    session.add(lesson)
+    await session.flush()
+    return await _saved(session, lesson.id, warnings)
+
+
+async def list_trial_lessons(session: AsyncSession, lead_id: uuid.UUID) -> list[AdminLessonItem]:
+    """Все пробные занятия заявки по возрастанию времени; нет заявки — `LeadNotFound`."""
+    known = exists().where(Lead.id == lead_id, Lead.anonymized_at.is_(None))
+    if not await session.scalar(select(known)):
+        raise leads_service.LeadNotFound
+    stmt = _items_stmt().where(Lesson.lead_id == lead_id, Lesson.kind == LessonKind.TRIAL)
+    return await _run_items(session, stmt)
 
 
 async def _lock_lesson(session: AsyncSession, lesson_id: uuid.UUID) -> Lesson:

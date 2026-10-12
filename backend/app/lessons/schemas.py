@@ -106,6 +106,16 @@ class LessonCreate(BaseModel):
     meeting_url: MeetingUrl | None = None
 
 
+class TrialCreate(BaseModel):
+    """Пробное занятие заявки: длительность по умолчанию 30 минут."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    starts_at: AwareDatetime
+    duration_min: DurationMin = 30
+    meeting_url: MeetingUrl | None = None
+
+
 class LessonUpdate(BaseModel):
     """Частичная правка: `meeting_url: null` очищает ссылку, остальные поля не принимают null."""
 

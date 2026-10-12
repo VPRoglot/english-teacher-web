@@ -8,6 +8,7 @@ let pathname = "/cabinet";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
   usePathname: () => pathname,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 import { CabinetShell } from "./cabinet-shell";
@@ -19,21 +20,23 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const me = (role: "tutor" | "parent" | "child") => ({
+type Kid = { id: string; full_name: string };
+
+const me = (role: "tutor" | "parent" | "child", children: Kid[]) => ({
   id: "u1",
   role,
   display_name: "Мария",
   email: null,
   username: null,
   family: null,
-  children: [],
+  children,
 });
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function renderShell(role: "tutor" | "parent" | "child") {
+function renderShell(role: "tutor" | "parent" | "child", children: Kid[] = []) {
   fetchMock = vi.fn(async (url: string) => {
-    if (url === "/api/auth/me") return jsonResponse(200, me(role));
+    if (url === "/api/auth/me") return jsonResponse(200, me(role, children));
     throw new Error(`unexpected fetch ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -102,6 +105,20 @@ test("репетитора перенаправляет в админку, со�
   renderShell("tutor");
   await waitFor(() => expect(replace).toHaveBeenCalledWith("/admin"));
   expect(screen.queryByText("содержимое")).not.toBeInTheDocument();
+});
+
+test("в шапке родителя с несколькими детьми есть переключатель ребёнка", async () => {
+  renderShell("parent", [
+    { id: "c1", full_name: "Петя" },
+    { id: "c2", full_name: "Маша" },
+  ]);
+  expect(await screen.findByRole("combobox", { name: "Ребёнок" })).toBeInTheDocument();
+});
+
+test("у родителя с одним ребёнком переключателя нет", async () => {
+  renderShell("parent", [{ id: "c1", full_name: "Петя" }]);
+  await screen.findByRole("link", { name: "Дети" });
+  expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
 });
 
 // Само поведение выхода (полная перезагрузка на /login) — в components/logout-button.test.tsx.

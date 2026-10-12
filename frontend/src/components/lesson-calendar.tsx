@@ -41,6 +41,8 @@ export type LessonCalendarProps = {
   onRangeChange: (start: Date, end: Date) => void;
   onEventClick: (id: string) => void;
   onSlotClick?: (date: Date) => void;
+  /** Текст списочных видов для диапазона без событий (вместо стандартного «Нет событий…»). */
+  emptyText?: string;
 };
 
 /** Обёртка FullCalendar: русская локаль, пояс репетитора, вид по ширине экрана. Без перетаскивания. */
@@ -51,6 +53,7 @@ export function LessonCalendar({
   onRangeChange,
   onEventClick,
   onSlotClick,
+  emptyText,
 }: LessonCalendarProps) {
   const calendar = useRef<FullCalendar>(null);
   const mobile = useIsMobile();
@@ -82,6 +85,7 @@ export function LessonCalendar({
         allDaySlot={false}
         scrollTime="08:00:00"
         events={events}
+        noEventsContent={emptyText}
         datesSet={({ start, end }) => onRangeChange(start, end)}
         eventClick={({ event, jsEvent }) => {
           jsEvent.preventDefault();

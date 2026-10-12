@@ -7,6 +7,8 @@ import { useGetMe } from "@/api/generated/endpoints/auth/auth";
 import { AppHeader, type NavItem } from "@/components/app-header";
 import { errorMessage } from "@/lib/form-errors";
 
+import { ChildSwitcher } from "./child-switcher";
+
 function Skeleton() {
   return (
     <div role="status" aria-label="Загрузка" className="flex flex-1 flex-col">
@@ -46,7 +48,7 @@ export function CabinetShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <AppHeader title="Кабинет" nav={nav} me={me.data} />
+      <AppHeader title="Кабинет" nav={nav} me={me.data} actions={<ChildSwitcher />} />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-6">{children}</main>
     </div>
   );

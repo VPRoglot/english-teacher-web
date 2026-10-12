@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
 import type { MeResponse } from "@/api/generated/model";
 import { LogoutButton } from "@/components/logout-button";
@@ -16,7 +17,18 @@ function activeHref(pathname: string, nav: readonly NavItem[]): string | null {
   return matches[0]?.href ?? null;
 }
 
-export function AppHeader({ title, nav, me }: { title: string; nav: NavItem[]; me: MeResponse }) {
+export function AppHeader({
+  title,
+  nav,
+  me,
+  actions,
+}: {
+  title: string;
+  nav: NavItem[];
+  me: MeResponse;
+  /** Элементы справа от навигации, перед именем пользователя (например, переключатель ребёнка). */
+  actions?: ReactNode;
+}) {
   const active = activeHref(usePathname(), nav);
   return (
     <header className="border-b">
@@ -38,6 +50,7 @@ export function AppHeader({ title, nav, me }: { title: string; nav: NavItem[]; m
           ))}
         </nav>
         <div className="flex items-center gap-3">
+          {actions}
           <span className="text-sm text-muted-foreground">{me.display_name}</span>
           <LogoutButton />
         </div>

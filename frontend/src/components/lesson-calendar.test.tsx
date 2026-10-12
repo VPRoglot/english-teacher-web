@@ -75,6 +75,12 @@ test("clicking an event reports its id", async () => {
   expect(onEventClick).toHaveBeenCalledWith("l1");
 });
 
+test("an empty list range shows the given text", async () => {
+  stubMatchMedia(true);
+  renderCalendar({ events: [], emptyText: "Занятий нет" });
+  expect(await screen.findByText("Занятий нет")).toBeInTheDocument();
+});
+
 test("renders without matchMedia", async () => {
   vi.stubGlobal("matchMedia", undefined);
   renderCalendar();

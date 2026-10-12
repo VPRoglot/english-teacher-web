@@ -90,6 +90,8 @@ function stubApi() {
     if (url === "/api/admin/series" && init?.method === "POST") {
       return jsonResponse(201, {
         lessons_created: 8,
+        lessons_updated: 0,
+        lessons_removed: 0,
         warnings: [],
         series: {
           id: "s1",
@@ -187,7 +189,7 @@ test("one-off lesson converts tutor-zone time to UTC", async () => {
     duration_min: 60,
   });
   await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Занятие создано"));
-  expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/admin/lessons"] });
+  expect(client.invalidateQueries).toHaveBeenCalledWith({ predicate: expect.any(Function) });
   expect(onOpenChange).toHaveBeenCalledWith(false);
 });
 

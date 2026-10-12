@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import {
-  getListTrialLessonsQueryKey,
   useListTrialLessons,
   useScheduleTrial,
 } from "@/api/generated/endpoints/admin/admin";
@@ -112,8 +111,7 @@ function TrialForm({
           toast.success("Пробное занятие назначено");
           toastWarnings(saved.warnings);
           void refresh();
-          void queryClient.invalidateQueries({ queryKey: getListTrialLessonsQueryKey(lead.id) });
-          invalidateSchedule(queryClient);
+          invalidateSchedule(queryClient); // в том числе список пробных занятий заявки
           onSaved();
         },
         onError: (error) => {

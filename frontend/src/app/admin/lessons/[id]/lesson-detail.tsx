@@ -127,7 +127,7 @@ function LessonNotes({ lesson }: { lesson: AdminLessonDetail }) {
       {
         onSuccess: (notes) => {
           toast.success("Заметка сохранена");
-          // Сохранённое становится новой «чистой» точкой отсчёта без повторной загрузки занятия.
+          // Сохранённое становится новой «чистой» точкой отсчёта сразу, не дожидаясь перезагрузки.
           queryClient.setQueryData<AdminLessonDetail>(getGetLessonQueryKey(lesson.id), (old) =>
             old
               ? { ...old, notes, has_notes: notes.shared_text !== "" || notes.private_text !== "" }

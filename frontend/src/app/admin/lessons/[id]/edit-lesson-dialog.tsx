@@ -98,8 +98,7 @@ function EditLessonForm({
         onSuccess: (saved) => {
           toast.success("Занятие обновлено");
           toastWarnings(saved.warnings);
-          void queryClient.invalidateQueries({ queryKey: getGetLessonQueryKey(lesson.id) });
-          invalidateSchedule(queryClient);
+          invalidateSchedule(queryClient); // и карточка занятия, и списки
           onSaved();
         },
         onError: (error) => {

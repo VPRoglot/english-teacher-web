@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { formatDate, todayInZone } from "@/lib/datetime";
 import { errorMessage } from "@/lib/form-errors";
 import { buildRule, describeSeries, parseRule } from "@/lib/lesson-format";
-import { invalidateSchedule, lessonsCount, toastWarnings } from "@/lib/lesson-mutations";
+import { invalidateSchedule, seriesEditedMessage, toastWarnings } from "@/lib/lesson-mutations";
 import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
 
 import { SeriesFormDialog, type SeriesEditValues } from "../../series-form-dialog";
@@ -113,7 +113,13 @@ export function ChildSeries({ child }: { child: ChildDetail }) {
       data,
       params: { scope: "this_and_following", from: values.from },
     });
-    toast.success(`Расписание изменено: ${lessonsCount(saved.lessons_created)}`);
+    toast.success(
+      seriesEditedMessage({
+        updated: saved.lessons_updated,
+        created: saved.lessons_created,
+        removed: saved.lessons_removed,
+      }),
+    );
     toastWarnings(saved.warnings);
     invalidateSchedule(queryClient);
   }

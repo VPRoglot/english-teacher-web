@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_TIME_ZONE } from "@/lib/datetime";
 import { applyApiErrors, errorMessage } from "@/lib/form-errors";
+import { invalidateSchedule } from "@/lib/lesson-mutations";
 
 import { BlockForm, TextField, zodOptions } from "../site/site-form";
 
@@ -41,14 +42,11 @@ function timeZoneOptions(current: string): string[] {
   return options.includes(current) ? options : [...options, current];
 }
 
-function invalidateSchedule(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateSettingsAndSchedule(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: getGetTutorSettingsAdminQueryKey() });
-  // Смена пояса пересоздаёт будущие занятия серий: списки и карточки занятий и серий устарели.
-  void queryClient.invalidateQueries({
-    predicate: ({ queryKey }) =>
-      typeof queryKey[0] === "string" &&
-      (queryKey[0].startsWith("/api/admin/lessons") || queryKey[0].startsWith("/api/admin/series")),
-  });
+  // Смена пояса сдвигает будущие занятия серий: всё расписание (списки, карточки, серии,
+  // пробные занятия заявок) устарело.
+  invalidateSchedule(queryClient);
 }
 
 function SettingsFields({ settings }: { settings: ScheduleSettings }) {
@@ -78,7 +76,7 @@ function SettingsFields({ settings }: { settings: ScheduleSettings }) {
         onSuccess: (saved) => {
           reset({ timezone: saved.timezone, cancel_policy_hours: saved.cancel_policy_hours });
           toast.success("Настройки сохранены");
-          invalidateSchedule(queryClient);
+          invalidateSettingsAndSchedule(queryClient);
         },
         onError: (error) => setFormError(applyApiErrors(error, setError, FIELDS)),
       },

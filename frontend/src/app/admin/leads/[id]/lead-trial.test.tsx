@@ -165,15 +165,18 @@ test("schedules a trial in the tutor zone and refreshes the lead", async () => {
   });
   await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Пробное занятие назначено"));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  for (const queryKey of [
-    ["/api/admin/leads/l1"],
-    getListLeadsQueryKey(),
-    [TRIALS_URL],
-    ["/api/admin/lessons"],
-    ["/api/admin/series"],
-  ]) {
+  for (const queryKey of [["/api/admin/leads/l1"], getListLeadsQueryKey()]) {
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey });
   }
+  // Списки занятий, серии и пробные занятия заявки — одним предикатом расписания.
+  const predicate = vi
+    .mocked(client.invalidateQueries)
+    .mock.calls.map(([filters]) => filters?.predicate)
+    .find((candidate) => candidate !== undefined);
+  expect(predicate).toBeDefined();
+  expect(predicate?.({ queryKey: [TRIALS_URL] } as never)).toBe(true);
+  expect(predicate?.({ queryKey: ["/api/admin/lessons", {}] } as never)).toBe(true);
+  expect(predicate?.({ queryKey: ["/api/admin/leads/l1"] } as never)).toBe(false);
 });
 
 test("sends the meeting link and a changed duration", async () => {

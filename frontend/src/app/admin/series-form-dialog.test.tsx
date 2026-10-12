@@ -27,6 +27,8 @@ function jsonResponse(status: number, body: unknown): Response {
 
 const SAVED = {
   lessons_created: 16,
+  lessons_updated: 0,
+  lessons_removed: 0,
   warnings: [] as unknown[],
   series: {
     id: "s1",
@@ -127,7 +129,7 @@ test("creates weekly series with canonical rule", async () => {
     starts_on: "2026-10-12",
   });
   await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Расписание создано: 16 занятий"));
-  expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/admin/lessons"] });
+  expect(client.invalidateQueries).toHaveBeenCalledWith({ predicate: expect.any(Function) });
   expect(onSaved).toHaveBeenCalledTimes(1);
 });
 

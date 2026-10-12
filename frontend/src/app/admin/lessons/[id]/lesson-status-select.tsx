@@ -38,8 +38,7 @@ export function LessonStatusSelect({ lesson, now }: { lesson: AdminLessonDetail;
       {
         onSuccess: () => {
           toast.success("Статус обновлён");
-          void queryClient.invalidateQueries({ queryKey: getGetLessonQueryKey(lesson.id) });
-          invalidateSchedule(queryClient);
+          invalidateSchedule(queryClient); // и карточка занятия, и списки
         },
         onError: (e) => {
           setError(errorMessage(e));

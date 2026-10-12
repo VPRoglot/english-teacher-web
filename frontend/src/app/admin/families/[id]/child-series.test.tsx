@@ -47,7 +47,13 @@ const SERIES: SeriesDetail = {
   archived_at: null,
 };
 
-const SAVED = { series: SERIES, lessons_created: 8, warnings: [] as unknown[] };
+const SAVED = {
+  series: SERIES,
+  lessons_created: 2,
+  lessons_updated: 6,
+  lessons_removed: 1,
+  warnings: [] as unknown[],
+};
 
 let seriesList: SeriesDetail[];
 let routes: Record<string, () => Response>;
@@ -207,10 +213,33 @@ test("edit sends this_and_following with the from date and changed fields only",
 
   await waitFor(() => expect(calls("PATCH", url)).toHaveLength(1));
   expect(bodyOf(calls("PATCH", url)[0])).toEqual({ local_start_time: "19:00" });
-  await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Расписание изменено: 8 занятий"));
-  expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/admin/series"] });
-  expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/admin/lessons"] });
+  await waitFor(() =>
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Расписание изменено: обновлено 6 занятий, добавлено 2, удалено 1",
+    ),
+  );
+  expect(client.invalidateQueries).toHaveBeenCalledWith({ predicate: expect.any(Function) });
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+});
+
+test("the edit toast leaves out zero counts", async () => {
+  const url = "/api/admin/series/s1?scope=this_and_following&from=2026-10-20";
+  routes[`PATCH ${url}`] = () =>
+    jsonResponse(200, { ...SAVED, lessons_created: 0, lessons_updated: 3, lessons_removed: 0 });
+  const user = userEvent.setup();
+  renderBlock();
+  const dialog = await openEdit(user);
+
+  fireEvent.change(within(dialog).getByLabelText("Время"), { target: { value: "19:00" } });
+  fireEvent.change(within(dialog).getByLabelText("Изменить начиная с"), {
+    target: { value: "2026-10-20" },
+  });
+  await user.click(within(dialog).getByRole("button", { name: "Сохранить" }));
+
+  await waitFor(() =>
+    expect(toastSuccess).toHaveBeenCalledWith("Расписание изменено: обновлено 3 занятия"),
+  );
+  expect(toastSuccess.mock.calls[0]?.[0]).not.toMatch(/\b0\b/);
 });
 
 test("edit can clear the link and the end date, and change days and interval", async () => {
@@ -421,8 +450,7 @@ test("finishing asks for confirmation and then sends DELETE", async () => {
 
   await waitFor(() => expect(calls("DELETE", "/api/admin/series/s1")).toHaveLength(1));
   await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Расписание завершено"));
-  expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/admin/series"] });
-  expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/admin/lessons"] });
+  expect(client.invalidateQueries).toHaveBeenCalledWith({ predicate: expect.any(Function) });
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 });
 

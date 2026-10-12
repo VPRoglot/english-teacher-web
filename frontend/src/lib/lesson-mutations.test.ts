@@ -4,14 +4,60 @@ import { expect, test, vi } from "vitest";
 const warning = vi.fn();
 vi.mock("sonner", () => ({ toast: { warning: (message: string) => warning(message) } }));
 
-import { invalidateSchedule, lessonsCount, toastWarnings } from "./lesson-mutations";
+import {
+  invalidateSchedule,
+  isScheduleQueryKey,
+  lessonsCount,
+  seriesEditedMessage,
+  toastWarnings,
+} from "./lesson-mutations";
 
-test("invalidates lesson and series queries by prefix", () => {
+const STALE_KEYS = [
+  ["/api/admin/lessons", { from: "2026-10-01T00:00:00Z", to: "2026-10-08T00:00:00Z" }],
+  ["/api/admin/lessons/abc"],
+  ["/api/admin/lessons/abc/notes"],
+  ["/api/admin/series", { child_id: "c1" }],
+  ["/api/admin/leads/lead-1/trial-lessons"],
+];
+const FRESH_KEYS = [
+  ["/api/admin/leads"],
+  ["/api/admin/leads/lead-1"],
+  ["/api/admin/families", { q: "x" }],
+  ["/api/admin/settings"],
+  ["/api/me/lessons", { from: "x" }],
+];
+
+test("schedule predicate matches lessons, series and trial lessons of leads only", () => {
+  expect(STALE_KEYS.map((key) => isScheduleQueryKey(key))).toEqual(STALE_KEYS.map(() => true));
+  expect(FRESH_KEYS.map((key) => isScheduleQueryKey(key))).toEqual(FRESH_KEYS.map(() => false));
+  expect(isScheduleQueryKey([{ not: "a string" }])).toBe(false);
+  expect(isScheduleQueryKey([])).toBe(false);
+});
+
+test("invalidateSchedule marks lists, details, series and lead trial lessons as stale", () => {
   const client = new QueryClient();
-  const spy = vi.spyOn(client, "invalidateQueries");
+  for (const key of [...STALE_KEYS, ...FRESH_KEYS]) client.setQueryData(key, []);
+
   invalidateSchedule(client);
-  expect(spy).toHaveBeenCalledWith({ queryKey: ["/api/admin/lessons"] });
-  expect(spy).toHaveBeenCalledWith({ queryKey: ["/api/admin/series"] });
+
+  for (const key of STALE_KEYS) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  for (const key of FRESH_KEYS) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+});
+
+test("series edit message lists only non-zero parts", () => {
+  expect(seriesEditedMessage({ created: 2, updated: 6, removed: 1 })).toBe(
+    "Расписание изменено: обновлено 6 занятий, добавлено 2, удалено 1",
+  );
+  expect(seriesEditedMessage({ created: 0, updated: 1, removed: 0 })).toBe(
+    "Расписание изменено: обновлено 1 занятие",
+  );
+  expect(seriesEditedMessage({ created: 3, updated: 0, removed: 0 })).toBe(
+    "Расписание изменено: добавлено 3 занятия",
+  );
+  expect(seriesEditedMessage({ created: 0, updated: 0, removed: 5 })).toBe(
+    "Расписание изменено: удалено 5 занятий",
+  );
+  expect(seriesEditedMessage({ created: 0, updated: 0, removed: 0 })).toBe("Расписание изменено");
 });
 
 test("each warning is a separate toast", () => {

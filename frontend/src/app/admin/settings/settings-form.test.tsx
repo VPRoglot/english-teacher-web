@@ -87,6 +87,10 @@ test("loads and saves settings", async () => {
     .filter((predicate) => predicate !== undefined);
   expect(predicates.some((p) => p({ queryKey: ["/api/admin/lessons", { from: "x" }] }))).toBe(true);
   expect(predicates.some((p) => p({ queryKey: ["/api/admin/lessons/abc"] }))).toBe(true);
+  expect(predicates.some((p) => p({ queryKey: ["/api/admin/series", { child_id: "c1" }] }))).toBe(true);
+  expect(
+    predicates.some((p) => p({ queryKey: ["/api/admin/leads/lead-1/trial-lessons"] })),
+  ).toBe(true);
   expect(predicates.some((p) => p({ queryKey: ["/api/admin/leads"] }))).toBe(false);
 });
 

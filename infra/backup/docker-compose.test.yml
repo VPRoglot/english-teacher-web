@@ -1,0 +1,68 @@
+# Окружение для infra/backup/test.sh (compose-проект backup-test).
+# Только тестовые учётные данные; наружу ничего не публикуется.
+name: backup-test
+
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    environment:
+      POSTGRES_USER: tutor
+      POSTGRES_PASSWORD: test-password
+      POSTGRES_DB: tutor
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tutor -d tutor"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+
+  # В chainguard-образе MinIO нет оболочки, healthcheck невозможен: minio-init ждёт сам.
+  minio:
+    image: cgr.dev/chainguard/minio:latest@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: test-access-key
+      MINIO_ROOT_PASSWORD: test-secret-key
+
+  minio-init:
+    image: cgr.dev/chainguard/minio-client:latest-dev@sha256:799f7e86017c3ee8d00f6372e1ee28dd73453f271d5b306a47af8e8a408a777a
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        until mc alias set local http://minio:9000 test-access-key test-secret-key; do sleep 1; done
+        mc mb --ignore-existing local/backups
+        mc mb --ignore-existing local/media
+    restart: "no"
+
+  # Заглушка heartbeat-монитора: python3 есть в образе backup (зависимость aws-cli).
+  # Каждый GET попадает в docker logs строкой access-лога.
+  heartbeat:
+    image: english-tutor-backup:test
+    pull_policy: never
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - mkdir -p /srv/ping && echo ok > /srv/ping/index.html && exec python3 -u -m http.server -d /srv 8080
+
+  backup:
+    build: .
+    image: english-tutor-backup:test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      heartbeat:
+        condition: service_started
+    environment:
+      PGHOST: postgres
+      PGUSER: tutor
+      PGPASSWORD: test-password
+      PGDATABASE: tutor
+      BACKUP_S3_BUCKET: backups
+      BACKUP_S3_ENDPOINT_URL: http://minio:9000
+      BACKUP_S3_REGION: us-east-1
+      BACKUP_S3_ACCESS_KEY: test-access-key
+      BACKUP_S3_SECRET_KEY: test-secret-key
+      S3_BUCKET: media

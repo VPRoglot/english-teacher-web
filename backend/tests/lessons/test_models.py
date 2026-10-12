@@ -141,6 +141,36 @@ async def test_series_slot_is_unique(db_session: AsyncSession) -> None:
         await make_lesson(db_session, series=series, starts_at=when)
 
 
+async def test_series_occurrence_date_is_unique_per_series(db_session: AsyncSession) -> None:
+    family = await make_family(db_session)
+    child = await make_child(db_session, family)
+    series = await make_series(db_session, child)
+    other = await make_series(db_session, child)
+    day = date(2026, 10, 20)
+    base = datetime(2026, 10, 20, 7, tzinfo=UTC)
+    await make_lesson(db_session, series=series, starts_at=base, occurrence_date=day)
+    await make_lesson(db_session, series=other, starts_at=base, occurrence_date=day)  # другая серия
+    with pytest.raises(IntegrityError):
+        # перенос на другое время не освобождает дату вхождения
+        await make_lesson(
+            db_session, series=series, starts_at=base + timedelta(hours=1), occurrence_date=day
+        )
+
+
+@pytest.mark.parametrize("with_series", [True, False])
+async def test_occurrence_date_goes_with_series(
+    db_session: AsyncSession, with_series: bool
+) -> None:
+    family = await make_family(db_session)
+    child = await make_child(db_session, family)
+    series = await make_series(db_session, child) if with_series else None
+    overrides: dict[str, Any] = (
+        {"occurrence_date": None} if with_series else {"occurrence_date": date(2026, 10, 20)}
+    )
+    with pytest.raises(IntegrityError):
+        await make_lesson(db_session, child=child, series=series, **overrides)
+
+
 async def test_standalone_lessons_may_share_a_time(db_session: AsyncSession) -> None:
     family = await make_family(db_session)
     child = await make_child(db_session, family)

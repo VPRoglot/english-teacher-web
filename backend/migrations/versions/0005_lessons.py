@@ -102,6 +102,7 @@ def upgrade() -> None:
         sa.Column("lead_id", sa.Uuid(), nullable=True),
         sa.Column("kind", lesson_kind, nullable=False),
         sa.Column("starts_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("occurrence_date", sa.Date(), nullable=True),
         sa.Column("duration_min", sa.Integer(), nullable=False),
         sa.Column("meeting_url", sa.String(length=500), nullable=True),
         sa.Column("is_detached", sa.Boolean(), server_default=sa.false(), nullable=False),
@@ -118,6 +119,10 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint(
             "duration_min BETWEEN 15 AND 240", name=op.f("ck_lessons_duration_range")
+        ),
+        sa.CheckConstraint(
+            "(series_id IS NULL) = (occurrence_date IS NULL)",
+            name=op.f("ck_lessons_series_occurrence"),
         ),
         sa.ForeignKeyConstraint(
             ["series_id"],
@@ -139,6 +144,9 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_lessons")),
         sa.UniqueConstraint("series_id", "starts_at", name=op.f("uq_lessons_series_id_starts_at")),
+        sa.UniqueConstraint(
+            "series_id", "occurrence_date", name=op.f("uq_lessons_series_id_occurrence_date")
+        ),
     )
     op.create_index(op.f("ix_lessons_child_id"), "lessons", ["child_id"], unique=False)
     op.create_index(op.f("ix_lessons_lead_id"), "lessons", ["lead_id"], unique=False)

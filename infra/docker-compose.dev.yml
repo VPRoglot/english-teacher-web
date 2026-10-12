@@ -80,9 +80,6 @@ services:
 
   # Hot reload у scheduler нет: после правки задач или расписания — `just restart scheduler`.
   scheduler:
-    depends_on:
-      minio-init:
-        condition: service_completed_successfully
     volumes:
       - ../backend/app:/app/app
 

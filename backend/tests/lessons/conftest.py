@@ -79,6 +79,9 @@ async def make_lesson(
         "duration_min": 60,
     }
     values.update(overrides)
+    if values["series_id"] is not None:
+        # Занятие серии помнит дату вхождения; по умолчанию — дата его начала (UTC).
+        values.setdefault("occurrence_date", values["starts_at"].date())
     lesson = Lesson(**values)
     session.add(lesson)
     await session.flush()

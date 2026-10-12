@@ -78,7 +78,13 @@ class Lesson(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint("(kind = 'trial') = (lead_id IS NOT NULL)", name="trial_has_lead"),
         CheckConstraint("series_id IS NULL OR child_id IS NOT NULL", name="series_has_child"),
         CheckConstraint("duration_min BETWEEN 15 AND 240", name="duration_range"),
+        CheckConstraint(
+            "(series_id IS NULL) = (occurrence_date IS NULL)", name="series_occurrence"
+        ),
         UniqueConstraint("series_id", "starts_at", name="uq_lessons_series_id_starts_at"),
+        UniqueConstraint(
+            "series_id", "occurrence_date", name="uq_lessons_series_id_occurrence_date"
+        ),
     )
 
     series_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -94,6 +100,8 @@ class Lesson(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Enum(LessonKind, name="lesson_kind", values_callable=_values)
     )
     starts_at: Mapped[datetime] = mapped_column(index=True)
+    # Местная дата вхождения правила (пояс на момент генерации); при переносе не меняется.
+    occurrence_date: Mapped[date | None]
     duration_min: Mapped[int]
     meeting_url: Mapped[str | None] = mapped_column(String(500))
     is_detached: Mapped[bool] = mapped_column(default=False, server_default=false())

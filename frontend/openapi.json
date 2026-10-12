@@ -126,6 +126,10 @@
             "title": "Has Notes",
             "type": "boolean"
           },
+          "has_requests": {
+            "title": "Has Requests",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -200,7 +204,8 @@
           "student",
           "has_notes",
           "notes",
-          "created_at"
+          "created_at",
+          "has_requests"
         ],
         "title": "AdminLessonDetail",
         "type": "object"
@@ -2011,6 +2016,10 @@
             "title": "Has Notes",
             "type": "boolean"
           },
+          "has_requests": {
+            "title": "Has Requests",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2093,6 +2102,7 @@
           "has_notes",
           "notes",
           "created_at",
+          "has_requests",
           "warnings"
         ],
         "title": "LessonSaved",

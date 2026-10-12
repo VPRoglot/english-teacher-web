@@ -91,6 +91,8 @@ class LessonNotes(BaseModel):
 class AdminLessonDetail(AdminLessonItem):
     notes: LessonNotes
     created_at: datetime
+    # Есть запрос на перенос или отмену (в любом статусе): такое занятие не удаляется.
+    has_requests: bool
 
 
 class LessonSaved(AdminLessonDetail):

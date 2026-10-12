@@ -13,6 +13,7 @@ export interface AdminLessonDetail {
   created_at: string;
   duration_min: number;
   has_notes: boolean;
+  has_requests: boolean;
   id: string;
   is_detached: boolean;
   join_url: string | null;

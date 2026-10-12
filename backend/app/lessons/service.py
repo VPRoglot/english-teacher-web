@@ -22,6 +22,7 @@ from app.lessons.errors import (
 )
 from app.lessons.models import Lesson, LessonKind, LessonNote, LessonStatus
 from app.lessons.overlaps import BUSY_STATUSES, find_overlaps
+from app.lessons.requests_service import lesson_ids_with_requests
 from app.lessons.schemas import (
     AdminLessonDetail,
     AdminLessonItem,
@@ -149,6 +150,7 @@ async def get_admin_lesson(session: AsyncSession, lesson_id: uuid.UUID) -> Admin
         ),
         notes=notes,
         created_at=lesson.created_at,
+        has_requests=bool(await lesson_ids_with_requests(session, [lesson.id])),
     )
 
 
@@ -290,6 +292,8 @@ async def delete_lesson(session: AsyncSession, lesson_id: uuid.UUID, *, now: dat
     """Удаляет только будущее занятие в статусе `scheduled`; заметки уходят каскадом БД."""
     lesson = await _lock_lesson(session, lesson_id)
     if lesson.status is not LessonStatus.SCHEDULED or lesson.starts_at <= now:
+        raise LessonNotDeletable
+    if await lesson_ids_with_requests(session, [lesson.id]):
         raise LessonNotDeletable
     await session.delete(lesson)
     await session.flush()

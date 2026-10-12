@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     Enum,
     ForeignKey,
+    Index,
     String,
     Text,
     UniqueConstraint,
@@ -28,6 +29,18 @@ class LessonStatus(StrEnum):
     CANCELLED = "cancelled"
     CANCELLED_LATE = "cancelled_late"
     NO_SHOW = "no_show"
+
+
+class ChangeRequestType(StrEnum):
+    RESCHEDULE = "reschedule"
+    CANCEL = "cancel"
+
+
+class ChangeRequestStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"
 
 
 def _values(enum_class: type[StrEnum]) -> list[str]:
@@ -122,3 +135,41 @@ class LessonNote(TimestampMixin, Base):
     )
     shared_text: Mapped[str] = mapped_column(Text, server_default="")
     private_text: Mapped[str] = mapped_column(Text, server_default="")
+
+
+class ChangeRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Запрос семьи на перенос или отмену занятия; у занятия не больше одного ждущего."""
+
+    __tablename__ = "change_requests"
+    __table_args__ = (
+        Index(
+            "uq_change_requests_lesson_pending",
+            "lesson_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        CheckConstraint("(status = 'pending') = (resolved_at IS NULL)", name="resolved_consistent"),
+        CheckConstraint(
+            "status <> 'rejected' OR tutor_response IS NOT NULL", name="rejection_has_response"
+        ),
+    )
+
+    # RESTRICT: занятие с запросом не удаляется (в том числе каскадом от серии, ребёнка, заявки).
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("lessons.id", ondelete="RESTRICT"), index=True
+    )
+    requested_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    type: Mapped[ChangeRequestType] = mapped_column(
+        Enum(ChangeRequestType, name="change_request_type", values_callable=_values)
+    )
+    proposed_text: Mapped[str | None] = mapped_column(String(500))
+    comment: Mapped[str | None] = mapped_column(String(1000))
+    status: Mapped[ChangeRequestStatus] = mapped_column(
+        Enum(ChangeRequestStatus, name="change_request_status", values_callable=_values),
+        default=ChangeRequestStatus.PENDING,
+        server_default=text("'pending'"),
+    )
+    tutor_response: Mapped[str | None] = mapped_column(String(1000))
+    resolved_at: Mapped[datetime | None]
+    # Когда репетитору ушло уведомление в Telegram (идемпотентность задачи).
+    notified_at: Mapped[datetime | None]

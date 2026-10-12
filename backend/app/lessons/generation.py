@@ -22,6 +22,7 @@ from app.core.db import new_uuid7
 from app.families.models import Child, Family
 from app.lessons.models import Lesson, LessonKind, LessonSeries, LessonStatus
 from app.lessons.recurrence import occurrences
+from app.lessons.requests_service import lesson_ids_with_requests
 
 log = structlog.get_logger("app.lessons")
 
@@ -280,9 +281,18 @@ async def reconcile_series(
         if lesson.occurrence_date is not None
     }
 
+    # Занятие с запросом (в любом статусе) сохраняемое, как отсоединённое: не правится, не
+    # удаляется, а его дата занята. Множество берётся одним запросом после блокировки строк.
+    with_requests = await lesson_ids_with_requests(session, [item.id for item in existing.values()])
+    replaceable = {
+        day
+        for day, lesson in existing.items()
+        if lesson.id not in with_requests and _is_replaceable(lesson, now)
+    }
+
     removed = 0
     for day, lesson in existing.items():
-        if day not in wanted and _is_replaceable(lesson, now):
+        if day not in wanted and day in replaceable:
             await session.delete(lesson)
             removed += 1
     await session.flush()
@@ -294,9 +304,7 @@ async def reconcile_series(
         if current is None:
             if moment >= now and day not in previous_days:
                 to_insert.append((day, moment))
-        elif _is_replaceable(current, now) and await _apply_series_to_lesson(
-            session, current, series, moment
-        ):
+        elif day in replaceable and await _apply_series_to_lesson(session, current, series, moment):
             updated.append(current)
     created = await _insert_lessons(session, series, to_insert)
 

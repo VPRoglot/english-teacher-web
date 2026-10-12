@@ -42,6 +42,7 @@ function makeLesson(overrides: Partial<AdminLessonDetail> = {}): AdminLessonDeta
     created_at: "2026-10-01T10:00:00Z",
     duration_min: 60,
     has_notes: false,
+    has_requests: false,
     is_detached: false,
     join_url: "https://meet.example.com/petya",
     kind: "regular",

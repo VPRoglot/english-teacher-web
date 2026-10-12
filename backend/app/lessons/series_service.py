@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.families import service as families_service
@@ -18,7 +18,7 @@ from app.lessons.generation import (
     reconcile_series,
     series_shape,
 )
-from app.lessons.models import Lesson, LessonSeries, LessonStatus
+from app.lessons.models import ChangeRequest, Lesson, LessonSeries, LessonStatus
 from app.lessons.overlaps import MAX_WARNINGS, find_overlaps
 from app.lessons.schemas import (
     OverlapWarning,
@@ -242,7 +242,10 @@ async def update_series(
 
 
 async def archive_series(session: AsyncSession, series_id: uuid.UUID, *, now: datetime) -> None:
-    """Завершает серию: будущие запланированные неотсоединённые занятия удаляются."""
+    """Завершает серию: будущие запланированные неотсоединённые занятия удаляются.
+
+    Занятия, у которых есть запрос (в любом статусе), остаются.
+    """
     series = await lock_series(session, series_id)
     if series is None:
         raise SeriesNotFound
@@ -255,6 +258,7 @@ async def archive_series(session: AsyncSession, series_id: uuid.UUID, *, now: da
             Lesson.status == LessonStatus.SCHEDULED,
             Lesson.is_detached.is_(False),
             Lesson.starts_at > now,
+            ~exists().where(ChangeRequest.lesson_id == Lesson.id),
         )
     )
     await session.flush()

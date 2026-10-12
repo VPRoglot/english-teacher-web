@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
@@ -8,9 +9,16 @@ from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 from taskiq import Context, InMemoryBroker, TaskiqMessage, TaskiqState
 
+from app.auth.models import User, UserRole
 from app.families.models import Child
 from app.leads.models import Lead
-from app.lessons.models import Lesson, LessonKind, LessonSeries
+from app.lessons.models import (
+    ChangeRequest,
+    ChangeRequestType,
+    Lesson,
+    LessonKind,
+    LessonSeries,
+)
 from tests.factories import login, make_child, make_family, make_parent, make_tutor
 
 
@@ -87,6 +95,34 @@ async def make_lesson(
     session.add(lesson)
     await session.flush()
     return lesson
+
+
+async def make_change_request(
+    session: AsyncSession, lesson: Lesson, *, requested_by: User | None = None, **overrides: Any
+) -> ChangeRequest:
+    """Запрос на занятие; автор — родитель (создаётся с уникальной почтой, если не задан).
+
+    По умолчанию `pending` без `resolved_at`; для других статусов `resolved_at` и (для
+    `rejected`) `tutor_response` нужно передать через `overrides`.
+    """
+    if requested_by is None:
+        requested_by = User(
+            role=UserRole.PARENT,
+            email=f"requester-{uuid.uuid4().hex[:8]}@example.com",
+            password_hash="x",
+        )
+        session.add(requested_by)
+        await session.flush()
+    values: dict[str, Any] = {
+        "lesson_id": lesson.id,
+        "requested_by": requested_by.id,
+        "type": ChangeRequestType.CANCEL,
+    }
+    values.update(overrides)
+    request = ChangeRequest(**values)
+    session.add(request)
+    await session.flush()
+    return request
 
 
 @pytest.fixture

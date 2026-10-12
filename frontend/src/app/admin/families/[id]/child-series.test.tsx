@@ -12,6 +12,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
+import { getListSeriesQueryKey } from "@/api/generated/endpoints/admin/admin";
 import type { ChildDetail, SeriesDetail } from "@/api/generated/model";
 
 import { ChildSeries } from "./child-series";
@@ -93,6 +94,9 @@ async function openEdit(user: ReturnType<typeof userEvent.setup>) {
 }
 
 beforeEach(() => {
+  // Фильтр списка зависит от сегодняшней даты: замораживаем только `Date`, таймеры настоящие.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-12T09:00:00Z"));
   toastSuccess.mockReset();
   toastWarning.mockReset();
   seriesList = [SERIES];
@@ -104,6 +108,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.cookie = "csrf_token=; max-age=0";
 });
@@ -371,19 +376,31 @@ test("the edit submit is disabled while the request is in flight", async () => {
   expect(calls("PATCH", url)).toHaveLength(1);
 });
 
-test("the edit submit stays disabled until the tutor time zone is loaded", async () => {
-  settingsResponse = () =>
-    jsonResponse(500, { error: { code: "boom", message: "Сбой", details: {} } });
-  const user = userEvent.setup();
+test("the list waits for the tutor time zone and does not filter by the fallback zone", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // Ends "today" in the real zone (Pago Pago, UTC-11), already yesterday in the fallback Moscow.
+  seriesList = [{ ...SERIES, id: "edge", ends_on: "2026-10-11" }, { ...SERIES, id: "open" }];
+  fetchMock.mockImplementation(async (url: string) => {
+    if (url === "/api/admin/series?child_id=c1") return jsonResponse(200, seriesList);
+    if (url === "/api/admin/settings") {
+      await gate;
+      return jsonResponse(200, { timezone: "Pacific/Pago_Pago", cancel_policy_hours: 24 });
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  });
   renderBlock();
 
-  await user.click(await screen.findByRole("button", { name: "Изменить расписание" }));
-  const dialog = await screen.findByRole("dialog");
-  expect(within(dialog).getByRole("button", { name: "Сохранить" })).toBeDisabled();
+  expect(await screen.findByText("Загружаем расписание…")).toBeInTheDocument();
   await waitFor(() =>
-    expect(fetchMock.mock.calls.some(([u]) => u === "/api/admin/settings")).toBe(true),
+    expect(client.getQueryData(getListSeriesQueryKey({ child_id: "c1" }))).toBeDefined(),
   );
-  expect(within(dialog).getByRole("button", { name: "Сохранить" })).toBeDisabled();
+  expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
+  release();
+
+  expect(await screen.findAllByRole("listitem")).toHaveLength(2);
 });
 
 test("finishing asks for confirmation and then sends DELETE", async () => {

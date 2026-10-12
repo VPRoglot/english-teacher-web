@@ -16,7 +16,7 @@ import { formatDate, todayInZone } from "@/lib/datetime";
 import { errorMessage } from "@/lib/form-errors";
 import { buildRule, describeSeries, parseRule } from "@/lib/lesson-format";
 import { invalidateSchedule, lessonsCount, toastWarnings } from "@/lib/lesson-mutations";
-import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
+import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
 
 import { SeriesFormDialog, type SeriesEditValues } from "../../series-form-dialog";
 
@@ -96,6 +96,9 @@ export function ChildSeries({ child }: { child: ChildDetail }) {
   const [editing, setEditing] = useState<SeriesDetail | null>(null);
   const [archiving, setArchiving] = useState<SeriesDetail | null>(null);
 
+  const ready = useTutorTimeZoneReady("admin");
+
+  // «Сегодня» зависит от пояса: пока он запасной, список не показываем и не фильтруем.
   const today = todayInZone(timeZone);
   // Серия, у которой окончание уже прошло, больше ничего не создаёт: в списке она не нужна.
   const active = (list.data ?? []).filter(
@@ -127,10 +130,10 @@ export function ChildSeries({ child }: { child: ChildDetail }) {
         <h3 className="text-sm font-semibold">Расписание</h3>
         <SeriesFormDialog mode="create" childId={child.id} />
       </div>
-      {list.isPending ? (
-        <p className="text-sm text-muted-foreground">Загружаем расписание…</p>
-      ) : list.error ? (
+      {list.error ? (
         <p className="text-sm text-destructive">{errorMessage(list.error)}</p>
+      ) : list.isPending || !ready ? (
+        <p className="text-sm text-muted-foreground">Загружаем расписание…</p>
       ) : active.length === 0 ? (
         <p className="text-sm text-muted-foreground">Регулярных занятий нет</p>
       ) : (

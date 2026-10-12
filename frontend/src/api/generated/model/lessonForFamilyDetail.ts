@@ -4,9 +4,11 @@
  * English Tutor API
  * OpenAPI spec version: 0.1.0
  */
+import type { ChangeRequestForFamily } from './changeRequestForFamily';
 import type { LessonStatus } from './lessonStatus';
 
 export interface LessonForFamilyDetail {
+  change_request?: ChangeRequestForFamily | null;
   child_id: string;
   child_name: string;
   duration_min: number;

@@ -16,7 +16,7 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from app.families.schemas import MeetingUrl
-from app.lessons.models import LessonKind, LessonStatus
+from app.lessons.models import ChangeRequestStatus, ChangeRequestType, LessonKind, LessonStatus
 from app.lessons.recurrence import InvalidRule, normalize_rule
 
 TIMEZONE_ERROR = "Неизвестный часовой пояс"
@@ -244,6 +244,50 @@ class LessonForFamily(BaseModel):
     has_shared_note: bool
 
 
+PROPOSED_TEXT_ERROR = "Укажите удобное время"
+CANCEL_WITH_PROPOSED_ERROR = "Для отмены удобное время не указывается"
+
+
+class ChangeRequestCreate(BaseModel):
+    """Запрос семьи на перенос или отмену занятия."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: ChangeRequestType
+    proposed_text: Annotated[str, StringConstraints(max_length=500)] | None = Field(
+        default=None, validate_default=True
+    )
+    comment: Annotated[str, StringConstraints(max_length=1000)] | None = None
+
+    @field_validator("proposed_text", mode="after")
+    @classmethod
+    def _proposed_by_type(cls, value: str | None, info: ValidationInfo) -> str | None:
+        text = value.strip() if value is not None else ""
+        kind = info.data.get("type")
+        if kind is ChangeRequestType.RESCHEDULE and not text:
+            raise PydanticCustomError("proposed_text_required", PROPOSED_TEXT_ERROR)
+        if kind is ChangeRequestType.CANCEL and text:
+            raise PydanticCustomError("proposed_text_forbidden", CANCEL_WITH_PROPOSED_ERROR)
+        return text or None
+
+
+class ChangeRequestForFamily(BaseModel):
+    """Запрос в кабинете семьи: без автора и служебных полей."""
+
+    id: uuid.UUID
+    type: ChangeRequestType
+    status: ChangeRequestStatus
+    proposed_text: str | None
+    comment: str | None
+    tutor_response: str | None
+    created_at: datetime
+    resolved_at: datetime | None
+    # Отмена, поданная позже порога: будет засчитана как проведённое занятие.
+    is_late: bool
+
+
 class LessonForFamilyDetail(LessonForFamily):
     # Общая заметка (Markdown); `None`, если она пуста.
     shared_note: str | None
+    # Последний запрос по занятию в любом статусе.
+    change_request: ChangeRequestForFamily | None = None

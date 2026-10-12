@@ -22,7 +22,7 @@ from app.lessons.errors import (
 )
 from app.lessons.models import Lesson, LessonKind, LessonNote, LessonStatus
 from app.lessons.overlaps import BUSY_STATUSES, find_overlaps
-from app.lessons.requests_service import lesson_ids_with_requests
+from app.lessons.requests_service import family_view, latest_request, lesson_ids_with_requests
 from app.lessons.schemas import (
     AdminLessonDetail,
     AdminLessonItem,
@@ -37,7 +37,7 @@ from app.lessons.schemas import (
     OverlapWarning,
     TrialCreate,
 )
-from app.lessons.tutor_settings import get_timezone
+from app.lessons.tutor_settings import get_timezone, get_tutor_settings
 
 MAX_RANGE = timedelta(days=62)
 # Эти статусы можно выставить только начавшемуся занятию.
@@ -376,7 +376,13 @@ async def get_family_lesson(
     if row is None:
         raise LessonNotFound
     lesson, child, shared = row
+    request = await latest_request(session, lesson.id)
+    change_request = None
+    if request is not None:
+        policy = (await get_tutor_settings(session)).cancel_policy_hours
+        change_request = family_view(request, lesson, policy_hours=policy)
     return LessonForFamilyDetail(
         **_family_data(lesson, child, shared),
         shared_note=shared if shared and shared.strip() else None,
+        change_request=change_request,
     )

@@ -60,3 +60,23 @@ class ScheduleRangeInvalid(ValidationFailed):
                 ]
             }
         )
+
+
+class ChangeRequestNotFound(NotFound):
+    code = "change_request_not_found"
+    message = "Запрос не найден"
+
+
+class ChangeRequestExists(Conflict):
+    code = "change_request_exists"
+    message = "По этому занятию уже есть запрос — дождитесь ответа репетитора"
+
+
+class LessonNotRequestable(Conflict):
+    code = "lesson_not_requestable"
+    message = "Запрос можно подать только по будущему запланированному занятию"
+
+
+class ChangeRequestNotPending(Conflict):
+    code = "change_request_not_pending"
+    message = "Запрос уже рассмотрен или отозван"

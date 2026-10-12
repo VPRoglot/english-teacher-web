@@ -25,6 +25,8 @@ import type {
 
 import type {
   CabinetChild,
+  ChangeRequestCreate,
+  ChangeRequestForFamily,
   ChildAccountSet,
   ErrorResponse,
   LessonForFamily,
@@ -56,7 +58,80 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getListMyChildrenUrl = () => {
+export const getWithdrawChangeRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/me/change-requests/${requestId}`
+}
+
+/**
+ * @summary Withdraw Change Request
+ */
+export const withdrawChangeRequest = async (requestId: string, options?: Parameters<typeof apiFetch>[1]): Promise<ChangeRequestForFamily> => {
+
+  return apiFetch<ChangeRequestForFamily>(getWithdrawChangeRequestUrl(requestId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getWithdrawChangeRequestMutationKey = () => ['withdrawChangeRequest'] as const;
+
+export const getWithdrawChangeRequestMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof withdrawChangeRequest>>, TError,WithdrawChangeRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof withdrawChangeRequest>>, TError,WithdrawChangeRequestMutationVariables, TContext> => {
+
+const mutationKey = getWithdrawChangeRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof withdrawChangeRequest>>, WithdrawChangeRequestMutationVariables> = (props) => {
+          const {requestId} = props ?? {};
+
+          return  withdrawChangeRequest(requestId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WithdrawChangeRequestMutationResult = NonNullable<Awaited<ReturnType<typeof withdrawChangeRequest>>>
+
+    export type WithdrawChangeRequestMutationError = ErrorType<ErrorResponse>
+    export type WithdrawChangeRequestMutationVariables = {requestId: string}
+
+    /**
+ * @summary Withdraw Change Request
+ */
+export const useWithdrawChangeRequest = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof withdrawChangeRequest>>, TError,WithdrawChangeRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof withdrawChangeRequest>>,
+        TError,
+        WithdrawChangeRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getWithdrawChangeRequestMutationOptions(options), queryClient);
+    }
+    export const getListMyChildrenUrl = () => {
 
 
 
@@ -451,7 +526,95 @@ export function useGetMyLesson<TData = Awaited<ReturnType<typeof getMyLesson>>, 
 
 
 
-export const getGetScheduleSettingsUrl = () => {
+export const getCreateChangeRequestUrl = (lessonId: string,) => {
+
+
+
+
+  return `/api/me/lessons/${lessonId}/change-requests`
+}
+
+/**
+ * @summary Create Change Request
+ */
+export const createChangeRequest = async (lessonId: string,
+    changeRequestCreate: ChangeRequestCreate, options?: Parameters<typeof apiFetch>[1]): Promise<ChangeRequestForFamily> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<ChangeRequestForFamily>(getCreateChangeRequestUrl(lessonId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(changeRequestCreate)
+  }
+);}
+
+
+
+
+
+export const getCreateChangeRequestMutationKey = () => ['createChangeRequest'] as const;
+
+export const getCreateChangeRequestMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChangeRequest>>, TError,CreateChangeRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createChangeRequest>>, TError,CreateChangeRequestMutationVariables, TContext> => {
+
+const mutationKey = getCreateChangeRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createChangeRequest>>, CreateChangeRequestMutationVariables> = (props) => {
+          const {lessonId,data} = props ?? {};
+
+          return  createChangeRequest(lessonId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateChangeRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createChangeRequest>>>
+    export type CreateChangeRequestMutationBody = BodyType<ChangeRequestCreate>
+    export type CreateChangeRequestMutationError = ErrorType<ErrorResponse>
+    export type CreateChangeRequestMutationVariables = {lessonId: string;data: BodyType<ChangeRequestCreate>}
+
+    /**
+ * @summary Create Change Request
+ */
+export const useCreateChangeRequest = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChangeRequest>>, TError,CreateChangeRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createChangeRequest>>,
+        TError,
+        CreateChangeRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateChangeRequestMutationOptions(options), queryClient);
+    }
+    export const getGetScheduleSettingsUrl = () => {
 
 
 

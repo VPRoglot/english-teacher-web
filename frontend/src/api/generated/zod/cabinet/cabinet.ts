@@ -8,6 +8,25 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Withdraw Change Request
+ */
+export const WithdrawChangeRequestParams = zod.object({
+  "request_id": zod.uuid()
+})
+
+export const WithdrawChangeRequestResponse = zod.object({
+  "comment": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "id": zod.uuid(),
+  "is_late": zod.boolean(),
+  "proposed_text": zod.union([zod.string(),zod.null()]),
+  "resolved_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']),
+  "tutor_response": zod.union([zod.string(),zod.null()]),
+  "type": zod.enum(['reschedule', 'cancel'])
+}).describe('Запрос в кабинете семьи: без автора и служебных полей.')
+
+/**
  * @summary List My Children
  */
 export const ListMyChildrenResponseItem = zod.object({
@@ -76,6 +95,17 @@ export const GetMyLessonParams = zod.object({
 })
 
 export const GetMyLessonResponse = zod.object({
+  "change_request": zod.union([zod.object({
+  "comment": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "id": zod.uuid(),
+  "is_late": zod.boolean(),
+  "proposed_text": zod.union([zod.string(),zod.null()]),
+  "resolved_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']),
+  "tutor_response": zod.union([zod.string(),zod.null()]),
+  "type": zod.enum(['reschedule', 'cancel'])
+}).describe('Запрос в кабинете семьи: без автора и служебных полей.'),zod.null()]).optional(),
   "child_id": zod.uuid(),
   "child_name": zod.string(),
   "duration_min": zod.int(),
@@ -86,6 +116,37 @@ export const GetMyLessonResponse = zod.object({
   "starts_at": zod.iso.datetime({"offset":true}),
   "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show'])
 })
+
+/**
+ * @summary Create Change Request
+ */
+export const CreateChangeRequestParams = zod.object({
+  "lesson_id": zod.uuid()
+})
+
+export const createChangeRequestBodyCommentOneMax = 1000;
+
+export const createChangeRequestBodyProposedTextOneMax = 500;
+
+
+
+export const CreateChangeRequestBody = zod.object({
+  "comment": zod.union([zod.string().max(createChangeRequestBodyCommentOneMax),zod.null()]).optional(),
+  "proposed_text": zod.union([zod.string().max(createChangeRequestBodyProposedTextOneMax),zod.null()]).optional(),
+  "type": zod.enum(['reschedule', 'cancel'])
+}).describe('Запрос семьи на перенос или отмену занятия.')
+
+export const CreateChangeRequestResponse = zod.object({
+  "comment": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "id": zod.uuid(),
+  "is_late": zod.boolean(),
+  "proposed_text": zod.union([zod.string(),zod.null()]),
+  "resolved_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']),
+  "tutor_response": zod.union([zod.string(),zod.null()]),
+  "type": zod.enum(['reschedule', 'cancel'])
+}).describe('Запрос в кабинете семьи: без автора и служебных полей.')
 
 /**
  * @summary Get Schedule Settings

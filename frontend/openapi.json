@@ -394,6 +394,145 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "ChangeRequestCreate": {
+        "additionalProperties": false,
+        "description": "Запрос семьи на перенос или отмену занятия.",
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "proposed_text": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Text"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ChangeRequestType"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ChangeRequestCreate",
+        "type": "object"
+      },
+      "ChangeRequestForFamily": {
+        "description": "Запрос в кабинете семьи: без автора и служебных полей.",
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_late": {
+            "title": "Is Late",
+            "type": "boolean"
+          },
+          "proposed_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Text"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ChangeRequestStatus"
+          },
+          "tutor_response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tutor Response"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ChangeRequestType"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "status",
+          "proposed_text",
+          "comment",
+          "tutor_response",
+          "created_at",
+          "resolved_at",
+          "is_late"
+        ],
+        "title": "ChangeRequestForFamily",
+        "type": "object"
+      },
+      "ChangeRequestStatus": {
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "withdrawn"
+        ],
+        "title": "ChangeRequestStatus",
+        "type": "string"
+      },
+      "ChangeRequestType": {
+        "enum": [
+          "reschedule",
+          "cancel"
+        ],
+        "title": "ChangeRequestType",
+        "type": "string"
+      },
       "ChildAccount": {
         "properties": {
           "is_active": {
@@ -1887,6 +2026,16 @@
       },
       "LessonForFamilyDetail": {
         "properties": {
+          "change_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChangeRequestForFamily"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "child_id": {
             "format": "uuid",
             "title": "Child Id",
@@ -5295,6 +5444,49 @@
         ]
       }
     },
+    "/api/me/change-requests/{request_id}": {
+      "delete": {
+        "operationId": "withdraw_change_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRequestForFamily"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Withdraw Change Request",
+        "tags": [
+          "cabinet"
+        ]
+      }
+    },
     "/api/me/children": {
       "get": {
         "operationId": "list_my_children",
@@ -5495,6 +5687,59 @@
           }
         },
         "summary": "Get My Lesson",
+        "tags": [
+          "cabinet"
+        ]
+      }
+    },
+    "/api/me/lessons/{lesson_id}/change-requests": {
+      "post": {
+        "operationId": "create_change_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRequestForFamily"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Create Change Request",
         "tags": [
           "cabinet"
         ]

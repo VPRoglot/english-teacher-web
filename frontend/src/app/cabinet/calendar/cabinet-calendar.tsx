@@ -13,7 +13,8 @@ import { errorMessage } from "@/lib/form-errors";
 import { lessonEventClass } from "@/lib/lesson-format";
 import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
-import { CHILD_PARAM, useSelectedChild } from "../use-selected-child";
+import { withChild } from "../child-link";
+import { useSelectedChild } from "../use-selected-child";
 
 const VIEWS = { desktop: ["dayGridMonth", "timeGridWeek"], mobile: "listMonth" };
 const GENERIC_TITLE = "Английский";
@@ -74,8 +75,7 @@ export function CabinetCalendar() {
   );
 
   function openLesson(id: string) {
-    const query = childId ? `?${CHILD_PARAM}=${encodeURIComponent(childId)}` : "";
-    router.push(`/cabinet/lessons/${id}${query}`);
+    router.push(withChild(`/cabinet/lessons/${id}`, childId));
   }
 
   return (

@@ -10,10 +10,18 @@ import { cn } from "@/lib/utils";
 
 export type NavItem = { href: string; label: string };
 
+/** Путь ссылки без `?query`: параметры (например, выбранный ребёнок) не влияют на подсветку. */
+function pathOf(href: string): string {
+  return href.split("?")[0] ?? href;
+}
+
 /** Активна ссылка с самым длинным совпавшим префиксом: «/cabinet» не подсвечивается на «/cabinet/settings». */
 function activeHref(pathname: string, nav: readonly NavItem[]): string | null {
-  const matches = nav.filter(({ href }) => pathname === href || pathname.startsWith(`${href}/`));
-  matches.sort((a, b) => b.href.length - a.href.length);
+  const matches = nav.filter((item) => {
+    const path = pathOf(item.href);
+    return pathname === path || pathname.startsWith(`${path}/`);
+  });
+  matches.sort((a, b) => pathOf(b.href).length - pathOf(a.href).length);
   return matches[0]?.href ?? null;
 }
 

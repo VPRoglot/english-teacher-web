@@ -4,11 +4,12 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const replace = vi.fn();
 let pathname = "/cabinet";
+let search = "";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
   usePathname: () => pathname,
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(search),
 }));
 
 import { CabinetShell } from "./cabinet-shell";
@@ -54,6 +55,7 @@ function renderShell(role: "tutor" | "parent" | "child", children: Kid[] = []) {
 beforeEach(() => {
   replace.mockReset();
   pathname = "/cabinet";
+  search = "";
   document.cookie = "csrf_token=t";
 });
 
@@ -119,6 +121,45 @@ test("у родителя с одним ребёнком переключате�
   renderShell("parent", [{ id: "c1", full_name: "Петя" }]);
   await screen.findByRole("link", { name: "Дети" });
   expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+});
+
+const TWO_KIDS = [
+  { id: "c1", full_name: "Петя" },
+  { id: "c2", full_name: "Маша" },
+];
+
+test("«Главная» и «Календарь» несут выбранного ребёнка, остальные ссылки — нет", async () => {
+  search = "child=c2";
+  renderShell("parent", TWO_KIDS);
+  await screen.findByRole("link", { name: "Дети" });
+  const nav = within(screen.getByRole("navigation", { name: "Основная навигация" }));
+  expect(nav.getByRole("link", { name: "Главная" })).toHaveAttribute("href", "/cabinet?child=c2");
+  expect(nav.getByRole("link", { name: "Календарь" })).toHaveAttribute(
+    "href",
+    "/cabinet/calendar?child=c2",
+  );
+  expect(nav.getByRole("link", { name: "Дети" })).toHaveAttribute("href", "/cabinet/children");
+  expect(nav.getByRole("link", { name: "Настройки" })).toHaveAttribute("href", "/cabinet/settings");
+});
+
+test("без выбранного ребёнка (и с чужим идентификатором) ссылки без query", async () => {
+  search = "child=zzz";
+  renderShell("parent", TWO_KIDS);
+  await screen.findByRole("link", { name: "Дети" });
+  const nav = within(screen.getByRole("navigation", { name: "Основная навигация" }));
+  expect(nav.getByRole("link", { name: "Главная" })).toHaveAttribute("href", "/cabinet");
+  expect(nav.getByRole("link", { name: "Календарь" })).toHaveAttribute("href", "/cabinet/calendar");
+});
+
+test("активная вкладка определяется по пути, а не по query", async () => {
+  search = "child=c2";
+  pathname = "/cabinet/calendar";
+  renderShell("parent", TWO_KIDS);
+  expect(await screen.findByRole("link", { name: "Календарь" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  expect(screen.getByRole("link", { name: "Главная" })).not.toHaveAttribute("aria-current");
 });
 
 // Само поведение выхода (полная перезагрузка на /login) — в components/logout-button.test.tsx.

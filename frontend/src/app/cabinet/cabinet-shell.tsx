@@ -1,13 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 
 import { useGetMe } from "@/api/generated/endpoints/auth/auth";
+import type { MeResponse } from "@/api/generated/model";
 import { AppHeader, type NavItem } from "@/components/app-header";
 import { errorMessage } from "@/lib/form-errors";
 
+import { withChild } from "./child-link";
 import { ChildSwitcher } from "./child-switcher";
+import { useSelectedChild } from "./use-selected-child";
 
 function Skeleton() {
   return (
@@ -19,6 +22,22 @@ function Skeleton() {
       </div>
     </div>
   );
+}
+
+function CabinetHeader({ me, childId }: { me: MeResponse; childId: string | null }) {
+  const nav: NavItem[] = [
+    { href: withChild("/cabinet", childId), label: "Главная" },
+    { href: withChild("/cabinet/calendar", childId), label: "Календарь" },
+    ...(me.role === "parent" ? [{ href: "/cabinet/children", label: "Дети" }] : []),
+    { href: "/cabinet/settings", label: "Настройки" },
+  ];
+  return <AppHeader title="Кабинет" nav={nav} me={me} actions={<ChildSwitcher />} />;
+}
+
+/** Шапка, в которой «Главная» и «Календарь» сохраняют выбранного ребёнка (`?child=`). */
+function SelectedChildHeader({ me }: { me: MeResponse }) {
+  const { childId } = useSelectedChild();
+  return <CabinetHeader me={me} childId={childId} />;
 }
 
 export function CabinetShell({ children }: { children: ReactNode }) {
@@ -39,16 +58,12 @@ export function CabinetShell({ children }: { children: ReactNode }) {
   }
   if (!me.data || role === "tutor") return <Skeleton />;
 
-  const nav: NavItem[] = [
-    { href: "/cabinet", label: "Главная" },
-    { href: "/cabinet/calendar", label: "Календарь" },
-    ...(role === "parent" ? [{ href: "/cabinet/children", label: "Дети" }] : []),
-    { href: "/cabinet/settings", label: "Настройки" },
-  ];
-
   return (
     <div className="flex flex-1 flex-col">
-      <AppHeader title="Кабинет" nav={nav} me={me.data} actions={<ChildSwitcher />} />
+      {/* Пока `useSearchParams` ждёт клиента, шапка рисуется без выбранного ребёнка. */}
+      <Suspense fallback={<CabinetHeader me={me.data} childId={null} />}>
+        <SelectedChildHeader me={me.data} />
+      </Suspense>
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-6">{children}</main>
     </div>
   );

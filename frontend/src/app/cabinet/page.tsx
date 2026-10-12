@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { Home } from "./home";
 
@@ -9,5 +10,9 @@ export const metadata: Metadata = { title: "Главная" };
 export const instant = false;
 
 export default function CabinetPage() {
-  return <Home />;
+  return (
+    <Suspense>
+      <Home />
+    </Suspense>
+  );
 }

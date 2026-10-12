@@ -1,5 +1,5 @@
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -70,9 +70,15 @@ async def make_lead(session: AsyncSession, **overrides: Any) -> Lead:
     lead = Lead(**values)
     session.add(lead)
     await session.flush()
+    # Строка истории старше заявки на секунду: сервис ставит `changed_at` текущим временем,
+    # а часы Windows грубые (~15 мс) — без запаса строка фабрики и первая строка сервиса
+    # получали одинаковый `changed_at`, и тесты с `history[-1]` были нестабильны.
     session.add(
         LeadStatusHistory(
-            lead_id=lead.id, from_status=None, to_status=lead.status, changed_at=lead.created_at
+            lead_id=lead.id,
+            from_status=None,
+            to_status=lead.status,
+            changed_at=lead.created_at - timedelta(seconds=1),
         )
     )
     await session.flush()

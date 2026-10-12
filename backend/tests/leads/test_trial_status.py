@@ -20,14 +20,18 @@ async def test_schedule_trial_status_writes_history(db_session: AsyncSession, st
 
     assert result.id == lead.id
     assert result.status is LeadStatus.TRIAL_SCHEDULED
-    last = (
+    # Строку выбираем по to_status, а не по времени: часы Windows грубые, и строка фабрики
+    # и строка сервиса могут получить одинаковый changed_at.
+    rows = list(
         await db_session.scalars(
-            select(LeadStatusHistory)
-            .where(LeadStatusHistory.lead_id == lead.id)
-            .order_by(LeadStatusHistory.changed_at.desc())
+            select(LeadStatusHistory).where(
+                LeadStatusHistory.lead_id == lead.id,
+                LeadStatusHistory.to_status == LeadStatus.TRIAL_SCHEDULED,
+            )
         )
-    ).first()
-    assert last is not None
+    )
+    assert len(rows) == 1
+    last = rows[0]
     assert last.from_status is LeadStatus(status)
     assert last.to_status is LeadStatus.TRIAL_SCHEDULED
     assert last.comment == "Пробное занятие 20.10.2026 18:00"

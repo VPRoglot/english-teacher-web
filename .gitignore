@@ -21,6 +21,8 @@ test-results/
 .env.*
 !.env.example
 !frontend/.env.development
+# Блокировка infra/scripts/deploy.sh на сервере
+.deploy.lock
 
 # IDE / OS
 .idea/

@@ -1,0 +1,178 @@
+# Поверх docker-compose.yml на сервере: образы из реестра, nginx + certbot, контейнер backup,
+# ограничения ресурсов, json-логи с ротацией. Наружу открыты только 80 и 443 (nginx).
+#
+#   docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml …
+#
+# Образы не собираются на сервере: `build` у backend/web сброшен (`!reset`, compose ≥ 2.24.4),
+# поэтому неудачный pull — это ошибка, а не тихая локальная сборка. Деплой — infra/scripts/deploy.sh.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-backend-prod: &backend-prod
+  image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY is required}/english-tutor-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+  logging: *logging
+  restart: unless-stopped
+
+services:
+  postgres:
+    logging: *logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  redis:
+    # AOF: очередь задач и сессии переживают перезапуск контейнера.
+    command: ["redis-server", "--appendonly", "yes"]
+    logging: *logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  migrate:
+    <<: *backend-prod
+    build: !reset null
+    environment:
+      APP_ENV: prod
+      LOG_JSON: "true"
+    # Одноразовый: deploy.sh запускает `run --rm migrate` до `up`.
+    restart: "no"
+
+  api:
+    <<: *backend-prod
+    build: !reset null
+    environment:
+      APP_ENV: prod
+      LOG_JSON: "true"
+      # Порт api не опубликован, до него доходит только nginx, а nginx перезаписывает
+      # X-Forwarded-For адресом клиента — поэтому доверять любому прокси безопасно.
+      FORWARDED_ALLOW_IPS: "*"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  worker:
+    <<: *backend-prod
+    build: !reset null
+    environment:
+      APP_ENV: prod
+      LOG_JSON: "true"
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  scheduler:
+    <<: *backend-prod
+    build: !reset null
+    environment:
+      APP_ENV: prod
+      LOG_JSON: "true"
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+
+  web:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY is required}/english-tutor-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
+    build: !reset null
+    logging: *logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # Единственный сервис с опубликованными портами. Пока certbot не выпустил сертификат,
+  # nginx работает на self-signed (select-cert) и отдаёт /.well-known/acme-challenge/.
+  nginx:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY is required}/english-tutor-nginx:${IMAGE_TAG:?IMAGE_TAG is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SERVER_NAME: ${DOMAIN:?DOMAIN is required}
+      MEDIA_UPSTREAM: ${MEDIA_UPSTREAM:?MEDIA_UPSTREAM is required}
+      MEDIA_UPSTREAM_HOST: ${MEDIA_UPSTREAM_HOST:?MEDIA_UPSTREAM_HOST is required}
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    logging: *logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # Продление сертификата раз в 12 часов (certbot сам решает, пора ли). nginx подхватывает
+  # новый сертификат своим циклом select-cert (раз в 6 часов). Первый выпуск — вручную:
+  #   docker compose … run --rm --entrypoint certbot certbot certonly --webroot \
+  #     -w /var/www/certbot -d "$DOMAIN" --email "$LETSENCRYPT_EMAIL" --agree-tos --no-eff-email
+  # (переменные DOMAIN и LETSENCRYPT_EMAIL есть в окружении контейнера).
+  certbot:
+    image: certbot/certbot:v5.8.0@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        trap exit TERM
+        while :; do
+          certbot renew --webroot -w /var/www/certbot --quiet
+          sleep 12h & wait $$!
+        done
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:?LETSENCRYPT_EMAIL is required}
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    logging: *logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # Ежедневный зашифрованный pg_dump в S3 (infra/backup). Получает только нужные переменные:
+  # PG* выводятся из POSTGRES_* в .env, остальные секреты backend сюда не попадают.
+  backup:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY is required}/english-tutor-backup:${IMAGE_TAG:?IMAGE_TAG is required}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGDATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:?BACKUP_S3_BUCKET is required}
+      BACKUP_S3_ENDPOINT_URL: ${BACKUP_S3_ENDPOINT_URL:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:?BACKUP_S3_REGION is required}
+      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:?BACKUP_S3_ACCESS_KEY is required}
+      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:?BACKUP_S3_SECRET_KEY is required}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?BACKUP_AGE_RECIPIENT is required}
+      S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
+      HEARTBEAT_BACKUP_URL: ${HEARTBEAT_BACKUP_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+volumes:
+  letsencrypt:
+  certbot-webroot:

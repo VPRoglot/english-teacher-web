@@ -67,6 +67,11 @@ gen-api:
     uv --directory backend run python -m app.cli export-openapi ../frontend/openapi.json
     pnpm --dir frontend gen:api
 
+# Проверка prod-compose (docker-compose.yml + docker-compose.prod.yml) с infra/prod.env.example.
+# base-compose читает env_file ../.env: без корневого .env скопируйте prod.env.example в .env.
+prod-config:
+    docker compose --env-file infra/prod.env.example -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config -q
+
 fmt:
     uv --directory backend run ruff check --fix .
     uv --directory backend run ruff format .

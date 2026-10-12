@@ -2,9 +2,11 @@ import importlib
 import sys
 from collections.abc import Iterator
 from datetime import date, time
+from typing import Any
 
 import pytest
 import structlog
+from pydantic import SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import Context, InMemoryBroker, TaskiqState
@@ -56,6 +58,43 @@ async def test_task_materializes_active_series(
     assert [(e["event"], e["log_level"], e["created"]) for e in logs] == [
         ("series_materialized", "info", created)
     ]
+
+
+async def test_materialize_task_pings_heartbeat(
+    context: Context, db_series: Child, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = SecretStr("https://hc.example/ping/uuid")
+    context.state.heartbeat_materialize_url = url
+    pings: list[tuple[Any, Any, str]] = []
+
+    async def fake_ping(http: Any, ping_url: Any, *, name: str) -> None:
+        pings.append((http, ping_url, name))
+
+    monkeypatch.setattr("app.lessons.tasks.ping_heartbeat", fake_ping)
+
+    await materialize_series_task(context)
+
+    assert pings == [(context.state.http, url, "materialize_series")]
+
+
+async def test_materialize_task_failure_sends_no_heartbeat(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pings: list[str] = []
+
+    async def fake_ping(http: Any, ping_url: Any, *, name: str) -> None:
+        pings.append(name)
+
+    async def failing(*_a: Any, **_k: Any) -> int:
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr("app.lessons.tasks.ping_heartbeat", fake_ping)
+    monkeypatch.setattr("app.lessons.tasks.materialize_all", failing)
+
+    with pytest.raises(RuntimeError):
+        await materialize_series_task(context)
+
+    assert pings == []
 
 
 async def test_task_is_idempotent(

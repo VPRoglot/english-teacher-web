@@ -45,5 +45,6 @@ def configure_logging(level: str, json: bool) -> None:
         logging.getLogger(name).propagate = True
     logging.getLogger("uvicorn.access").disabled = True
     # httpx пишет на уровне INFO полный URL запроса, а в URL Telegram Bot API лежит токен бота.
+    # В Sentry breadcrumbs этих логгеров маскирует scrub_breadcrumb (app.core.observability).
     for name in ("httpx", "httpcore"):
         logging.getLogger(name).setLevel(logging.WARNING)

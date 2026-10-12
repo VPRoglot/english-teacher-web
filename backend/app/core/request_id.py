@@ -9,6 +9,7 @@ from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.errors import error_body
+from app.core.observability import scrub_text
 
 REQUEST_ID_HEADER = "X-Request-ID"
 _VALID_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
@@ -16,9 +17,6 @@ _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 # Пробы Docker/мониторинга дёргают эти пути постоянно — на INFO это шум.
 _QUIET_PATHS = frozenset({"/api/health", "/api/health/ready"})
-
-# Одноразовые токены из ссылок не должны попадать в логи.
-_TOKEN_PATH = re.compile(r"^(/api/auth/(?:invitations|password-resets)/)[^/]+")
 
 log = structlog.get_logger("app.http")
 
@@ -28,7 +26,8 @@ def get_request_id() -> str | None:
 
 
 def _loggable_path(path: str) -> str:
-    return _TOKEN_PATH.sub(r"\1***", path)
+    # Правила маскирования токенов общие с Sentry (app.core.observability).
+    return scrub_text(path)
 
 
 def _incoming_id(scope: Scope) -> str | None:

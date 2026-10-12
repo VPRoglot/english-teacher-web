@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
+import httpx
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import event
@@ -157,6 +158,8 @@ def sessionmaker(db_session: AsyncSession) -> async_sessionmaker[AsyncSession]:
 def worker_state(sessionmaker: async_sessionmaker[AsyncSession]) -> TaskiqState:
     state = TaskiqState()
     state.sessionmaker = sessionmaker
+    state.http = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    state.heartbeat_materialize_url = None
     return state
 
 

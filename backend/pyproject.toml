@@ -16,6 +16,7 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
     "python-multipart>=0.0.32",
     "redis>=5",
+    "sentry-sdk[fastapi]>=2.72.0",
     "sqlalchemy[asyncio]>=2.1.4",
     "structlog>=26.1.0",
     "taskiq>=0.13.0",

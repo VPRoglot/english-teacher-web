@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal, Self
 from urllib.parse import urlparse
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     # Доверенные адреса прокси для X-Forwarded-* (список через запятую или `*`).
     # Пусто — заголовки игнорируются; включать только за nginx, который перезаписывает XFF.
     forwarded_allow_ips: str = ""
+    # Мониторинг: необязателен везде, включая prod. Без DSN Sentry отключён.
+    sentry_dsn: SecretStr | None = None
+    sentry_traces_sample_rate: float = Field(default=0.0, ge=0, le=1)
+    # Версия сборки (тег образа) для Sentry release; в окружении — IMAGE_TAG.
+    release: str | None = Field(default=None, validation_alias=AliasChoices("IMAGE_TAG", "release"))
+    # Heartbeat-URL (healthchecks.io и т. п.): ежедневные задачи пингуют после успеха.
+    heartbeat_materialize_url: SecretStr | None = None
+    heartbeat_anonymize_url: SecretStr | None = None
 
     @field_validator("revalidate_secret")
     @classmethod

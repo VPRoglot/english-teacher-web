@@ -14,6 +14,7 @@ from app.core.csrf import CsrfMiddleware
 from app.core.db import create_db_engine, create_sessionmaker
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
+from app.core.observability import init_sentry
 from app.core.redis import create_redis
 from app.core.request_id import RequestIdMiddleware
 from app.core.tasks import BrokerTaskQueue, create_broker
@@ -36,6 +37,7 @@ _BROKER_STARTUP_TIMEOUT = 5  # секунд
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level, settings.log_json)
+    init_sentry(settings, "api")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

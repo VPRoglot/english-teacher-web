@@ -3,6 +3,7 @@ from taskiq import AsyncBroker, TaskiqEvents, TaskiqState
 
 from app.core.config import Settings
 from app.core.db import create_db_engine, create_sessionmaker
+from app.core.observability import SentryTaskMiddleware
 from app.lessons import tasks as lesson_tasks
 from app.notifications import tasks as notification_tasks
 from app.notifications.notifier import DisabledNotifier, Notifier, TelegramNotifier
@@ -17,6 +18,7 @@ def setup_worker(
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> AsyncBroker:
     """Регистрирует задачи и создаёт ресурсы worker (httpx-клиент, движок, сессии БД, notifier)."""
+    broker.add_middlewares(SentryTaskMiddleware())
     site_content_tasks.register_tasks(broker)
     notification_tasks.register_tasks(broker)
     lesson_tasks.register_tasks(broker)
@@ -36,6 +38,8 @@ def setup_worker(
             )
         state.notifier = notifier
         state.public_base_url = settings.public_base_url
+        state.heartbeat_materialize_url = settings.heartbeat_materialize_url
+        state.heartbeat_anonymize_url = settings.heartbeat_anonymize_url
         # Движок ленивый: к БД подключается первая задача, а не старт worker.
         state.engine = create_db_engine(settings)
         state.sessionmaker = create_sessionmaker(state.engine)

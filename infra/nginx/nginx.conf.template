@@ -24,15 +24,26 @@ map $http_x_request_id $req_id {
     default $request_id;
 }
 
-# Одноразовые токены в путях маскируются в access-логе — те же правила, что scrub_text
-# в backend (app.core.observability).
+# error_log не маскируется: на ошибках upstream nginx пишет туда строку запроса и referer
+# с токенами. Поэтому только crit; статус, upstream_* и request_time есть в access-логе.
+error_log /var/log/nginx/error.log crit;
+
+# Одноразовые токены маскируются в access-логе — префиксы те же, что у scrub_text в backend
+# (app.core.observability), плюс URL-кодированный «/» (%2F) для query. Правила по порядку:
+# 1) два и больше префиксов: всё после первого заменяется на *** — ни один токен не утекает;
+# 2) один префикс: маскируется сегмент токена, хвост сохраняется (/api/auth/invitations/***/accept);
+# 3) префикс с необычным токеном (например, начинается с %): всё после префикса — ***.
 map $request_uri $log_uri {
-    "~^(?<tok_pre>.*?/(?:invite|reset|api/auth/invitations|api/auth/password-resets)/)[^/?#\s\"']+(?<tok_post>.*)$" "${tok_pre}***${tok_post}";
+    "~^(?<tok_multi>.*?(?:/|%2[Ff])(?:invite|reset|api(?:/|%2[Ff])auth(?:/|%2[Ff])invitations|api(?:/|%2[Ff])auth(?:/|%2[Ff])password-resets)(?:/|%2[Ff])).*(?:/|%2[Ff])(?:invite|reset|api(?:/|%2[Ff])auth(?:/|%2[Ff])invitations|api(?:/|%2[Ff])auth(?:/|%2[Ff])password-resets)(?:/|%2[Ff])" "${tok_multi}***";
+    "~^(?<tok_pre>.*?(?:/|%2[Ff])(?:invite|reset|api(?:/|%2[Ff])auth(?:/|%2[Ff])invitations|api(?:/|%2[Ff])auth(?:/|%2[Ff])password-resets)(?:/|%2[Ff]))[^/?#&%\s\"']+(?<tok_post>.*)$" "${tok_pre}***${tok_post}";
+    "~^(?<tok_any>.*?(?:/|%2[Ff])(?:invite|reset|api(?:/|%2[Ff])auth(?:/|%2[Ff])invitations|api(?:/|%2[Ff])auth(?:/|%2[Ff])password-resets)(?:/|%2[Ff]))" "${tok_any}***";
     default $request_uri;
 }
 # Referer страницы /invite/<token> несёт тот же токен (same-origin запросы ассетов).
 map $http_referer $log_referer {
-    "~^(?<ref_pre>.*?/(?:invite|reset|api/auth/invitations|api/auth/password-resets)/)[^/?#\s\"']+(?<ref_post>.*)$" "${ref_pre}***${ref_post}";
+    "~^(?<ref_multi>.*?(?:/|%2[Ff])(?:invite|reset|api(?:/|%2[Ff])auth(?:/|%2[Ff])invitations|api(?:/|%2[Ff])auth(?:/|%2[Ff])password-resets)(?:/|%2[Ff])).*(?:/|%2[Ff])(?:invite|reset|api(?:/|%2[Ff])auth(?:/|%2[Ff])invitations|api(?:/|%2[Ff])auth(?:/|%2[Ff])password-resets)(?:/|%2[Ff])" "${ref_multi}***";
+    "~^(?<ref_pre>.*?(?:/|%2[Ff])(?:invite|reset|api(?:/|%2[Ff])auth(?:/|%2[Ff])invitations|api(?:/|%2[Ff])auth(?:/|%2[Ff])password-resets)(?:/|%2[Ff]))[^/?#&%\s\"']+(?<ref_post>.*)$" "${ref_pre}***${ref_post}";
+    "~^(?<ref_any>.*?(?:/|%2[Ff])(?:invite|reset|api(?:/|%2[Ff])auth(?:/|%2[Ff])invitations|api(?:/|%2[Ff])auth(?:/|%2[Ff])password-resets)(?:/|%2[Ff]))" "${ref_any}***";
     default $http_referer;
 }
 
@@ -147,8 +158,12 @@ server {
         proxy_set_header Cookie "";
         proxy_set_header Authorization "";
         proxy_set_header Connection "";
+        # Для https-хранилища сертификат проверяется (для http-апстрима, как minio в e2e, не действует).
         proxy_ssl_server_name on;
         proxy_ssl_name ${MEDIA_UPSTREAM_HOST};
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
         proxy_hide_header Set-Cookie;
         proxy_hide_header X-Request-ID;
         proxy_hide_header X-Powered-By;

@@ -43,7 +43,9 @@ expect_contains() { # имя текст подстрока
 	if printf '%s' "$2" | grep -qF -- "$3"; then pass "$1"; else fail "$1" "[$3] not in: [$2]"; fi
 }
 expect_not_contains() {
-	if printf '%s' "$2" | grep -qF -- "$3"; then fail "$1" "[$3] unexpectedly in: [$2]"; else pass "$1"; fi
+	if printf '%s' "$2" | grep -qF -- "$3"; then
+		fail "$1" "[$3] unexpectedly in: [$(printf '%s' "$2" | grep -F -- "$3" | head -n 5)]"
+	else pass "$1"; fi
 }
 expect_match() { # имя текст ERE
 	if printf '%s' "$2" | grep -qE -- "$3"; then pass "$1"; else fail "$1" "/$3/ not in: [$2]"; fi
@@ -201,9 +203,14 @@ code -k "https://$DOMAIN/api/auth/invitations/SECRET123" >/dev/null
 code -k -X POST "https://$DOMAIN/api/auth/invitations/SECRET123/accept" >/dev/null
 code -k "https://$DOMAIN/api/auth/password-resets/SECRET123" >/dev/null
 code -k -e "https://$DOMAIN/invite/SECRET123" "https://$DOMAIN/_next/static/b.js" >/dev/null
+# Несколько токенов в одном URI/referer, в том числе в query и URL-кодированные.
+code -k "https://$DOMAIN/invite/MULTI1?next=/reset/MULTI2" >/dev/null
+code -k "https://$DOMAIN/invite/MULTI3?next=%2Freset%2FMULTI4&a=/api/auth/password-resets/MULTI5" >/dev/null
+code -k -e "https://$DOMAIN/reset/MULTI6?back=/invite/MULTI7" "https://$DOMAIN/_next/static/c.js" >/dev/null
 sleep 1
 LOGS="$(docker logs "$NGINX" 2>&1)"
 expect_not_contains "SECRET123 never appears in nginx logs" "$LOGS" "SECRET123"
+expect_not_contains "every token of a multi-token URI/referer is masked" "$LOGS" "MULTI"
 expect_contains "/invite/*** logged" "$LOGS" '"/invite/***"'
 expect_contains "/reset/*** logged (query kept)" "$LOGS" '"/reset/***?x=1"'
 expect_contains "/api/auth/invitations/***/accept logged" "$LOGS" '"/api/auth/invitations/***/accept"'
@@ -220,6 +227,20 @@ if docker exec "$NGINX" openssl x509 -in /etc/nginx/tls/selfsigned/fullchain.pem
 else
 	fail "self-signed cert is valid for 30 days"
 fi
+# Битая пара (сертификат не от этого ключа) — select-cert остаётся на self-signed.
+docker exec "$NGINX" sh -c "mkdir -p /etc/letsencrypt/live/$DOMAIN && openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj /CN=mismatched -keyout /tmp/other.key -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem 2>/dev/null && openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /etc/letsencrypt/live/$DOMAIN/privkey.pem 2>/dev/null"
+MISMATCH_OUT="$(docker exec "$NGINX" select-cert 2>&1 || true)"
+expect_contains "mismatched letsencrypt pair is reported" "$MISMATCH_OUT" "does not match"
+expect_eq "mismatched pair: tls/current stays self-signed" \
+	"$(docker exec "$NGINX" readlink /etc/nginx/tls/current)" "/etc/nginx/tls/selfsigned"
+sleep 1
+expect_eq "mismatched pair: still serving self-signed" "$(cert_subject)" "CN=$DOMAIN"
+# Просроченный сертификат — тоже не выбирается.
+docker exec "$NGINX" sh -c "cd /etc/letsencrypt/live/$DOMAIN && openssl req -x509 -nodes -newkey rsa:2048 -not_before 20200101000000Z -not_after 20200201000000Z -subj /CN=expired -keyout privkey.pem -out fullchain.pem 2>/dev/null"
+EXPIRED_OUT="$(docker exec "$NGINX" select-cert 2>&1 || true)"
+expect_eq "expired letsencrypt cert: tls/current stays self-signed" \
+	"$(docker exec "$NGINX" readlink /etc/nginx/tls/current)" "/etc/nginx/tls/selfsigned"
+expect_contains "expired letsencrypt cert is reported" "$EXPIRED_OUT" "expired"
 docker exec "$NGINX" sh -c "mkdir -p /etc/letsencrypt/live/$DOMAIN && openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj /CN=planted-letsencrypt -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem 2>/dev/null"
 docker exec "$NGINX" select-cert
 planted() { [ "$(cert_subject)" = "CN=planted-letsencrypt" ]; }
@@ -228,6 +249,24 @@ expect_eq "tls/current points to letsencrypt live dir" \
 	"$(docker exec "$NGINX" readlink /etc/nginx/tls/current)" "/etc/letsencrypt/live/$DOMAIN"
 expect_eq "site still works after reload" "$(code -k "https://$DOMAIN/")" "200"
 expect_contains "6-hourly reload loop is running" "$(docker exec "$NGINX" ps -o args)" "sleep 21600"
+expect_eq "media upstream TLS: CA bundle present" \
+	"$(docker exec "$NGINX" sh -c 'test -s /etc/ssl/certs/ca-certificates.crt && echo ok' || true)" "ok"
+
+echo "--- 9. upstream failure does not leak tokens via error_log"
+# Последняя секция: заглушки удаляются и не восстанавливаются.
+docker rm -f "$WEB" "$API2" >/dev/null
+code -k -e "https://$DOMAIN/reset/SECRET456" "https://$DOMAIN/invite/SECRET123" >/dev/null
+sleep 11 # valid=10s: кеш DNS истёк, nginx получает NXDOMAIN, а не старый IP
+expect_eq "web down -> 502 for /invite/<token>" \
+	"$(code -k -e "https://$DOMAIN/reset/SECRET456" "https://$DOMAIN/invite/SECRET123")" "502"
+expect_eq "api down -> 502 for invitation accept" \
+	"$(code -k -X POST -e "https://$DOMAIN/reset/SECRET456" "https://$DOMAIN/api/auth/invitations/SECRET789/accept")" "502"
+sleep 1
+LOGS="$(docker logs "$NGINX" 2>&1)"
+expect_not_contains "upstream errors: SECRET123 not in logs" "$LOGS" "SECRET123"
+expect_not_contains "upstream errors: SECRET456 (referer) not in logs" "$LOGS" "SECRET456"
+expect_not_contains "upstream errors: SECRET789 not in logs" "$LOGS" "SECRET789"
+expect_match "access log keeps status/upstream fields for the 502" "$LOGS" '"uri":"/api/auth/invitations/\*\*\*/accept".*"status":502,.*"request_time":[0-9.]+,"upstream_addr":"[^"]*","upstream_status":"[^"]*"'
 
 echo
 if [ "$FAILED" -ne 0 ]; then

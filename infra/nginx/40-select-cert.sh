@@ -9,9 +9,34 @@ tls_dir=/etc/nginx/tls
 live_dir="/etc/letsencrypt/live/${SERVER_NAME}"
 self_dir="$tls_dir/selfsigned"
 
-if [ -s "$live_dir/fullchain.pem" ] && [ -s "$live_dir/privkey.pem" ]; then
+# Пара Let's Encrypt годится, если сертификат читается, не просрочен и выпущен на этот ключ.
+# Иначе nginx не стартовал бы (или не перечитал конфиг) — лучше остаться на self-signed.
+le_pair_ok() {
+    [ -s "$live_dir/fullchain.pem" ] && [ -s "$live_dir/privkey.pem" ] || return 1
+    if ! cert_pub="$(openssl x509 -in "$live_dir/fullchain.pem" -noout -pubkey 2>/dev/null)"; then
+        echo "select-cert: $live_dir/fullchain.pem is not a valid certificate" >&2
+        return 1
+    fi
+    if ! openssl x509 -in "$live_dir/fullchain.pem" -noout -checkend 0 >/dev/null 2>&1; then
+        echo "select-cert: $live_dir/fullchain.pem has expired" >&2
+        return 1
+    fi
+    if ! key_pub="$(openssl pkey -in "$live_dir/privkey.pem" -pubout 2>/dev/null)"; then
+        echo "select-cert: $live_dir/privkey.pem is not a valid private key" >&2
+        return 1
+    fi
+    if [ "$cert_pub" != "$key_pub" ]; then
+        echo "select-cert: $live_dir/privkey.pem does not match fullchain.pem" >&2
+        return 1
+    fi
+}
+
+if le_pair_ok; then
     target="$live_dir"
 else
+    if [ -e "$live_dir" ]; then
+        echo "select-cert: falling back to self-signed certificate" >&2
+    fi
     target="$self_dir"
     # Генерируется один раз; заново — только если истекает в ближайшие сутки.
     if [ ! -s "$self_dir/fullchain.pem" ] || [ ! -s "$self_dir/privkey.pem" ] \

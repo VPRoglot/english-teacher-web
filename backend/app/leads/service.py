@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 import structlog
-from sqlalchemy import ColumnElement, func, or_, select
+from sqlalchemy import ColumnElement, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import service as auth_service
@@ -245,3 +245,12 @@ async def convert_lead(
     return LeadConverted(
         family_id=family.id, invitation=LinkResponse(url=url, expires_at=invitation.expires_at)
     )
+
+
+async def delete_family_leads(session: AsyncSession, family_id: uuid.UUID) -> int:
+    """Физически удаляет заявки семьи (история — каскадом); возвращает число. Коммитит вызывающий.
+
+    Запросы на пробные занятия заявок должны быть удалены раньше (FK RESTRICT).
+    """
+    result = await session.execute(delete(Lead).where(Lead.family_id == family_id))
+    return int(result.rowcount)  # type: ignore[attr-defined]

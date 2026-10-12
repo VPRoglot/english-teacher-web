@@ -1,8 +1,9 @@
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import Select, exists, func, or_, select
+from sqlalchemy import ColumnElement, Select, delete, exists, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,7 @@ from app.lessons.errors import (
     LessonSlotTaken,
     ScheduleRangeInvalid,
 )
-from app.lessons.models import Lesson, LessonKind, LessonNote, LessonStatus
+from app.lessons.models import ChangeRequest, Lesson, LessonKind, LessonNote, LessonStatus
 from app.lessons.overlaps import BUSY_STATUSES, find_overlaps
 from app.lessons.requests_service import family_view, latest_request, lesson_ids_with_requests
 from app.lessons.schemas import (
@@ -408,3 +409,32 @@ async def get_family_lesson(
         shared_note=shared if shared and shared.strip() else None,
         change_request=change_request,
     )
+
+
+async def _delete_lessons_where(
+    session: AsyncSession, condition: ColumnElement[bool]
+) -> tuple[int, int]:
+    lesson_ids = select(Lesson.id).where(condition)
+    requests = await session.execute(
+        delete(ChangeRequest).where(ChangeRequest.lesson_id.in_(lesson_ids))
+    )
+    lessons = await session.execute(delete(Lesson).where(condition))
+    return lessons.rowcount, requests.rowcount  # type: ignore[attr-defined]
+
+
+async def delete_lessons_of_children(
+    session: AsyncSession, child_ids: Sequence[uuid.UUID]
+) -> tuple[int, int]:
+    """Физически удаляет занятия детей и запросы на них; возвращает (занятия, запросы).
+
+    Запросы удаляются первыми (FK RESTRICT). Заметки уходят каскадом, серии — вместе с детьми.
+    Коммитит вызывающий.
+    """
+    return await _delete_lessons_where(session, Lesson.child_id.in_(child_ids))
+
+
+async def delete_lessons_of_leads(
+    session: AsyncSession, lead_ids: Sequence[uuid.UUID]
+) -> tuple[int, int]:
+    """То же для пробных занятий заявок: (занятия, запросы). Коммитит вызывающий."""
+    return await _delete_lessons_where(session, Lesson.lead_id.in_(lead_ids))

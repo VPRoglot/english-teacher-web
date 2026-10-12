@@ -1,18 +1,20 @@
 import asyncio
 import json
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from typer.testing import CliRunner
 
 from app.auth.models import User
 from app.auth.passwords import verify_password
 from app.cli import cli
 from app.core.config import get_settings
+from tests.factories import make_child, make_family, make_parent
 
 
 async def _execute(url: str, sql: str) -> None:
@@ -124,3 +126,74 @@ def test_export_openapi(tmp_path: Path) -> None:
     assert "/api/health" in spec["paths"]
     assert "/api/health/ready" in spec["paths"]
     assert content.endswith("}\n")
+
+
+async def _make_archived_family(url: str, *, archived: bool = True) -> str:
+    engine = create_async_engine(url)
+    async with AsyncSession(engine) as session:
+        family = await make_family(session, name="Ивановы", archived=archived)
+        await make_parent(session, family)
+        await make_child(session, family, username="masha")
+        family_id = str(family.id)
+        await session.commit()
+    await engine.dispose()
+    return family_id
+
+
+async def _count(url: str, table: str) -> int:
+    engine = create_async_engine(url)
+    async with engine.connect() as conn:
+        total = (await conn.execute(text(f"SELECT count(*) FROM {table}"))).scalar_one()  # noqa: S608
+    await engine.dispose()
+    return int(total)
+
+
+@pytest.fixture
+def purge_env(cli_env: str) -> Iterator[str]:
+    yield cli_env
+    asyncio.run(_execute(cli_env, "TRUNCATE families CASCADE"))
+
+
+def test_purge_cli_prompts_and_aborts(purge_env: str) -> None:
+    family_id = asyncio.run(_make_archived_family(purge_env))
+    r = CliRunner().invoke(cli, ["purge-family", family_id], input="n\n")
+    assert r.exit_code == 1
+    assert "Ивановы: пользователей 2, детей 1, занятий 0, запросов 0, заявок 0" in r.output
+    assert r.output.index("Ивановы") < r.output.index("Удалить?")
+    assert "Отменено" in r.output
+    assert asyncio.run(_count(purge_env, "families")) == 1
+    assert asyncio.run(_count(purge_env, "users")) == 2
+
+
+def test_purge_cli_yes(purge_env: str) -> None:
+    family_id = asyncio.run(_make_archived_family(purge_env))
+    r = CliRunner().invoke(cli, ["purge-family", family_id, "--yes"])
+    assert r.exit_code == 0, r.output
+    assert "Семья удалена: Ивановы: пользователей 2, детей 1" in r.output
+    assert asyncio.run(_count(purge_env, "families")) == 0
+    assert asyncio.run(_count(purge_env, "users")) == 0
+
+
+def test_purge_cli_not_archived(purge_env: str) -> None:
+    family_id = asyncio.run(_make_archived_family(purge_env, archived=False))
+    r = CliRunner().invoke(cli, ["purge-family", family_id, "--yes"])
+    assert r.exit_code == 1
+    assert "Сначала переведите семью в архив" in r.output
+    assert asyncio.run(_count(purge_env, "families")) == 1
+
+
+def test_purge_cli_unknown_family(purge_env: str) -> None:
+    r = CliRunner().invoke(cli, ["purge-family", str(uuid.uuid4()), "--yes"])
+    assert r.exit_code == 1
+    assert "Семья не найдена" in r.output
+
+
+def test_purge_cli_database_unreachable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@127.0.0.1:1/x")
+    monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:1/0")
+    _set_required_env(monkeypatch)
+    get_settings.cache_clear()
+    r = CliRunner().invoke(cli, ["purge-family", str(uuid.uuid4()), "--yes"])
+    get_settings.cache_clear()
+    assert r.exit_code == 1
+    assert "Не удалось подключиться" in r.output

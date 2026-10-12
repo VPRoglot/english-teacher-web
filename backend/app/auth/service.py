@@ -1,8 +1,9 @@
 import secrets
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import exists, or_, select, update
+from sqlalchemy import delete, exists, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.identity import normalize_email
@@ -341,3 +342,12 @@ async def change_password(
     user.password_hash = hash_password(new_password)
     await session.flush()
     await sessions.delete_all_for_user(user.id)
+
+
+async def delete_users(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> int:
+    """Физически удаляет учётные записи (ссылки сброса пароля — каскадом); возвращает число.
+
+    Коммитит вызывающий; Redis-сессии пользователей он же отзывает после коммита.
+    """
+    result = await session.execute(delete(User).where(User.id.in_(user_ids)))
+    return int(result.rowcount)  # type: ignore[attr-defined]

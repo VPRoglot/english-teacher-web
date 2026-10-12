@@ -4,6 +4,7 @@ from taskiq import AsyncBroker, TaskiqEvents, TaskiqState
 from app.core.config import Settings
 from app.core.db import create_db_engine, create_sessionmaker
 from app.core.observability import SentryTaskMiddleware, init_sentry
+from app.leads import tasks as lead_tasks
 from app.lessons import tasks as lesson_tasks
 from app.notifications import tasks as notification_tasks
 from app.notifications.notifier import DisabledNotifier, Notifier, TelegramNotifier
@@ -22,6 +23,7 @@ def setup_worker(
     site_content_tasks.register_tasks(broker)
     notification_tasks.register_tasks(broker)
     lesson_tasks.register_tasks(broker)
+    lead_tasks.register_tasks(broker)
 
     @broker.on_event(TaskiqEvents.WORKER_STARTUP)
     async def _startup(state: TaskiqState) -> None:

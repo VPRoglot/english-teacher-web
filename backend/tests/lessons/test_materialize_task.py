@@ -158,4 +158,4 @@ async def test_scheduler_reads_labels_from_worker_broker() -> None:
     assert len(sources) == 1
     await sources[0].startup()  # собирает расписания из меток задач брокера worker
     schedules = await sources[0].get_schedules()
-    assert [(s.task_name, s.cron) for s in schedules] == [(MATERIALIZE_SERIES_TASK, "0 1 * * *")]
+    assert (MATERIALIZE_SERIES_TASK, "0 1 * * *") in [(s.task_name, s.cron) for s in schedules]

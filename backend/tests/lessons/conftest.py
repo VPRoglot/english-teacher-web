@@ -3,12 +3,10 @@ from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
-import httpx
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
-from taskiq import Context, InMemoryBroker, TaskiqMessage, TaskiqState
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from app.auth.models import User, UserRole
 from app.families.models import Child
@@ -139,33 +137,3 @@ def sql_log(db_session: AsyncSession) -> Iterator[list[str]]:
     event.listen(connection, "before_cursor_execute", record)
     yield statements
     event.remove(connection, "before_cursor_execute", record)
-
-
-@pytest.fixture
-def sessionmaker(db_session: AsyncSession) -> async_sessionmaker[AsyncSession]:
-    """Фабрика сессий на соединении тестовой транзакции: каждая сессия — свой savepoint.
-
-    Так `materialize_all` открывает по сессии на серию и коммитит их, а данные теста
-    остаются видны и откатываются вместе с внешней транзакцией.
-    """
-    assert isinstance(db_session.bind, AsyncConnection)
-    return async_sessionmaker(
-        db_session.bind, expire_on_commit=False, join_transaction_mode="create_savepoint"
-    )
-
-
-@pytest.fixture
-def worker_state(sessionmaker: async_sessionmaker[AsyncSession]) -> TaskiqState:
-    state = TaskiqState()
-    state.sessionmaker = sessionmaker
-    state.http = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
-    state.heartbeat_materialize_url = None
-    return state
-
-
-@pytest.fixture
-def context(worker_state: TaskiqState) -> Context:
-    broker = InMemoryBroker()
-    broker.state = worker_state
-    message = TaskiqMessage(task_id="t", task_name="n", labels={}, args=[], kwargs={})
-    return Context(message, broker)

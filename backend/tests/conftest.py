@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -11,8 +12,15 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from minio import Minio
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from starlette.types import ASGIApp
+from taskiq import Context, InMemoryBroker, TaskiqMessage, TaskiqState
 from testcontainers.community.minio import MinioContainer
 from testcontainers.community.postgres import PostgresContainer
 from testcontainers.community.redis import RedisContainer
@@ -161,6 +169,37 @@ async def db_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         finally:
             await session.close()
             await trans.rollback()
+
+
+@pytest.fixture
+def sessionmaker(db_session: AsyncSession) -> async_sessionmaker[AsyncSession]:
+    """Фабрика сессий на соединении тестовой транзакции: каждая сессия — свой savepoint.
+
+    Так `materialize_all` открывает по сессии на серию и коммитит их, а данные теста
+    остаются видны и откатываются вместе с внешней транзакцией.
+    """
+    assert isinstance(db_session.bind, AsyncConnection)
+    return async_sessionmaker(
+        db_session.bind, expire_on_commit=False, join_transaction_mode="create_savepoint"
+    )
+
+
+@pytest.fixture
+def worker_state(sessionmaker: async_sessionmaker[AsyncSession]) -> TaskiqState:
+    state = TaskiqState()
+    state.sessionmaker = sessionmaker
+    state.http = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    state.heartbeat_materialize_url = None
+    state.heartbeat_anonymize_url = None
+    return state
+
+
+@pytest.fixture
+def context(worker_state: TaskiqState) -> Context:
+    broker = InMemoryBroker()
+    broker.state = worker_state
+    message = TaskiqMessage(task_id="t", task_name="n", labels={}, args=[], kwargs={})
+    return Context(message, broker)
 
 
 @pytest.fixture

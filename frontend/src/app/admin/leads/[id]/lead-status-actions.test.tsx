@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { getListLeadsQueryKey } from "@/api/generated/endpoints/admin/admin";
+import { getGetDashboardQueryKey, getListLeadsQueryKey } from "@/api/generated/endpoints/admin/admin";
 import type { LeadStatus } from "@/api/generated/model";
 
 const toastSuccess = vi.fn();
@@ -76,6 +76,8 @@ test("contacted sends an optional comment and refreshes the lead", async () => {
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ["/api/admin/leads/l1"] });
   // Список заявок показывает статус, поэтому он тоже перечитывается (любые фильтры и страницы).
   expect(invalidate).toHaveBeenCalledWith({ queryKey: getListLeadsQueryKey() });
+  // Дашборд показывает новые заявки — он тоже устарел.
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: getGetDashboardQueryKey() });
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 });
 

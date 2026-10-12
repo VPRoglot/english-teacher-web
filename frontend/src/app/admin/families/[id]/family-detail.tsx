@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -11,6 +12,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/form-errors";
+import { invalidateSchedule } from "@/lib/lesson-mutations";
 
 import { EditFamilyDialog } from "./edit-family-dialog";
 import { FamilyChildren } from "./family-children";
@@ -21,12 +23,15 @@ import { useRefreshFamily } from "./use-refresh-family";
 function ArchiveButton({ family }: { family: FamilyDetailData }) {
   const [open, setOpen] = useState(false);
   const refresh = useRefreshFamily(family.id);
+  const queryClient = useQueryClient();
   const update = useUpdateFamily();
   const archived = family.archived_at !== null;
 
   async function toggle() {
     await update.mutateAsync({ familyId: family.id, data: { archived: !archived } });
     toast.success(archived ? "Семья возвращена из архива" : "Семья отправлена в архив");
+    // Архив семьи завершает серии её детей: занятия, серии и дашборд устарели.
+    if (!archived) invalidateSchedule(queryClient);
     await refresh();
   }
 

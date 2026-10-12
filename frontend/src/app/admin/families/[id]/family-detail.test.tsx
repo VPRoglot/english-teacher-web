@@ -88,13 +88,25 @@ function bodyOf(call: unknown[] | undefined): unknown {
   return JSON.parse(String((call?.[1] as RequestInit | undefined)?.body));
 }
 
+let client: QueryClient;
 function renderDetail() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  vi.spyOn(client, "invalidateQueries");
   return render(
     <QueryClientProvider client={client}>
       <FamilyDetail />
     </QueryClientProvider>,
   );
+}
+
+/** Архив завершает серии: расписание (занятия, серии, запросы) и дашборд устарели. */
+function expectScheduleInvalidated() {
+  const predicates = vi
+    .mocked(client.invalidateQueries)
+    .mock.calls.map(([filters]) => filters?.predicate)
+    .filter((candidate) => candidate !== undefined);
+  expect(predicates.some((p) => p({ queryKey: ["/api/admin/lessons", {}] } as never))).toBe(true);
+  expect(predicates.some((p) => p({ queryKey: ["/api/admin/dashboard"] } as never))).toBe(true);
 }
 
 function sectionOf(heading: string): HTMLElement {
@@ -213,6 +225,7 @@ test("архивация требует подтверждения", async () =>
   expect(await screen.findByText("В архиве")).toBeInTheDocument();
   expect(await screen.findByRole("button", { name: "Вернуть из архива" })).toBeInTheDocument();
   expect(toastSuccess).toHaveBeenCalledWith("Семья отправлена в архив");
+  expectScheduleInvalidated();
 });
 
 test("отмена подтверждения ничего не отправляет", async () => {
@@ -445,6 +458,7 @@ test("архивация и возврат ребёнка", async () => {
   await waitFor(() =>
     expect(bodyOf(calls("PATCH", "/api/admin/children/c1")[0])).toEqual({ archived: true }),
   );
+  await waitFor(expectScheduleInvalidated);
   await userEvent.click(await screen.findByRole("button", { name: "Вернуть ребёнка" }));
   await waitFor(() =>
     expect(bodyOf(calls("PATCH", "/api/admin/children/c1")[1])).toEqual({ archived: false }),

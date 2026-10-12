@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-import { getListLeadsQueryKey } from "@/api/generated/endpoints/admin/admin";
+import { getGetDashboardQueryKey, getListLeadsQueryKey } from "@/api/generated/endpoints/admin/admin";
 import type { LeadStatus } from "@/api/generated/model";
 
 import { bodyOf, errorResponse, jsonResponse, makeLead } from "./lead-fixture";
@@ -165,7 +165,7 @@ test("schedules a trial in the tutor zone and refreshes the lead", async () => {
   });
   await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Пробное занятие назначено"));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  for (const queryKey of [["/api/admin/leads/l1"], getListLeadsQueryKey()]) {
+  for (const queryKey of [["/api/admin/leads/l1"], getListLeadsQueryKey(), getGetDashboardQueryKey()]) {
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey });
   }
   // Списки занятий, серии и пробные занятия заявки — одним предикатом расписания.

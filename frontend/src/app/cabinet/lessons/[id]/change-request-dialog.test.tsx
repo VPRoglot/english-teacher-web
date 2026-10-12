@@ -86,7 +86,7 @@ test("submit is disabled until schedule settings are loaded", async () => {
   const pending = new Promise<Response>((resolve) => {
     release = resolve;
   });
-  const base = fetchMock.getMockImplementation()!;
+  const base = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>;
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) =>
     url === "/api/me/schedule-settings" ? pending : base(url, init),
   );
@@ -99,7 +99,7 @@ test("submit is disabled until schedule settings are loaded", async () => {
 });
 
 test("settings error blocks submit and shows an alert", async () => {
-  const base = fetchMock.getMockImplementation()!;
+  const base = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>;
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) =>
     url === "/api/me/schedule-settings"
       ? jsonResponse(500, { error: { code: "internal", message: "Ошибка", details: {} } })

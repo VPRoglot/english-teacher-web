@@ -29,6 +29,22 @@ import { useTutorTimeZoneStatus } from "@/lib/use-tutor-time-zone";
 const schema = z.object({ date: lessonTimeShape.date, time: lessonTimeShape.time });
 type Values = z.infer<typeof schema>;
 
+/** Ошибка 422 на `new_starts_at` (например, «совпадает с текущим») — показываем у поля времени. */
+function newStartsAtIssue(error: unknown): string | null {
+  if (!(error instanceof ApiError) || !Array.isArray(error.details.fields)) return null;
+  for (const issue of error.details.fields as { loc?: unknown; message?: unknown }[]) {
+    const loc = issue.loc;
+    if (
+      Array.isArray(loc) &&
+      loc[loc.length - 1] === "new_starts_at" &&
+      typeof issue.message === "string"
+    ) {
+      return issue.message;
+    }
+  }
+  return null;
+}
+
 function ApproveForm({
   request,
   timeZone,
@@ -48,6 +64,7 @@ function ApproveForm({
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: initial });
 
@@ -63,7 +80,9 @@ function ApproveForm({
           onDone();
         },
         onError: (error) => {
-          setFormError(errorMessage(error));
+          const fieldIssue = newStartsAtIssue(error);
+          if (fieldIssue) setError("time", { message: fieldIssue });
+          else setFormError(errorMessage(error));
           // Запрос уже решён или занятие изменилось: показываем актуальную очередь.
           if (error instanceof ApiError && error.status === 409) invalidateSchedule(queryClient);
         },

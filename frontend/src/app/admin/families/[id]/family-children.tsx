@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/form-errors";
+import { invalidateSchedule } from "@/lib/lesson-mutations";
 
 import { ChildAccountDialog } from "./child-account-dialog";
 import { ChildFormDialog } from "./child-form-dialog";
@@ -20,6 +22,7 @@ import { useRefreshFamily } from "./use-refresh-family";
 
 function ChildCard({ child, familyId }: { child: ChildDetail; familyId: string }) {
   const refresh = useRefreshFamily(familyId);
+  const queryClient = useQueryClient();
   const updateChild = useUpdateChild();
   const archived = child.archived_at !== null;
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -40,6 +43,8 @@ function ChildCard({ child, familyId }: { child: ChildDetail; familyId: string }
   async function archive() {
     await updateChild.mutateAsync({ childId: child.id, data: { archived: true } });
     toast.success("Ребёнок отправлен в архив");
+    // Архив завершает серии ребёнка: занятия, серии и дашборд устарели.
+    invalidateSchedule(queryClient);
     await refresh();
   }
 

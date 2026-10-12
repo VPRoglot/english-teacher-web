@@ -162,6 +162,37 @@ test("approve reschedule sends UTC from tutor zone", async () => {
   expect(client.invalidateQueries).toHaveBeenCalled();
 });
 
+test("approve with the current time shows the field error", async () => {
+  actionResponse = () =>
+    jsonResponse(422, {
+      error: {
+        code: "validation_error",
+        message: "Проверьте введённые данные",
+        details: {
+          fields: [
+            {
+              loc: ["body", "new_starts_at"],
+              message: "Выберите новое время — оно совпадает с текущим",
+              type: "value_error",
+            },
+          ],
+        },
+      },
+    });
+  const user = userEvent.setup();
+  renderQueue();
+  await user.click(await screen.findByRole("button", { name: "Одобрить" }));
+  const dialog = await screen.findByRole("dialog");
+  await waitFor(() => expect(within(dialog).getByRole("button", { name: "Одобрить" })).toBeEnabled());
+  await user.click(within(dialog).getByRole("button", { name: "Одобрить" }));
+  expect(
+    await within(dialog).findByText("Выберите новое время — оно совпадает с текущим"),
+  ).toBeInTheDocument();
+  // ошибка стоит у поля, а не общей плашкой
+  expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+  expect(toastSuccess).not.toHaveBeenCalled();
+});
+
 test("approve submit is disabled until tutor zone is loaded", async () => {
   const user = userEvent.setup();
   let release: () => void = () => {};
@@ -253,11 +284,13 @@ test("outdated 409 is shown", async () => {
   expect(toastSuccess).not.toHaveBeenCalled();
 });
 
-test("tab all shows resolved requests without status filter", async () => {
+test("tab all shows pending and resolved requests without status filter", async () => {
   search = "tab=all";
   listResponse = () =>
     jsonResponse(200, [
+      item({ id: "r2" }),
       item({
+        id: "r3",
         status: "rejected",
         tutor_response: "Не получится",
         resolved_at: "2026-10-12T09:00:00Z",
@@ -267,7 +300,8 @@ test("tab all shows resolved requests without status filter", async () => {
   expect(await screen.findByText("Отклонён")).toBeInTheDocument();
   expect(screen.getByText(/Не получится/)).toBeInTheDocument();
   expect(screen.getByText("Решён 12.10.2026 14:00")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Одобрить" })).not.toBeInTheDocument();
+  // ждущий запрос остаётся с кнопками, рассмотренный — без них
+  expect(screen.getAllByRole("button", { name: "Одобрить" })).toHaveLength(1);
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes("status="))).toBe(false);
 });
 

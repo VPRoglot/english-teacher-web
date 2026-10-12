@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { getListLeadsQueryKey } from "@/api/generated/endpoints/admin/admin";
+import { getGetDashboardQueryKey, getListLeadsQueryKey } from "@/api/generated/endpoints/admin/admin";
 import type { LeadStatus } from "@/api/generated/model";
 
 const toastSuccess = vi.fn();
@@ -95,6 +95,7 @@ test("prefilled from lead and shows invitation link", async () => {
   expect(within(dialog).queryByLabelText("Семья")).not.toBeInTheDocument();
   expect(toastSuccess).toHaveBeenCalledWith("Заявка преобразована в семью");
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ["/api/admin/leads/l1"] });
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: getGetDashboardQueryKey() });
 });
 
 test("sends edited values and the optional child fields", async () => {

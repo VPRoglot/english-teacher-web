@@ -1,8 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 
-import { getGetLeadQueryKey, getListLeadsQueryKey } from "@/api/generated/endpoints/admin/admin";
+import {
+  getGetDashboardQueryKey,
+  getGetLeadQueryKey,
+  getListLeadsQueryKey,
+} from "@/api/generated/endpoints/admin/admin";
 
-/** Перечитывает карточку заявки и список заявок (статус виден и там) после мутации. */
+/**
+ * Перечитывает карточку заявки, список заявок (статус виден и там) и дашборд (новые заявки)
+ * после мутации.
+ */
 export function useRefreshLead(leadId: string): () => Promise<void> {
   const queryClient = useQueryClient();
   return async () => {
@@ -10,6 +17,7 @@ export function useRefreshLead(leadId: string): () => Promise<void> {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetLeadQueryKey(leadId) }),
       queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() }),
     ]);
   };
 }

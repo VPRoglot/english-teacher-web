@@ -64,12 +64,14 @@ test("навигация репетитора: обзор, календарь, �
   expect(nav.getAllByRole("link").map((link) => link.textContent)).toEqual([
     "Обзор",
     "Календарь",
+    "Запросы",
     "Заявки",
     "Семьи",
     "Сайт",
     "Настройки",
   ]);
   expect(nav.getByRole("link", { name: "Календарь" })).toHaveAttribute("href", "/admin/calendar");
+  expect(nav.getByRole("link", { name: "Запросы" })).toHaveAttribute("href", "/admin/requests");
   expect(nav.getByRole("link", { name: "Настройки" })).toHaveAttribute("href", "/admin/settings");
 });
 

@@ -18,6 +18,9 @@ const STALE_KEYS = [
   ["/api/admin/lessons/abc/notes"],
   ["/api/admin/series", { child_id: "c1" }],
   ["/api/admin/leads/lead-1/trial-lessons"],
+  ["/api/admin/change-requests", { status: "pending" }],
+  ["/api/admin/change-requests"],
+  ["/api/admin/dashboard"],
 ];
 const FRESH_KEYS = [
   ["/api/admin/leads"],

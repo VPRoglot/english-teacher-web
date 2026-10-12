@@ -40,6 +40,8 @@ type Props<T extends FieldValues> = {
   idPrefix: string;
   /** Показывать «Дату»; у регулярной серии даты свои («Начало», «Окончание»). */
   withDate?: boolean;
+  /** Показывать «Длительность, мин»; при `false` поле `duration_min` форме не нужно. */
+  withDuration?: boolean;
 };
 
 function FieldError({ message }: { message?: string }) {
@@ -56,6 +58,7 @@ export function LessonTimeFields<T extends FieldValues>({
   errors,
   idPrefix,
   withDate = true,
+  withDuration = true,
 }: Props<T>) {
   const fields = register as unknown as UseFormRegister<LessonTimeValues>;
   const issues = errors as FieldErrors<LessonTimeValues>;
@@ -84,20 +87,22 @@ export function LessonTimeFields<T extends FieldValues>({
         />
         <FieldError message={issues.time?.message} />
       </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-duration`}>Длительность, мин</Label>
-        <Input
-          id={`${idPrefix}-duration`}
-          type="number"
-          inputMode="numeric"
-          min={createLessonBodyDurationMinMin}
-          max={createLessonBodyDurationMinMax}
-          step={DURATION_STEP_MIN}
-          aria-invalid={issues.duration_min ? true : undefined}
-          {...fields("duration_min", { valueAsNumber: true })}
-        />
-        <FieldError message={issues.duration_min?.message} />
-      </div>
+      {withDuration && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={`${idPrefix}-duration`}>Длительность, мин</Label>
+          <Input
+            id={`${idPrefix}-duration`}
+            type="number"
+            inputMode="numeric"
+            min={createLessonBodyDurationMinMin}
+            max={createLessonBodyDurationMinMax}
+            step={DURATION_STEP_MIN}
+            aria-invalid={issues.duration_min ? true : undefined}
+            {...fields("duration_min", { valueAsNumber: true })}
+          />
+          <FieldError message={issues.duration_min?.message} />
+        </div>
+      )}
     </div>
   );
 }

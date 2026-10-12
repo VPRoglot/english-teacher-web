@@ -3,13 +3,19 @@ import { toast } from "sonner";
 
 import type { OverlapWarning } from "@/api/generated/model";
 
-const SCHEDULE_PREFIXES = ["/api/admin/lessons", "/api/admin/series"];
+const SCHEDULE_PREFIXES = [
+  "/api/admin/lessons",
+  "/api/admin/series",
+  "/api/admin/change-requests",
+  "/api/admin/dashboard",
+];
 const LEAD_PREFIX = "/api/admin/leads/";
 const TRIAL_LESSONS_SUFFIX = "/trial-lessons";
 
 /**
  * Запрос относится к расписанию: списки и карточки занятий (`/api/admin/lessons…`), серии
- * (`/api/admin/series…`) и пробные занятия заявок (`/api/admin/leads/{id}/trial-lessons`).
+ * (`/api/admin/series…`), очередь запросов и дашборд (`/api/admin/change-requests…`,
+ * `/api/admin/dashboard`: они показывают занятия и меняются вместе с ними) и пробные занятия заявок (`/api/admin/leads/{id}/trial-lessons`).
  * Ключи orval — строка пути первым элементом, поэтому проверяется только он.
  */
 export function isScheduleQueryKey(queryKey: readonly unknown[]): boolean {

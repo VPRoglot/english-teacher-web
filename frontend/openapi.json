@@ -2578,6 +2578,253 @@
         "title": "ScheduleSettings",
         "type": "object"
       },
+      "SeriesCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "child_id": {
+            "format": "uuid",
+            "title": "Child Id",
+            "type": "string"
+          },
+          "duration_min": {
+            "maximum": 240.0,
+            "minimum": 15.0,
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "local_start_time": {
+            "format": "time",
+            "title": "Local Start Time",
+            "type": "string"
+          },
+          "meeting_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Url"
+          },
+          "rrule": {
+            "maxLength": 200,
+            "title": "Rrule",
+            "type": "string"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "child_id",
+          "rrule",
+          "local_start_time",
+          "duration_min",
+          "starts_on"
+        ],
+        "title": "SeriesCreate",
+        "type": "object"
+      },
+      "SeriesDetail": {
+        "properties": {
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "child_id": {
+            "format": "uuid",
+            "title": "Child Id",
+            "type": "string"
+          },
+          "child_name": {
+            "title": "Child Name",
+            "type": "string"
+          },
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "local_start_time": {
+            "format": "time",
+            "title": "Local Start Time",
+            "type": "string"
+          },
+          "meeting_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Url"
+          },
+          "rrule": {
+            "title": "Rrule",
+            "type": "string"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "child_id",
+          "child_name",
+          "rrule",
+          "local_start_time",
+          "duration_min",
+          "meeting_url",
+          "starts_on",
+          "ends_on",
+          "archived_at"
+        ],
+        "title": "SeriesDetail",
+        "type": "object"
+      },
+      "SeriesSaved": {
+        "properties": {
+          "lessons_created": {
+            "title": "Lessons Created",
+            "type": "integer"
+          },
+          "series": {
+            "$ref": "#/components/schemas/SeriesDetail"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/OverlapWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "series",
+          "lessons_created",
+          "warnings"
+        ],
+        "title": "SeriesSaved",
+        "type": "object"
+      },
+      "SeriesUpdate": {
+        "additionalProperties": false,
+        "description": "Частичная правка: `meeting_url` и `ends_on` можно сбросить в `null`, остальные поля — нет.",
+        "properties": {
+          "duration_min": {
+            "anyOf": [
+              {
+                "maximum": 240.0,
+                "minimum": 15.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Min"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "local_start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Start Time"
+          },
+          "meeting_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Url"
+          },
+          "rrule": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rrule"
+          }
+        },
+        "title": "SeriesUpdate",
+        "type": "object"
+      },
       "ServiceItem": {
         "additionalProperties": false,
         "properties": {
@@ -3714,6 +3961,216 @@
           }
         },
         "summary": "Upload Media",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/series": {
+      "get": {
+        "operationId": "list_series",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "child_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Child Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SeriesDetail"
+                  },
+                  "title": "Response List Series",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "List Series",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "create_series",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Create Series",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/series/{series_id}": {
+      "delete": {
+        "operationId": "archive_series",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Series Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Archive Series",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "update_series",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Series Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": true,
+            "schema": {
+              "const": "this_and_following",
+              "title": "Scope",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "From",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeriesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update Series",
         "tags": [
           "admin"
         ]

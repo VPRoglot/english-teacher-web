@@ -666,6 +666,134 @@ export const UploadMediaResponse = zod.object({
 })
 
 /**
+ * @summary List Series
+ */
+export const listSeriesQueryArchivedDefault = false;
+
+export const ListSeriesQueryParams = zod.object({
+  "child_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "archived": zod.boolean().default(listSeriesQueryArchivedDefault)
+})
+
+export const ListSeriesResponseItem = zod.object({
+  "archived_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "child_id": zod.uuid(),
+  "child_name": zod.string(),
+  "duration_min": zod.int(),
+  "ends_on": zod.union([zod.iso.date(),zod.null()]),
+  "id": zod.uuid(),
+  "local_start_time": zod.iso.time({}),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "rrule": zod.string(),
+  "starts_on": zod.iso.date()
+})
+export const ListSeriesResponse = zod.array(ListSeriesResponseItem)
+
+/**
+ * @summary Create Series
+ */
+export const createSeriesBodyDurationMinMin = 15;
+export const createSeriesBodyDurationMinMax = 240;
+
+export const createSeriesBodyMeetingUrlOneMax = 2083;
+
+export const createSeriesBodyRruleMax = 200;
+
+
+
+export const CreateSeriesBody = zod.object({
+  "child_id": zod.uuid(),
+  "duration_min": zod.int().min(createSeriesBodyDurationMinMin).max(createSeriesBodyDurationMinMax),
+  "ends_on": zod.union([zod.iso.date(),zod.null()]).optional(),
+  "local_start_time": zod.iso.time({}),
+  "meeting_url": zod.union([zod.url().min(1).max(createSeriesBodyMeetingUrlOneMax),zod.null()]).optional(),
+  "rrule": zod.string().max(createSeriesBodyRruleMax),
+  "starts_on": zod.iso.date()
+})
+
+export const CreateSeriesResponse = zod.object({
+  "lessons_created": zod.int(),
+  "series": zod.object({
+  "archived_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "child_id": zod.uuid(),
+  "child_name": zod.string(),
+  "duration_min": zod.int(),
+  "ends_on": zod.union([zod.iso.date(),zod.null()]),
+  "id": zod.uuid(),
+  "local_start_time": zod.iso.time({}),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "rrule": zod.string(),
+  "starts_on": zod.iso.date()
+}),
+  "warnings": zod.array(zod.object({
+  "code": zod.literal("overlap").meta({ title: 'Code' }),
+  "lesson_id": zod.uuid(),
+  "message": zod.string(),
+  "starts_at": zod.iso.datetime({"offset":true})
+}))
+})
+
+/**
+ * @summary Archive Series
+ */
+export const ArchiveSeriesParams = zod.object({
+  "series_id": zod.uuid()
+})
+
+export const ArchiveSeriesResponse = zod.void()
+
+/**
+ * @summary Update Series
+ */
+export const UpdateSeriesParams = zod.object({
+  "series_id": zod.uuid()
+})
+
+export const UpdateSeriesQueryParams = zod.object({
+  "scope": zod.literal("this_and_following").meta({ title: 'Scope' }),
+  "from": zod.iso.date()
+})
+
+export const updateSeriesBodyDurationMinOneMin = 15;
+export const updateSeriesBodyDurationMinOneMax = 240;
+
+export const updateSeriesBodyMeetingUrlOneMax = 2083;
+
+export const updateSeriesBodyRruleOneMax = 200;
+
+
+
+export const UpdateSeriesBody = zod.object({
+  "duration_min": zod.union([zod.int().min(updateSeriesBodyDurationMinOneMin).max(updateSeriesBodyDurationMinOneMax),zod.null()]).optional(),
+  "ends_on": zod.union([zod.iso.date(),zod.null()]).optional(),
+  "local_start_time": zod.union([zod.iso.time({}),zod.null()]).optional(),
+  "meeting_url": zod.union([zod.url().min(1).max(updateSeriesBodyMeetingUrlOneMax),zod.null()]).optional(),
+  "rrule": zod.union([zod.string().max(updateSeriesBodyRruleOneMax),zod.null()]).optional()
+}).describe('Частичная правка: `meeting_url` и `ends_on` можно сбросить в `null`, остальные поля — нет.')
+
+export const UpdateSeriesResponse = zod.object({
+  "lessons_created": zod.int(),
+  "series": zod.object({
+  "archived_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "child_id": zod.uuid(),
+  "child_name": zod.string(),
+  "duration_min": zod.int(),
+  "ends_on": zod.union([zod.iso.date(),zod.null()]),
+  "id": zod.uuid(),
+  "local_start_time": zod.iso.time({}),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "rrule": zod.string(),
+  "starts_on": zod.iso.date()
+}),
+  "warnings": zod.array(zod.object({
+  "code": zod.literal("overlap").meta({ title: 'Code' }),
+  "lesson_id": zod.uuid(),
+  "message": zod.string(),
+  "starts_at": zod.iso.datetime({"offset":true})
+}))
+})
+
+/**
  * @summary Get Tutor Settings Admin
  */
 export const GetTutorSettingsAdminResponse = zod.object({

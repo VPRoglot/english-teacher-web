@@ -28,6 +28,23 @@ class LessonSlotTaken(Conflict):
     message = "В это время уже есть занятие этого расписания"
 
 
+class SeriesNotFound(NotFound):
+    code = "series_not_found"
+    message = "Расписание не найдено"
+
+
+class SeriesArchived(Conflict):
+    code = "series_archived"
+    message = "Расписание уже завершено"
+
+
+class SeriesDateInvalid(ValidationFailed):
+    """Дата правки серии не подходит: ошибка на указанном поле запроса."""
+
+    def __init__(self, loc: list[str], message: str) -> None:
+        super().__init__(details={"fields": [{"loc": loc, "message": message, "type": "range"}]})
+
+
 class ScheduleRangeInvalid(ValidationFailed):
     """Период запроса занятий: конец позже начала, не больше 62 дней."""
 

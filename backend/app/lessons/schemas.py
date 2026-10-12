@@ -1,20 +1,23 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Annotated, Literal
 from zoneinfo import available_timezones
 
 from pydantic import (
+    AfterValidator,
     AwareDatetime,
     BaseModel,
     ConfigDict,
     Field,
     StringConstraints,
+    ValidationInfo,
     field_validator,
 )
 from pydantic_core import PydanticCustomError
 
 from app.families.schemas import MeetingUrl
 from app.lessons.models import LessonKind, LessonStatus
+from app.lessons.recurrence import InvalidRule, normalize_rule
 
 TIMEZONE_ERROR = "Неизвестный часовой пояс"
 
@@ -126,3 +129,82 @@ class LessonNotesUpdate(BaseModel):
 
     shared_text: NoteText
     private_text: NoteText
+
+
+def _normalized_rule(value: str) -> str:
+    try:
+        return normalize_rule(value)
+    except InvalidRule as exc:
+        raise PydanticCustomError("invalid_rrule", str(exc)) from exc
+
+
+def _check_local_time(value: time) -> time:
+    if value.tzinfo is not None:
+        raise PydanticCustomError("local_time", "Время задаётся без часового пояса")
+    if value.second or value.microsecond:
+        raise PydanticCustomError("local_time", "Время задаётся с точностью до минуты")
+    return value
+
+
+# Каноническая запись правила; неподдерживаемое правило — 422 на поле `rrule`.
+RRule = Annotated[str, Field(max_length=200), AfterValidator(_normalized_rule)]
+# Местное время начала: часы и минуты, без секунд и без пояса.
+LocalTime = Annotated[time, AfterValidator(_check_local_time)]
+
+
+class SeriesCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    child_id: uuid.UUID
+    rrule: RRule
+    local_start_time: LocalTime
+    duration_min: DurationMin
+    meeting_url: MeetingUrl | None = None
+    starts_on: date
+    ends_on: date | None = None
+
+    @field_validator("ends_on")
+    @classmethod
+    def _ends_after_start(cls, value: date | None, info: ValidationInfo) -> date | None:
+        starts_on = info.data.get("starts_on")
+        if value is not None and starts_on is not None and value < starts_on:
+            raise PydanticCustomError("range", "Окончание не может быть раньше начала")
+        return value
+
+
+class SeriesUpdate(BaseModel):
+    """Частичная правка: `meeting_url` и `ends_on` можно сбросить в `null`, остальные поля — нет."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rrule: RRule | None = None
+    local_start_time: LocalTime | None = None
+    duration_min: DurationMin | None = None
+    meeting_url: MeetingUrl | None = None
+    ends_on: date | None = None
+
+    @field_validator("rrule", "local_start_time", "duration_min")
+    @classmethod
+    def _not_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("Поле не может быть пустым")
+        return value
+
+
+class SeriesDetail(BaseModel):
+    id: uuid.UUID
+    child_id: uuid.UUID
+    child_name: str
+    rrule: str
+    local_start_time: time
+    duration_min: int
+    meeting_url: str | None
+    starts_on: date
+    ends_on: date | None
+    archived_at: datetime | None
+
+
+class SeriesSaved(BaseModel):
+    series: SeriesDetail
+    lessons_created: int
+    warnings: list[OverlapWarning]

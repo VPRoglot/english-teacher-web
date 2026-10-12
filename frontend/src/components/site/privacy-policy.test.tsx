@@ -28,6 +28,11 @@ test("policy does not claim there are no third parties while Telegram gets notif
       /имя родителя, возраст ребёнка, способ связи и контакт\s+для связи\) доставляется\s+репетитору через Telegram/,
     ),
   ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      /а также уведомления о запросах на\s+перенос и отмену занятий \(имя ученика и время занятия\)/,
+    ),
+  ).toBeInTheDocument();
   // Имя ребёнка, цель и удобное время в Telegram не уходят.
   expect(screen.queryByText(/имя ребёнка.*Telegram/)).not.toBeInTheDocument();
 });

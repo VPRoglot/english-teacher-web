@@ -1,6 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 import structlog
 from sqlalchemy import select
@@ -8,8 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import AsyncBroker, Context, TaskiqDepends
 
 from app.core.telegram import TELEGRAM_HANDLE_RE
+from app.families.models import Child
 from app.leads.models import ContactMethod, Lead
 from app.leads.service import NOTIFY_NEW_LEAD_TASK
+from app.lessons.late_cancel import is_late_cancel
+from app.lessons.models import ChangeRequest, ChangeRequestStatus, ChangeRequestType, Lesson
+from app.lessons.requests_service import NOTIFY_CHANGE_REQUEST_TASK
+from app.lessons.tutor_settings import get_tutor_settings
 from app.notifications.notifier import DisabledNotifier
 
 log = structlog.get_logger("app.notifications")
@@ -100,7 +106,101 @@ async def _lock_lead(session: AsyncSession, lead_id: str) -> Lead | None:
     return await session.scalar(stmt)
 
 
+def format_change_request_message(
+    *,
+    type: ChangeRequestType,
+    child_name: str,
+    starts_at_local: str,
+    is_late: bool,
+    admin_url: str,
+) -> str:
+    """Текст о запросе семьи: обычный текст, без комментария родителя (он остаётся в админке)."""
+    action = "перенос" if type is ChangeRequestType.RESCHEDULE else "отмену"
+    lines = [
+        f"Запрос на {action} занятия",
+        f"Ученик: {child_name}",
+        f"Занятие: {starts_at_local}",
+    ]
+    if is_late:
+        lines.append("Поздняя отмена")
+    lines.append(admin_url)
+    text = "\n".join(lines)
+    if len(text) > MAX_MESSAGE_LENGTH:
+        text = text[: MAX_MESSAGE_LENGTH - 1] + "…"
+    return text
+
+
+async def notify_change_request(
+    request_id: str, context: Annotated[Context, TaskiqDepends()]
+) -> None:
+    """Шлёт репетитору сообщение о запросе на перенос или отмену ровно один раз.
+
+    Логика та же, что у `notify_new_lead`: строка запроса заблокирована до коммита,
+    исключение отправки не гасится (повтор сделает DelayedRetryMiddleware).
+    """
+    state = context.state
+    event = "change_request_notification_skipped"
+    async with state.sessionmaker() as session:
+        request = await _lock_change_request(session, request_id)
+        if request is None:
+            log.info(event, request_id=request_id, reason="not_found")
+            return
+        if request.notified_at is not None:
+            log.info(event, request_id=request_id, reason="already_notified")
+            return
+        if request.status is not ChangeRequestStatus.PENDING:
+            log.info(event, request_id=request_id, reason="not_pending")
+            return
+        if isinstance(state.notifier, DisabledNotifier):
+            # Telegram не настроен: запрос виден репетитору в админке, notified_at пуст.
+            log.warning(event, request_id=request_id, reason="disabled")
+            return
+        # Чтение чужих таблиц (R8): занятие, ребёнок и настройки репетитора.
+        lesson = await session.get(Lesson, request.lesson_id)
+        child = await session.get(Child, lesson.child_id) if lesson and lesson.child_id else None
+        if lesson is None or child is None:
+            log.info(event, request_id=request_id, reason="no_child")
+            return
+        settings = await get_tutor_settings(session)
+        starts_local = lesson.starts_at.astimezone(ZoneInfo(settings.timezone))
+        is_late = request.type is ChangeRequestType.CANCEL and is_late_cancel(
+            requested_at=request.created_at,
+            starts_at=lesson.starts_at,
+            policy_hours=settings.cancel_policy_hours,
+        )
+        text = format_change_request_message(
+            type=request.type,
+            child_name=child.full_name,
+            starts_at_local=starts_local.strftime("%d.%m.%Y %H:%M"),
+            is_late=is_late,
+            admin_url=f"{state.public_base_url}/admin/requests",
+        )
+        await state.notifier.send(text)
+        request.notified_at = datetime.now(UTC)
+        await session.commit()
+
+
+async def _lock_change_request(session: AsyncSession, request_id: str) -> ChangeRequest | None:
+    try:
+        parsed_id = uuid.UUID(request_id)
+    except ValueError:
+        return None
+    stmt = (
+        select(ChangeRequest)
+        .where(ChangeRequest.id == parsed_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return await session.scalar(stmt)
+
+
 def register_tasks(broker: AsyncBroker) -> None:
     broker.register_task(
         notify_new_lead, task_name=NOTIFY_NEW_LEAD_TASK, retry_on_error=True, max_retries=5
+    )
+    broker.register_task(
+        notify_change_request,
+        task_name=NOTIFY_CHANGE_REQUEST_TASK,
+        retry_on_error=True,
+        max_retries=5,
     )

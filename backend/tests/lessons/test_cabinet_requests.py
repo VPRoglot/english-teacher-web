@@ -1,11 +1,15 @@
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+import structlog
+from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.lessons.admin_router import get_now
 from app.lessons.models import ChangeRequest, ChangeRequestStatus, Lesson, LessonStatus
 from tests.conftest import FakeTaskQueue
 from tests.factories import make_child
@@ -13,12 +17,20 @@ from tests.lessons.conftest import make_change_request, make_lesson
 from tests.lessons.test_cabinet_lessons import only_family
 
 NOTIFY = "notifications.notify_change_request"
+NOW = datetime(2026, 10, 12, 9, tzinfo=UTC)
+
+
+@pytest.fixture(autouse=True)
+def frozen_now(app: FastAPI) -> Iterator[None]:
+    app.dependency_overrides[get_now] = lambda: NOW
+    yield
+    app.dependency_overrides.pop(get_now, None)
 
 
 async def future_lesson(session: AsyncSession, **overrides: Any) -> Lesson:
     family = await only_family(session)
     child = await make_child(session, family)
-    values: dict[str, Any] = {"starts_at": datetime.now(UTC) + timedelta(days=3)}
+    values: dict[str, Any] = {"starts_at": NOW + timedelta(days=3)}
     values.update(overrides)
     return await make_lesson(session, child=child, **values)
 
@@ -118,11 +130,11 @@ async def test_only_future_scheduled_lessons(
     parent_client: AsyncClient, db_session: AsyncSession, case: str
 ) -> None:
     cases: dict[str, dict[str, Any]] = {
-        "past": {"starts_at": datetime.now(UTC) - timedelta(hours=1)},
+        "past": {"starts_at": NOW - timedelta(hours=1)},
         "cancelled": {"status": LessonStatus.CANCELLED},
         "completed": {
             "status": LessonStatus.COMPLETED,
-            "starts_at": datetime.now(UTC) - timedelta(days=1),
+            "starts_at": NOW - timedelta(days=1),
         },
     }
     overrides = cases[case]
@@ -156,7 +168,7 @@ async def test_withdraw_resolved_is_409(
         lesson,
         status=ChangeRequestStatus.REJECTED,
         tutor_response="Нет окон",
-        resolved_at=datetime.now(UTC),
+        resolved_at=NOW,
     )
     r = await parent_client.delete(f"/api/me/change-requests/{done.id}")
     assert r.status_code == 409
@@ -175,7 +187,7 @@ async def test_late_flag_uses_request_time(
     parent_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     # порог по умолчанию 24 ч, занятие через 10 ч
-    lesson = await future_lesson(db_session, starts_at=datetime.now(UTC) + timedelta(hours=10))
+    lesson = await future_lesson(db_session, starts_at=NOW + timedelta(hours=10))
     r = await parent_client.post(url(lesson.id), json={"type": "cancel"})
     assert r.status_code == 201
     assert r.json()["is_late"] is True
@@ -186,7 +198,7 @@ async def test_late_flag_uses_request_time(
 async def test_reschedule_is_never_late(
     parent_client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    lesson = await future_lesson(db_session, starts_at=datetime.now(UTC) + timedelta(hours=2))
+    lesson = await future_lesson(db_session, starts_at=NOW + timedelta(hours=2))
     r = await parent_client.post(
         url(lesson.id), json={"type": "reschedule", "proposed_text": "позже"}
     )
@@ -198,6 +210,11 @@ async def test_request_saved_even_if_enqueue_fails(
 ) -> None:
     task_queue.fail = True
     lesson = await future_lesson(db_session)
-    r = await parent_client.post(url(lesson.id), json={"type": "cancel"})
+    with structlog.testing.capture_logs() as logs:
+        r = await parent_client.post(url(lesson.id), json={"type": "cancel"})
     assert r.status_code == 201
     assert len((await db_session.scalars(select(ChangeRequest))).all()) == 1
+    failed = [e for e in logs if e["event"] == "change_request_enqueue_failed"]
+    assert len(failed) == 1
+    assert failed[0]["change_request_id"] == r.json()["id"]
+    assert "request_id" not in failed[0]

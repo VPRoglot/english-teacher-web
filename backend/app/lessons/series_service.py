@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, exists, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.families import service as families_service
@@ -18,8 +18,9 @@ from app.lessons.generation import (
     reconcile_series,
     series_shape,
 )
-from app.lessons.models import ChangeRequest, Lesson, LessonSeries, LessonStatus
+from app.lessons.models import Lesson, LessonSeries, LessonStatus
 from app.lessons.overlaps import MAX_WARNINGS, find_overlaps
+from app.lessons.requests_service import lesson_ids_with_requests
 from app.lessons.schemas import (
     OverlapWarning,
     SeriesCreate,
@@ -252,15 +253,25 @@ async def archive_series(session: AsyncSession, series_id: uuid.UUID, *, now: da
     if series.archived_at is not None:
         raise SeriesArchived
     series.archived_at = now
-    await session.execute(
-        delete(Lesson).where(
-            Lesson.series_id == series.id,
-            Lesson.status == LessonStatus.SCHEDULED,
-            Lesson.is_detached.is_(False),
-            Lesson.starts_at > now,
-            ~exists().where(ChangeRequest.lesson_id == Lesson.id),
+    # Сначала блокируем кандидатов (порядок блокировок: серия → занятие), потом смотрим запросы:
+    # запрос, созданный параллельно, ждёт нашей блокировки и не получает RESTRICT-ошибку.
+    candidates = list(
+        await session.scalars(
+            select(Lesson.id)
+            .where(
+                Lesson.series_id == series.id,
+                Lesson.status == LessonStatus.SCHEDULED,
+                Lesson.is_detached.is_(False),
+                Lesson.starts_at > now,
+            )
+            .order_by(Lesson.id)
+            .with_for_update()
         )
     )
+    protected = await lesson_ids_with_requests(session, candidates)
+    doomed = [lesson_id for lesson_id in candidates if lesson_id not in protected]
+    if doomed:
+        await session.execute(delete(Lesson).where(Lesson.id.in_(doomed)))
     await session.flush()
 
 

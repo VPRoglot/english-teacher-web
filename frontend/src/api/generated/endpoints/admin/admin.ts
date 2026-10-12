@@ -116,6 +116,10 @@ export const getListChangeRequestsUrl = (params?: ListChangeRequestsParams,) => 
 }
 
 /**
+ * Очередь запросов; без `status` — все статусы.
+ *
+ * Порядок без фильтра: сначала ждущие (старейшие первыми), затем рассмотренные по
+ * `resolved_at` от новых к старым.
  * @summary List Change Requests
  */
 export const listChangeRequests = async (params?: ListChangeRequestsParams, options?: Parameters<typeof apiFetch>[1]): Promise<ChangeRequestAdminItem[]> => {

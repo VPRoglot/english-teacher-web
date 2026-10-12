@@ -87,6 +87,23 @@ class ChangeRequestOutdated(Conflict):
     message = "Занятие уже изменено — отклоните запрос с комментарием"
 
 
+class NewStartsAtUnchanged(ValidationFailed):
+    """Новое время переноса совпадает с текущим временем занятия."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            details={
+                "fields": [
+                    {
+                        "loc": ["body", "new_starts_at"],
+                        "message": "Выберите новое время — оно совпадает с текущим",
+                        "type": "value_error",
+                    }
+                ]
+            }
+        )
+
+
 class NewStartsAtRequired(ValidationFailed):
     """Для одобрения переноса не указано новое время."""
 

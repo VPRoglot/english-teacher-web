@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +22,7 @@ from app.lessons.errors import (
     LessonNotRequestable,
     LessonSlotTaken,
     NewStartsAtRequired,
+    NewStartsAtUnchanged,
 )
 from app.lessons.late_cancel import is_late_cancel
 from app.lessons.models import (
@@ -212,7 +213,9 @@ async def request_change_notification(queue: TaskQueue, request_id: uuid.UUID) -
     try:
         await queue.enqueue(NOTIFY_CHANGE_REQUEST_TASK, request_id=str(request_id))
     except Exception:
-        log.warning("change_request_enqueue_failed", request_id=str(request_id), exc_info=True)
+        log.warning(
+            "change_request_enqueue_failed", change_request_id=str(request_id), exc_info=True
+        )
 
 
 def _admin_stmt() -> Select[Any]:
@@ -264,12 +267,23 @@ def _admin_item(
 async def list_admin_requests(
     session: AsyncSession, *, status: ChangeRequestStatus | None
 ) -> list[ChangeRequestAdminItem]:
-    """Очередь: ждущие — старейшие первыми, остальные — недавно рассмотренные первыми."""
+    """Очередь запросов.
+
+    Ждущие — старейшие первыми; остальные — недавно рассмотренные первыми. Без фильтра по
+    статусу сначала идут все ждущие (старейшие первыми), затем рассмотренные по `resolved_at`
+    от новых к старым.
+    """
     stmt = _admin_stmt()
+    pending = ChangeRequest.status == ChangeRequestStatus.PENDING
     if status is ChangeRequestStatus.PENDING:
         stmt = stmt.order_by(ChangeRequest.created_at, ChangeRequest.id)
     elif status is None:
-        stmt = stmt.order_by(ChangeRequest.created_at.desc(), ChangeRequest.id.desc())
+        stmt = stmt.order_by(
+            case((pending, 0), else_=1),
+            case((pending, ChangeRequest.created_at)),
+            ChangeRequest.resolved_at.desc().nulls_last(),
+            ChangeRequest.id.desc(),
+        )
     else:
         stmt = stmt.order_by(ChangeRequest.resolved_at.desc(), ChangeRequest.id.desc())
     if status is not None:
@@ -373,6 +387,8 @@ async def approve_change_request(
     else:
         if data.new_starts_at is None:
             raise NewStartsAtRequired
+        if data.new_starts_at == lesson.starts_at:
+            raise NewStartsAtUnchanged
         try:
             # Савепоинт: нарушение уникальности не должно убить транзакцию запроса.
             async with session.begin_nested():

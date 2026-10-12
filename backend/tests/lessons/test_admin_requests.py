@@ -79,7 +79,7 @@ async def test_list_pending_oldest_first_with_context(
         status=ChangeRequestStatus.WITHDRAWN,
         resolved_at=NOW,
     )
-    r = await tutor_client.get("/api/admin/change-requests")
+    r = await tutor_client.get("/api/admin/change-requests", params={"status": "pending"})
     assert r.status_code == 200
     items = r.json()
     assert [i["id"] for i in items] == [str(older.id), str(newer.id)]
@@ -119,12 +119,51 @@ async def test_list_other_statuses_resolved_desc(
     assert [i["id"] for i in r.json()] == [str(late.id), str(early.id)]
 
 
+async def test_list_without_status_returns_all_pending_first(
+    tutor_client: AsyncClient, db_session: AsyncSession, child: Child
+) -> None:
+    def offset(days: int) -> dict[str, Any]:
+        return {"starts_at": LESSON_START + timedelta(days=days)}
+
+    _, newer = await request_for(db_session, child, created_at=NOW - timedelta(hours=1))
+    _, older = await request_for(
+        db_session, child, lesson_overrides=offset(1), created_at=NOW - timedelta(hours=5)
+    )
+    resolved: dict[ChangeRequestStatus, ChangeRequest] = {}
+    for i, status in enumerate(
+        [
+            ChangeRequestStatus.APPROVED,
+            ChangeRequestStatus.REJECTED,
+            ChangeRequestStatus.WITHDRAWN,
+        ]
+    ):
+        _, resolved[status] = await request_for(
+            db_session,
+            child,
+            lesson_overrides=offset(2 + i),
+            status=status,
+            resolved_at=NOW - timedelta(hours=3 - i),
+            tutor_response="Нет" if status is ChangeRequestStatus.REJECTED else None,
+        )
+    r = await tutor_client.get("/api/admin/change-requests")
+    assert r.status_code == 200
+    assert [i["id"] for i in r.json()] == [
+        str(older.id),
+        str(newer.id),
+        str(resolved[ChangeRequestStatus.WITHDRAWN].id),
+        str(resolved[ChangeRequestStatus.REJECTED].id),
+        str(resolved[ChangeRequestStatus.APPROVED].id),
+    ]
+
+
 async def test_requested_by_name_is_parent_full_name(
     tutor_client: AsyncClient, db_session: AsyncSession, child: Child
 ) -> None:
     parent = await make_parent(db_session, await make_family(db_session), full_name="Анна Иванова")
     await request_for(db_session, child, requested_by=parent)
-    items = (await tutor_client.get("/api/admin/change-requests")).json()
+    items = (
+        await tutor_client.get("/api/admin/change-requests", params={"status": "pending"})
+    ).json()
     assert items[0]["requested_by_name"] == "Анна Иванова"
 
 
@@ -204,6 +243,24 @@ async def test_approve_reschedule_oneoff_stays_not_detached(
     assert r.status_code == 200
     await db_session.refresh(lesson)
     assert lesson.starts_at == new_start
+    assert lesson.is_detached is False
+
+
+async def test_reschedule_to_current_time_is_422(
+    tutor_client: AsyncClient, db_session: AsyncSession, child: Child
+) -> None:
+    lesson, request = await request_for(db_session, child, type=ChangeRequestType.RESCHEDULE)
+    r = await tutor_client.post(
+        approve_url(request.id), json={"new_starts_at": LESSON_START.isoformat()}
+    )
+    assert r.status_code == 422
+    field = r.json()["error"]["details"]["fields"][0]
+    assert field["loc"] == ["body", "new_starts_at"]
+    assert field["message"] == "Выберите новое время — оно совпадает с текущим"
+    await db_session.refresh(request)
+    assert request.status is ChangeRequestStatus.PENDING
+    await db_session.refresh(lesson)
+    assert lesson.starts_at == LESSON_START
     assert lesson.is_detached is False
 
 

@@ -14,7 +14,7 @@ from app.lessons.admin_router import get_now
 from app.lessons.generation import materialize_all
 from app.lessons.models import Lesson, LessonNote, LessonSeries, LessonStatus
 from tests.factories import make_child, make_family
-from tests.lessons.conftest import make_lesson, make_series
+from tests.lessons.conftest import make_change_request, make_lesson, make_series
 
 NOW = datetime(2026, 10, 12, 9, tzinfo=UTC)  # пн 12:00 MSK
 SERIES_URL = "/api/admin/series"
@@ -538,6 +538,34 @@ async def test_archive_removes_future_undetached_scheduled(
 
     again = await tutor_client.delete(f"{SERIES_URL}/{series_id}")
     assert again.status_code == 409 and again.json()["error"]["code"] == "series_archived"
+
+
+async def test_archive_locks_candidate_lessons_before_delete(
+    tutor_client: AsyncClient, db_session: AsyncSession, child: Child, sql_log: list[str]
+) -> None:
+    created = await create(tutor_client, child, starts_on="2026-10-01")
+    series_id = created["series"]["id"]
+    rows = await by_date(db_session, series_id)
+    with_request = rows[date(2026, 10, 20)]
+    await make_change_request(db_session, with_request)
+    sql_log.clear()
+
+    r = await tutor_client.delete(f"{SERIES_URL}/{series_id}")
+    assert r.status_code == 204
+
+    lock = next(
+        i
+        for i, s in enumerate(sql_log)
+        if "FROM lessons" in s and "FOR UPDATE" in s and "ORDER BY lessons.id" in s
+    )
+    delete_at = next(i for i, s in enumerate(sql_log) if s.startswith("DELETE FROM lessons"))
+    assert lock < delete_at
+    remaining = {lesson.id for lesson in await lessons_of(db_session, series_id)}
+    assert with_request.id in remaining
+    assert all(
+        lesson.id == with_request.id or lesson.starts_at <= NOW
+        for lesson in await lessons_of(db_session, series_id)
+    )
 
 
 async def test_archive_unknown_series_is_404(tutor_client: AsyncClient) -> None:

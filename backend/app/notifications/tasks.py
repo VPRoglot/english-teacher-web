@@ -143,23 +143,23 @@ async def notify_change_request(
     async with state.sessionmaker() as session:
         request = await _lock_change_request(session, request_id)
         if request is None:
-            log.info(event, request_id=request_id, reason="not_found")
+            log.info(event, change_request_id=request_id, reason="not_found")
             return
         if request.notified_at is not None:
-            log.info(event, request_id=request_id, reason="already_notified")
+            log.info(event, change_request_id=request_id, reason="already_notified")
             return
         if request.status is not ChangeRequestStatus.PENDING:
-            log.info(event, request_id=request_id, reason="not_pending")
+            log.info(event, change_request_id=request_id, reason="not_pending")
             return
         if isinstance(state.notifier, DisabledNotifier):
             # Telegram не настроен: запрос виден репетитору в админке, notified_at пуст.
-            log.warning(event, request_id=request_id, reason="disabled")
+            log.warning(event, change_request_id=request_id, reason="disabled")
             return
         # Чтение чужих таблиц (R8): занятие, ребёнок и настройки репетитора.
         lesson = await session.get(Lesson, request.lesson_id)
         child = await session.get(Child, lesson.child_id) if lesson and lesson.child_id else None
         if lesson is None or child is None:
-            log.info(event, request_id=request_id, reason="no_child")
+            log.info(event, change_request_id=request_id, reason="no_child")
             return
         settings = await get_tutor_settings(session)
         starts_local = lesson.starts_at.astimezone(ZoneInfo(settings.timezone))

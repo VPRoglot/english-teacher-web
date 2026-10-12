@@ -104,6 +104,16 @@ async def test_missing_request_is_noop(
     ]
 
 
+async def test_skip_logs_use_change_request_id_key(context: Context) -> None:
+    missing = str(uuid.uuid4())
+    with structlog.testing.capture_logs() as logs:
+        await notify_change_request(missing, context)
+    assert len(logs) == 1
+    assert logs[0]["change_request_id"] == missing
+    # `request_id` — id трассировки HTTP-запроса, лог задачи его не затирает.
+    assert "request_id" not in logs[0]
+
+
 async def test_resolved_request_is_noop(
     context: Context, db_request: ChangeRequest, notifier: FakeNotifier, db_session: AsyncSession
 ) -> None:

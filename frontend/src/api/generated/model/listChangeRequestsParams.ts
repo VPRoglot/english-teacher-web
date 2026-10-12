@@ -7,5 +7,5 @@
 import type { ChangeRequestStatus } from './changeRequestStatus';
 
 export type ListChangeRequestsParams = {
-status?: ChangeRequestStatus;
+status?: ChangeRequestStatus | null;
 };

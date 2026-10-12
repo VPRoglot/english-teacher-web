@@ -8,10 +8,14 @@ import * as zod from 'zod';
 
 
 /**
+ * Очередь запросов; без `status` — все статусы.
+ *
+ * Порядок без фильтра: сначала ждущие (старейшие первыми), затем рассмотренные по
+ * `resolved_at` от новых к старым.
  * @summary List Change Requests
  */
 export const ListChangeRequestsQueryParams = zod.object({
-  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']).optional()
+  "status": zod.union([zod.enum(['pending', 'approved', 'rejected', 'withdrawn']),zod.null()]).optional()
 })
 
 export const ListChangeRequestsResponseItem = zod.object({

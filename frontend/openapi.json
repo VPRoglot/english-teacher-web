@@ -3718,6 +3718,7 @@
   "paths": {
     "/api/admin/change-requests": {
       "get": {
+        "description": "Очередь запросов; без `status` — все статусы.\n\nПорядок без фильтра: сначала ждущие (старейшие первыми), затем рассмотренные по\n`resolved_at` от новых к старым.",
         "operationId": "list_change_requests",
         "parameters": [
           {
@@ -3725,8 +3726,15 @@
             "name": "status",
             "required": false,
             "schema": {
-              "$ref": "#/components/schemas/ChangeRequestStatus",
-              "default": "pending"
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ChangeRequestStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
             }
           }
         ],

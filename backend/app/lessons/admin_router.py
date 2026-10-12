@@ -155,8 +155,13 @@ async def list_trial_lessons(
 async def list_change_requests(
     _: TutorUser,
     session: DbSession,
-    status: ChangeRequestStatus = ChangeRequestStatus.PENDING,
+    status: ChangeRequestStatus | None = None,
 ) -> list[ChangeRequestAdminItem]:
+    """Очередь запросов; без `status` — все статусы.
+
+    Порядок без фильтра: сначала ждущие (старейшие первыми), затем рассмотренные по
+    `resolved_at` от новых к старым.
+    """
     return await requests_service.list_admin_requests(session, status=status)
 
 

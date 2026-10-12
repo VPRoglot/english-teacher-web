@@ -394,6 +394,144 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "ChangeRequestAdminItem": {
+        "description": "Запрос в очереди репетитора: с занятием, учеником, семьёй и автором.",
+        "properties": {
+          "child": {
+            "$ref": "#/components/schemas/ChangeRequestChild"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "family": {
+            "$ref": "#/components/schemas/ChangeRequestFamily"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_late": {
+            "title": "Is Late",
+            "type": "boolean"
+          },
+          "lesson": {
+            "$ref": "#/components/schemas/ChangeRequestLesson"
+          },
+          "proposed_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Text"
+          },
+          "requested_by_name": {
+            "title": "Requested By Name",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ChangeRequestStatus"
+          },
+          "tutor_response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tutor Response"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ChangeRequestType"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "status",
+          "proposed_text",
+          "comment",
+          "tutor_response",
+          "created_at",
+          "resolved_at",
+          "is_late",
+          "lesson",
+          "child",
+          "family",
+          "requested_by_name"
+        ],
+        "title": "ChangeRequestAdminItem",
+        "type": "object"
+      },
+      "ChangeRequestApprove": {
+        "additionalProperties": false,
+        "properties": {
+          "new_starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Starts At"
+          }
+        },
+        "title": "ChangeRequestApprove",
+        "type": "object"
+      },
+      "ChangeRequestChild": {
+        "properties": {
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "full_name"
+        ],
+        "title": "ChangeRequestChild",
+        "type": "object"
+      },
       "ChangeRequestCreate": {
         "additionalProperties": false,
         "description": "Запрос семьи на перенос или отмену занятия.",
@@ -430,6 +568,25 @@
           "type"
         ],
         "title": "ChangeRequestCreate",
+        "type": "object"
+      },
+      "ChangeRequestFamily": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ChangeRequestFamily",
         "type": "object"
       },
       "ChangeRequestForFamily": {
@@ -513,6 +670,157 @@
           "is_late"
         ],
         "title": "ChangeRequestForFamily",
+        "type": "object"
+      },
+      "ChangeRequestLesson": {
+        "properties": {
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LessonStatus"
+          }
+        },
+        "required": [
+          "id",
+          "starts_at",
+          "duration_min",
+          "status"
+        ],
+        "title": "ChangeRequestLesson",
+        "type": "object"
+      },
+      "ChangeRequestReject": {
+        "additionalProperties": false,
+        "properties": {
+          "tutor_response": {
+            "maxLength": 1000,
+            "title": "Tutor Response",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tutor_response"
+        ],
+        "title": "ChangeRequestReject",
+        "type": "object"
+      },
+      "ChangeRequestResolved": {
+        "properties": {
+          "child": {
+            "$ref": "#/components/schemas/ChangeRequestChild"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "family": {
+            "$ref": "#/components/schemas/ChangeRequestFamily"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_late": {
+            "title": "Is Late",
+            "type": "boolean"
+          },
+          "lesson": {
+            "$ref": "#/components/schemas/ChangeRequestLesson"
+          },
+          "proposed_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Text"
+          },
+          "requested_by_name": {
+            "title": "Requested By Name",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ChangeRequestStatus"
+          },
+          "tutor_response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tutor Response"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ChangeRequestType"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/OverlapWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "status",
+          "proposed_text",
+          "comment",
+          "tutor_response",
+          "created_at",
+          "resolved_at",
+          "is_late",
+          "lesson",
+          "child",
+          "family",
+          "requested_by_name",
+          "warnings"
+        ],
+        "title": "ChangeRequestResolved",
         "type": "object"
       },
       "ChangeRequestStatus": {
@@ -3312,6 +3620,158 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/admin/change-requests": {
+      "get": {
+        "operationId": "list_change_requests",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ChangeRequestStatus",
+              "default": "pending"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChangeRequestAdminItem"
+                  },
+                  "title": "Response List Change Requests",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "List Change Requests",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/change-requests/{request_id}/approve": {
+      "post": {
+        "operationId": "approve_change_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRequestApprove"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRequestResolved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Approve Change Request",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/change-requests/{request_id}/reject": {
+      "post": {
+        "operationId": "reject_change_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRequestReject"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRequestResolved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Reject Change Request",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/children/{child_id}": {
       "patch": {
         "operationId": "update_child",

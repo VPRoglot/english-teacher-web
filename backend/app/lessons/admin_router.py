@@ -8,11 +8,16 @@ from pydantic import AwareDatetime
 from app.auth.deps import TutorUser
 from app.core.db import DbSession
 from app.core.errors import API_ERROR_RESPONSES
-from app.lessons import series_service, tutor_settings
+from app.lessons import requests_service, series_service, tutor_settings
 from app.lessons import service as lessons_service
+from app.lessons.models import ChangeRequestStatus
 from app.lessons.schemas import (
     AdminLessonDetail,
     AdminLessonItem,
+    ChangeRequestAdminItem,
+    ChangeRequestApprove,
+    ChangeRequestReject,
+    ChangeRequestResolved,
     LessonCreate,
     LessonNotes,
     LessonNotesUpdate,
@@ -144,3 +149,34 @@ async def list_trial_lessons(
     lead_id: uuid.UUID, _: TutorUser, session: DbSession
 ) -> list[AdminLessonItem]:
     return await lessons_service.list_trial_lessons(session, lead_id)
+
+
+@router.get("/change-requests")
+async def list_change_requests(
+    _: TutorUser,
+    session: DbSession,
+    status: ChangeRequestStatus = ChangeRequestStatus.PENDING,
+) -> list[ChangeRequestAdminItem]:
+    return await requests_service.list_admin_requests(session, status=status)
+
+
+@router.post("/change-requests/{request_id}/approve")
+async def approve_change_request(
+    request_id: uuid.UUID,
+    body: ChangeRequestApprove,
+    _: TutorUser,
+    session: DbSession,
+    now: Now,
+) -> ChangeRequestResolved:
+    return await requests_service.approve_change_request(session, request_id, body, now=now)
+
+
+@router.post("/change-requests/{request_id}/reject")
+async def reject_change_request(
+    request_id: uuid.UUID,
+    body: ChangeRequestReject,
+    _: TutorUser,
+    session: DbSession,
+    now: Now,
+) -> ChangeRequestResolved:
+    return await requests_service.reject_change_request(session, request_id, body, now=now)

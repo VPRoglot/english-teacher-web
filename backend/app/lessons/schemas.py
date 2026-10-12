@@ -286,6 +286,68 @@ class ChangeRequestForFamily(BaseModel):
     is_late: bool
 
 
+TUTOR_RESPONSE_ERROR = "Напишите ответ родителю"
+
+
+class ChangeRequestLesson(BaseModel):
+    id: uuid.UUID
+    starts_at: datetime
+    duration_min: int
+    status: LessonStatus
+
+
+class ChangeRequestChild(BaseModel):
+    id: uuid.UUID
+    full_name: str
+
+
+class ChangeRequestFamily(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class ChangeRequestAdminItem(BaseModel):
+    """Запрос в очереди репетитора: с занятием, учеником, семьёй и автором."""
+
+    id: uuid.UUID
+    type: ChangeRequestType
+    status: ChangeRequestStatus
+    proposed_text: str | None
+    comment: str | None
+    tutor_response: str | None
+    created_at: datetime
+    resolved_at: datetime | None
+    is_late: bool
+    lesson: ChangeRequestLesson
+    child: ChangeRequestChild
+    family: ChangeRequestFamily
+    requested_by_name: str
+
+
+class ChangeRequestApprove(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Обязательно для переноса (проверяется сервисом по типу запроса), для отмены не нужно.
+    new_starts_at: AwareDatetime | None = None
+
+
+class ChangeRequestReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tutor_response: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)]
+
+    @field_validator("tutor_response", mode="after")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        if not value:
+            raise PydanticCustomError("tutor_response_required", TUTOR_RESPONSE_ERROR)
+        return value
+
+
+class ChangeRequestResolved(ChangeRequestAdminItem):
+    warnings: list[OverlapWarning]
+
+
 class LessonForFamilyDetail(LessonForFamily):
     # Общая заметка (Markdown); `None`, если она пуста.
     shared_note: str | None

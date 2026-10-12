@@ -8,6 +8,133 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List Change Requests
+ */
+export const ListChangeRequestsQueryParams = zod.object({
+  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']).optional()
+})
+
+export const ListChangeRequestsResponseItem = zod.object({
+  "child": zod.object({
+  "full_name": zod.string(),
+  "id": zod.uuid()
+}),
+  "comment": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "family": zod.object({
+  "id": zod.uuid(),
+  "name": zod.string()
+}),
+  "id": zod.uuid(),
+  "is_late": zod.boolean(),
+  "lesson": zod.object({
+  "duration_min": zod.int(),
+  "id": zod.uuid(),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show'])
+}),
+  "proposed_text": zod.union([zod.string(),zod.null()]),
+  "requested_by_name": zod.string(),
+  "resolved_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']),
+  "tutor_response": zod.union([zod.string(),zod.null()]),
+  "type": zod.enum(['reschedule', 'cancel'])
+}).describe('Запрос в очереди репетитора: с занятием, учеником, семьёй и автором.')
+export const ListChangeRequestsResponse = zod.array(ListChangeRequestsResponseItem)
+
+/**
+ * @summary Approve Change Request
+ */
+export const ApproveChangeRequestParams = zod.object({
+  "request_id": zod.uuid()
+})
+
+export const ApproveChangeRequestBody = zod.object({
+  "new_starts_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional()
+})
+
+export const ApproveChangeRequestResponse = zod.object({
+  "child": zod.object({
+  "full_name": zod.string(),
+  "id": zod.uuid()
+}),
+  "comment": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "family": zod.object({
+  "id": zod.uuid(),
+  "name": zod.string()
+}),
+  "id": zod.uuid(),
+  "is_late": zod.boolean(),
+  "lesson": zod.object({
+  "duration_min": zod.int(),
+  "id": zod.uuid(),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show'])
+}),
+  "proposed_text": zod.union([zod.string(),zod.null()]),
+  "requested_by_name": zod.string(),
+  "resolved_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']),
+  "tutor_response": zod.union([zod.string(),zod.null()]),
+  "type": zod.enum(['reschedule', 'cancel']),
+  "warnings": zod.array(zod.object({
+  "code": zod.literal("overlap").meta({ title: 'Code' }),
+  "lesson_id": zod.uuid(),
+  "message": zod.string(),
+  "starts_at": zod.iso.datetime({"offset":true})
+}))
+})
+
+/**
+ * @summary Reject Change Request
+ */
+export const RejectChangeRequestParams = zod.object({
+  "request_id": zod.uuid()
+})
+
+export const rejectChangeRequestBodyTutorResponseMax = 1000;
+
+
+
+export const RejectChangeRequestBody = zod.object({
+  "tutor_response": zod.string().max(rejectChangeRequestBodyTutorResponseMax)
+})
+
+export const RejectChangeRequestResponse = zod.object({
+  "child": zod.object({
+  "full_name": zod.string(),
+  "id": zod.uuid()
+}),
+  "comment": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "family": zod.object({
+  "id": zod.uuid(),
+  "name": zod.string()
+}),
+  "id": zod.uuid(),
+  "is_late": zod.boolean(),
+  "lesson": zod.object({
+  "duration_min": zod.int(),
+  "id": zod.uuid(),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show'])
+}),
+  "proposed_text": zod.union([zod.string(),zod.null()]),
+  "requested_by_name": zod.string(),
+  "resolved_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']),
+  "tutor_response": zod.union([zod.string(),zod.null()]),
+  "type": zod.enum(['reschedule', 'cancel']),
+  "warnings": zod.array(zod.object({
+  "code": zod.literal("overlap").meta({ title: 'Code' }),
+  "lesson_id": zod.uuid(),
+  "message": zod.string(),
+  "starts_at": zod.iso.datetime({"offset":true})
+}))
+})
+
+/**
  * @summary Update Child
  */
 export const UpdateChildParams = zod.object({

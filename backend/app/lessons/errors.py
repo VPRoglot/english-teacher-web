@@ -80,3 +80,25 @@ class LessonNotRequestable(Conflict):
 class ChangeRequestNotPending(Conflict):
     code = "change_request_not_pending"
     message = "Запрос уже рассмотрен или отозван"
+
+
+class ChangeRequestOutdated(Conflict):
+    code = "change_request_outdated"
+    message = "Занятие уже изменено — отклоните запрос с комментарием"
+
+
+class NewStartsAtRequired(ValidationFailed):
+    """Для одобрения переноса не указано новое время."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            details={
+                "fields": [
+                    {
+                        "loc": ["body", "new_starts_at"],
+                        "message": "Укажите новое время",
+                        "type": "missing",
+                    }
+                ]
+            }
+        )

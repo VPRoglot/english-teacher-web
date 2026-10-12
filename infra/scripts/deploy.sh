@@ -7,6 +7,8 @@
 # При любой ошибке после checkout — откат: прежний IMAGE_TAG в .env, прежний коммит
 # (он же sha из прежнего тега) и, если up уже запускался, снова up -d на старых образах.
 # Схема БД не откатывается: миграции только расширяющие и совместимы с прошлым релизом.
+# migrate вне графа `up` (профиль в docker-compose.prod.yml), поэтому откат его не запускает.
+# Обрыв ssh (SIGHUP) игнорируется; для запуска из CI лучше `setsid nohup … >>deploy.log 2>&1`.
 #
 # Коды выхода: 0 — новый релиз работает; 1 — релиз не удался, откат выполнен (или ничего
 # не менялось); 2 — неверные аргументы/.env, деплой уже идёт или откат не удался.
@@ -16,7 +18,8 @@
 # На сервере нужны bash, git, docker compose v2, curl, flock (util-linux).
 set -euo pipefail
 
-log() { printf '%s deploy: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2; }
+# Best-effort: оборванная ssh-сессия (сломанный stderr) не должна прервать откат.
+log() { printf '%s deploy: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2 || true; }
 die2() {
   log "ОШИБКА: $*"
   exit 2
@@ -117,7 +120,7 @@ rollback() {
 }
 
 abort() {
-  trap - INT TERM HUP
+  trap - INT TERM
   log "релиз $new_tag не удался: $*"
   if [ "$checked_out" = 0 ]; then
     log "ничего не изменено"
@@ -131,12 +134,15 @@ abort() {
   log "ОШИБКА: откат не удался — нужна ручная проверка сервера"
   exit 2
 }
-trap 'abort "прервано сигналом"' INT TERM HUP
+# Обрыв ssh (HUP) деплой не прерывает: он доходит до конца или до отката сам.
+trap '' HUP
+trap 'abort "прервано сигналом"' INT TERM
 
 log "деплой $new_tag (сейчас $prev_tag) в $DEPLOY_DIR"
 git fetch --prune origin || abort "git fetch"
-git checkout --detach "$new_sha" || abort "git checkout $new_sha"
+# Флаги — до шага: прерывание посреди checkout или sed тоже откатывается.
 checked_out=1
+git checkout --detach "$new_sha" || abort "git checkout $new_sha"
 tag_changed=1
 set_tag "$new_tag" || abort "замена IMAGE_TAG в .env"
 compose pull || abort "compose pull"
@@ -144,5 +150,5 @@ compose run --rm migrate || abort "миграции"
 up_started=1
 compose up -d --no-build --remove-orphans || abort "compose up"
 smoke || abort "smoke-проверка https://$domain/api/health/ready и /"
-trap - INT TERM HUP
+trap - INT TERM
 log "готово: работает $new_tag"

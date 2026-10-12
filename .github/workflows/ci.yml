@@ -106,3 +106,9 @@ jobs:
       # base-compose читает env_file ../.env — в CI его нет, берём пример prod-окружения
       - run: cp infra/prod.env.example .env
       - run: docker compose --env-file infra/prod.env.example -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config -q
+      # migrate вне графа `up`: иначе откат запустил бы старый migrate против новой схемы
+      - name: migrate is not part of prod `up`
+        run: |
+          services="$(docker compose --env-file infra/prod.env.example -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config --services)"
+          echo "$services"
+          ! grep -qx migrate <<<"$services"

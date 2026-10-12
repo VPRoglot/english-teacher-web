@@ -42,12 +42,24 @@ services:
     environment:
       APP_ENV: prod
       LOG_JSON: "true"
-    # Одноразовый: deploy.sh запускает `run --rm migrate` до `up`.
+    # Одноразовый и вне графа `up`: deploy.sh запускает `run --rm migrate` до `up`
+    # (сервис, названный явно, запускается и с профилем). Если бы api/worker/scheduler зависели
+    # от migrate, откат (`up -d` на прежнем образе) запустил бы старый migrate против базы,
+    # уже обновлённой новым релизом: alembic не знает новой ревизии → migrate падает → старые
+    # api/worker/scheduler не стартуют. Миграции только расширяющие (схема при откате остаётся
+    # новой, старый код с ней совместим), поэтому старому релизу migrate не нужен.
+    profiles: ["migrate"]
     restart: "no"
 
   api:
     <<: *backend-prod
     build: !reset null
+    # Без migrate (см. выше): только готовность postgres и redis.
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       APP_ENV: prod
       LOG_JSON: "true"
@@ -62,6 +74,12 @@ services:
   worker:
     <<: *backend-prod
     build: !reset null
+    # Без migrate (см. выше): только готовность postgres и redis.
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       APP_ENV: prod
       LOG_JSON: "true"
@@ -73,6 +91,12 @@ services:
   scheduler:
     <<: *backend-prod
     build: !reset null
+    # Без migrate (см. выше): только готовность postgres и redis.
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       APP_ENV: prod
       LOG_JSON: "true"

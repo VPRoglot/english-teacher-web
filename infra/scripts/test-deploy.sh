@@ -136,11 +136,24 @@ if [ "$CODE" = 1 ] &&
   in_order "^git checkout --detach $B$" "$CMP up -d --no-build --remove-orphans \[IMAGE_TAG=sha-$B\]$" \
     "$READY" "$READY" "^git checkout --detach $A$" \
     "$CMP up -d --no-build --remove-orphans \[IMAGE_TAG=sha-$A\]$" &&
-  [ "$(count "$READY")" = 2 ] && [ "$(count ' up ')" = 2 ] &&
+  [ "$(count "$READY")" = 2 ] && [ "$(count ' up ')" = 2 ] && [ "$(count 'migrate')" = 1 ] &&
   [ "$(env_tag)" = "sha-$A" ] && cmp -s "$REPO/.env" "$TMP/env.orig"; then
   pass "smoke fails: IMAGE_TAG=sha-aaa… restored, checkout aaa…, second up; exit 1"
 else
   fail "smoke failure rollback (exit $CODE, IMAGE_TAG=$(env_tag))"
+fi
+
+# --- 2a. up нового релиза падает → откат с up на прежнем теге, без повторного migrate ---------
+setup
+FAKE_UP_FAIL_TAG="sha-$B" deploy "$B"
+if [ "$CODE" = 1 ] &&
+  in_order "^git checkout --detach $B$" "$CMP up -d --no-build --remove-orphans \[IMAGE_TAG=sha-$B\]$" \
+    "^git checkout --detach $A$" "$CMP up -d --no-build --remove-orphans \[IMAGE_TAG=sha-$A\]$" &&
+  [ "$(count ' up ')" = 2 ] && [ "$(count 'migrate')" = 1 ] && [ "$(count '^curl ')" = 0 ] &&
+  cmp -s "$REPO/.env" "$TMP/env.orig"; then
+  pass "up fails: IMAGE_TAG restored, checkout aaa…, up on old tag, no second migrate; exit 1"
+else
+  fail "up failure rollback (exit $CODE, IMAGE_TAG=$(env_tag))"
 fi
 
 # --- 3. pull падает → .env не изменён, up не вызывался ----------------------------------------

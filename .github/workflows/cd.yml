@@ -1,0 +1,168 @@
+name: CD
+
+# После зелёного CI на main: сборка и публикация четырёх образов в GHCR, затем деплой по SSH.
+# Вручную: workflow_dispatch с полным sha коммита (пересборка и деплой именно его).
+#
+# Нужны (Settings → Secrets and variables → Actions; документируются в infra/README.md):
+#   secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS, DEPLOY_PATH
+#   vars:    SENTRY_DSN_WEB (необязателен; встраивается в сборку frontend)
+#   environment: production (здесь можно включить ручное подтверждение деплоя)
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Полный sha коммита (40 символов 0-9a-f) для сборки и деплоя"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Деплои идут строго по очереди и не прерываются на полпути.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    # workflow_run: только успешный CI по push (не по pull_request из форка с веткой main).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.vars.outputs.sha }}
+      owner_lc: ${{ steps.vars.outputs.owner_lc }}
+    steps:
+      - name: Resolve commit sha and lowercase owner
+        id: vars
+        env:
+          # Недоверенные значения попадают в скрипт только через env, не через ${{ }} в run.
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            sha="$INPUT_SHA"
+          else
+            # Коммит, прошедший CI, а не github.sha события workflow_run (это последний коммит main).
+            sha="$RUN_HEAD_SHA"
+          fi
+          if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::sha должен состоять из 40 символов 0-9a-f"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+  images:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: backend
+            context: backend
+            build_args: ""
+          - image: frontend
+            context: frontend
+            # NEXT_PUBLIC_* Next встраивает в бандл при сборке, поэтому DSN нужен именно здесь.
+            build_args: NEXT_PUBLIC_SENTRY_DSN=${{ vars.SENTRY_DSN_WEB }}
+          - image: nginx
+            context: infra/nginx
+            build_args: ""
+          - image: backup
+            context: infra/backup
+            build_args: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ghcr.io/${{ needs.prepare.outputs.owner_lc }}/english-tutor-${{ matrix.image }}:sha-${{ needs.prepare.outputs.sha }}
+            ghcr.io/${{ needs.prepare.outputs.owner_lc }}/english-tutor-${{ matrix.image }}:latest
+          build-args: ${{ matrix.build_args }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          provenance: true
+
+  deploy:
+    needs: [prepare, images]
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      SHA: ${{ needs.prepare.outputs.sha }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+    steps:
+      - name: Install SSH key and known_hosts
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+
+      - name: Run deploy.sh on the server
+        run: |
+          # Скрипт идёт в stdin удалённого `bash -s`, а путь и sha — позиционными аргументами:
+          # так не нужно экранировать значения в командной строке, и bash на сервере точно
+          # есть (login-шелл пользователя может быть любым).
+          # pipefail: код выхода конвейера = код deploy.sh (0 — успех, 1 — откат выполнен,
+          # 2 — ошибка аргументов/блокировка/откат не удался), а не tee.
+          # tee -a дописывает весь вывод в $DEPLOY_PATH/deploy.log: журнал остаётся на сервере
+          # даже при обрыве сессии (сам deploy.sh игнорирует SIGHUP), а в логе Actions виден тот же вывод.
+          # </dev/null у deploy.sh: иначе он (или docker compose) прочитает остаток скрипта из stdin.
+          set +e
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=10 \
+            "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_PATH" "$SHA" <<'REMOTE'
+          set -euo pipefail
+          "$1/infra/scripts/deploy.sh" "$2" </dev/null 2>&1 | tee -a "$1/deploy.log"
+          REMOTE
+          rc=$?
+          set -e
+          case "$rc" in
+            0) echo "Деплой $SHA выполнен" ;;
+            1) echo "::error::Релиз не прошёл smoke-проверку, выполнен откат на прежнюю версию" ;;
+            2) echo "::error::deploy.sh отказался работать (аргументы, блокировка или неудачный откат)" ;;
+            *) echo "::error::SSH или deploy.sh завершились с кодом $rc" ;;
+          esac
+          exit "$rc"
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts

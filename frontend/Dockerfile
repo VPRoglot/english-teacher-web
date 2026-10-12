@@ -9,6 +9,9 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
 FROM deps AS build
+# Next встраивает NEXT_PUBLIC_* в бандл при сборке; пустое значение допустимо.
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 COPY . .
 RUN pnpm build
 

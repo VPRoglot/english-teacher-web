@@ -112,3 +112,10 @@ jobs:
           services="$(docker compose --env-file infra/prod.env.example -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config --services)"
           echo "$services"
           ! grep -qx migrate <<<"$services"
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Проверка workflow-файлов (включая shellcheck для run-скриптов)
+      - run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color

@@ -75,6 +75,44 @@ function postCalls() {
   return fetchMock.mock.calls.filter(([, init]) => init?.method === "POST");
 }
 
+async function enabledSubmit() {
+  const button = screen.getByRole("button", { name: "Отправить" });
+  await waitFor(() => expect(button).toBeEnabled());
+  return button;
+}
+
+test("submit is disabled until schedule settings are loaded", async () => {
+  let release: (response: Response) => void = () => {};
+  const pending = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const base = fetchMock.getMockImplementation()!;
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) =>
+    url === "/api/me/schedule-settings" ? pending : base(url, init),
+  );
+  renderDialog("cancel", makeLesson({ starts_at: "2026-10-12T19:00:00Z" }));
+  const button = screen.getByRole("button", { name: "Отправить" });
+  expect(button).toBeDisabled();
+  release(jsonResponse(200, { timezone: "Europe/Moscow", cancel_policy_hours: 24 }));
+  await waitFor(() => expect(button).toBeEnabled());
+  expect(screen.getByText(/До занятия меньше 24 ч/)).toBeInTheDocument();
+});
+
+test("settings error blocks submit and shows an alert", async () => {
+  const base = fetchMock.getMockImplementation()!;
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) =>
+    url === "/api/me/schedule-settings"
+      ? jsonResponse(500, { error: { code: "internal", message: "Ошибка", details: {} } })
+      : base(url, init),
+  );
+  renderDialog("cancel");
+  expect(
+    await screen.findByText("Не удалось загрузить настройки. Обновите страницу."),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Отправить" })).toBeDisabled();
+  expect(postCalls()).toHaveLength(0);
+});
+
 test("cancel within policy shows late warning", async () => {
   renderDialog("cancel", makeLesson({ starts_at: "2026-10-12T19:00:00Z" })); // через 10 ч
   expect(
@@ -105,7 +143,7 @@ test("no warning when far from the lesson", async () => {
 test("reschedule requires proposed time", async () => {
   const user = userEvent.setup();
   renderDialog("reschedule");
-  await user.click(screen.getByRole("button", { name: "Отправить" }));
+  await user.click(await enabledSubmit());
   expect(await screen.findByText("Укажите удобное время")).toBeInTheDocument();
   expect(postCalls()).toHaveLength(0);
 });
@@ -114,7 +152,7 @@ test("sends request and shows toast", async () => {
   const user = userEvent.setup();
   const { onOpenChange } = renderDialog("cancel");
   await user.type(screen.getByLabelText("Комментарий"), "Болеем");
-  await user.click(screen.getByRole("button", { name: "Отправить" }));
+  await user.click(await enabledSubmit());
   await waitFor(() => expect(postCalls()).toHaveLength(1));
   expect(JSON.parse(postCalls()[0][1].body)).toEqual({ type: "cancel", comment: "Болеем" });
   await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Запрос отправлен репетитору"));
@@ -125,7 +163,7 @@ test("reschedule sends proposed text", async () => {
   const user = userEvent.setup();
   renderDialog("reschedule");
   await user.type(screen.getByLabelText("Когда удобно?"), "в четверг");
-  await user.click(screen.getByRole("button", { name: "Отправить" }));
+  await user.click(await enabledSubmit());
   await waitFor(() => expect(postCalls()).toHaveLength(1));
   expect(JSON.parse(postCalls()[0][1].body)).toEqual({
     type: "reschedule",
@@ -144,7 +182,7 @@ test("409 is shown", async () => {
     });
   const user = userEvent.setup();
   const { onOpenChange } = renderDialog("cancel");
-  await user.click(screen.getByRole("button", { name: "Отправить" }));
+  await user.click(await enabledSubmit());
   expect(await screen.findByText("Запрос по этому занятию уже есть")).toBeInTheDocument();
   expect(onOpenChange).not.toHaveBeenCalledWith(false);
   expect(toastSuccess).not.toHaveBeenCalled();

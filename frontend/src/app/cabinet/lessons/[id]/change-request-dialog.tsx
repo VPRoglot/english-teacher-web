@@ -133,6 +133,11 @@ function RequestForm({
           <AlertDescription>{lateWarning(type, policyHours)}</AlertDescription>
         </Alert>
       )}
+      {settings.isError && (
+        <Alert variant="destructive">
+          <AlertDescription>Не удалось загрузить настройки. Обновите страницу.</AlertDescription>
+        </Alert>
+      )}
       {formError && (
         <Alert variant="destructive">
           <AlertDescription>{formError}</AlertDescription>
@@ -166,7 +171,7 @@ function RequestForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           Закрыть
         </Button>
-        <Button type="submit" disabled={create.isPending}>
+        <Button type="submit" disabled={create.isPending || policyHours === undefined}>
           {create.isPending ? "Отправляем…" : "Отправить"}
         </Button>
       </div>

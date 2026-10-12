@@ -202,6 +202,97 @@ export const SetChildAccountAdminResponse = zod.object({
 })
 
 /**
+ * @summary Get Dashboard
+ */
+export const GetDashboardResponse = zod.object({
+  "needs_marking": zod.object({
+  "items": zod.array(zod.object({
+  "duration_min": zod.int(),
+  "has_notes": zod.boolean(),
+  "id": zod.uuid(),
+  "is_detached": zod.boolean(),
+  "join_url": zod.union([zod.string(),zod.null()]),
+  "kind": zod.enum(['regular', 'trial']),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "series_id": zod.union([zod.uuid(),zod.null()]),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show']),
+  "student": zod.object({
+  "child_id": zod.union([zod.uuid(),zod.null()]),
+  "family_id": zod.union([zod.uuid(),zod.null()]),
+  "family_name": zod.union([zod.string(),zod.null()]),
+  "lead_id": zod.union([zod.uuid(),zod.null()]),
+  "name": zod.string()
+}).describe('Кому принадлежит занятие: ученику или (пробное) заявке — тогда `family_*` пусты.')
+})),
+  "total": zod.int()
+}),
+  "new_leads": zod.object({
+  "items": zod.array(zod.object({
+  "child_age": zod.int(),
+  "child_name": zod.string(),
+  "contact_method": zod.enum(['telegram', 'whatsapp', 'phone']),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "id": zod.uuid(),
+  "messenger_handle": zod.union([zod.string(),zod.null()]),
+  "parent_name": zod.string(),
+  "phone": zod.string(),
+  "status": zod.enum(['new', 'contacted', 'trial_scheduled', 'converted', 'rejected'])
+})),
+  "total": zod.int()
+}),
+  "pending_requests": zod.object({
+  "items": zod.array(zod.object({
+  "child": zod.object({
+  "full_name": zod.string(),
+  "id": zod.uuid()
+}),
+  "comment": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "family": zod.object({
+  "id": zod.uuid(),
+  "name": zod.string()
+}),
+  "id": zod.uuid(),
+  "is_late": zod.boolean(),
+  "lesson": zod.object({
+  "duration_min": zod.int(),
+  "id": zod.uuid(),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show'])
+}),
+  "proposed_text": zod.union([zod.string(),zod.null()]),
+  "requested_by_name": zod.string(),
+  "resolved_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'withdrawn']),
+  "tutor_response": zod.union([zod.string(),zod.null()]),
+  "type": zod.enum(['reschedule', 'cancel'])
+}).describe('Запрос в очереди репетитора: с занятием, учеником, семьёй и автором.')),
+  "total": zod.int()
+}),
+  "timezone": zod.string(),
+  "today": zod.array(zod.object({
+  "duration_min": zod.int(),
+  "has_notes": zod.boolean(),
+  "id": zod.uuid(),
+  "is_detached": zod.boolean(),
+  "join_url": zod.union([zod.string(),zod.null()]),
+  "kind": zod.enum(['regular', 'trial']),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "series_id": zod.union([zod.uuid(),zod.null()]),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show']),
+  "student": zod.object({
+  "child_id": zod.union([zod.uuid(),zod.null()]),
+  "family_id": zod.union([zod.uuid(),zod.null()]),
+  "family_name": zod.union([zod.string(),zod.null()]),
+  "lead_id": zod.union([zod.uuid(),zod.null()]),
+  "name": zod.string()
+}).describe('Кому принадлежит занятие: ученику или (пробное) заявке — тогда `family_*` пусты.')
+}))
+})
+
+/**
  * @summary List Families
  */
 export const listFamiliesQueryQOneMax = 200;

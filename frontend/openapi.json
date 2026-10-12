@@ -1171,6 +1171,39 @@
         "title": "ContactsBlock",
         "type": "object"
       },
+      "DashboardResponse": {
+        "properties": {
+          "needs_marking": {
+            "$ref": "#/components/schemas/NeedsMarkingSection"
+          },
+          "new_leads": {
+            "$ref": "#/components/schemas/NewLeadsSection"
+          },
+          "pending_requests": {
+            "$ref": "#/components/schemas/PendingRequestsSection"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "today": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLessonItem"
+            },
+            "title": "Today",
+            "type": "array"
+          }
+        },
+        "required": [
+          "new_leads",
+          "pending_requests",
+          "needs_marking",
+          "today",
+          "timezone"
+        ],
+        "title": "DashboardResponse",
+        "type": "object"
+      },
       "EnglishLevel": {
         "enum": [
           "A1",
@@ -2867,6 +2900,48 @@
         "title": "MediaRef",
         "type": "object"
       },
+      "NeedsMarkingSection": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLessonItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "NeedsMarkingSection",
+        "type": "object"
+      },
+      "NewLeadsSection": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LeadListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "NewLeadsSection",
+        "type": "object"
+      },
       "OverlapWarning": {
         "properties": {
           "code": {
@@ -2982,6 +3057,27 @@
           "expires_at"
         ],
         "title": "PendingInvitation",
+        "type": "object"
+      },
+      "PendingRequestsSection": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeRequestAdminItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "PendingRequestsSection",
         "type": "object"
       },
       "PublicSite": {
@@ -3873,6 +3969,37 @@
           }
         },
         "summary": "Set Child Account Admin",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/dashboard": {
+      "get": {
+        "operationId": "get_dashboard",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Dashboard",
         "tags": [
           "admin"
         ]

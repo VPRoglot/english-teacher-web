@@ -16,6 +16,7 @@ from app.core.logging import configure_logging
 from app.core.redis import create_redis
 from app.core.request_id import RequestIdMiddleware
 from app.core.tasks import BrokerTaskQueue, create_broker
+from app.dashboard import router as dashboard_router
 from app.families import admin_router, cabinet_router
 from app.leads import admin_router as leads_admin_router
 from app.leads import public_router as leads_public_router
@@ -95,4 +96,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(leads_admin_router.router, prefix="/api")
     app.include_router(lessons_admin_router.router, prefix="/api")
     app.include_router(lessons_cabinet_router.router, prefix="/api")
+    app.include_router(dashboard_router.router, prefix="/api")
     return app

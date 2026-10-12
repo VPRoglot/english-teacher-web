@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -282,6 +282,29 @@ async def list_admin_requests(
         )
         for request, lesson, child, family, author in await session.execute(stmt)
     ]
+
+
+async def pending_summary(
+    session: AsyncSession, *, limit: int
+) -> tuple[list[ChangeRequestAdminItem], int]:
+    """Дашборд: до `limit` старейших ждущих запросов и общее число ждущих."""
+    pending = ChangeRequest.status == ChangeRequestStatus.PENDING
+    total = await session.scalar(select(func.count()).select_from(ChangeRequest).where(pending))
+    stmt = (
+        _admin_stmt()
+        .where(pending)
+        .order_by(ChangeRequest.created_at, ChangeRequest.id)
+        .limit(limit)
+        .execution_options(populate_existing=True)
+    )
+    policy = await _policy_hours(session)
+    items = [
+        ChangeRequestAdminItem(
+            **_admin_item(request, lesson, child, family, author, policy_hours=policy)
+        )
+        for request, lesson, child, family, author in await session.execute(stmt)
+    ]
+    return items, total or 0
 
 
 async def _resolved(

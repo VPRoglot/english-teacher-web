@@ -133,6 +133,28 @@ async def list_admin_lessons(
     return await _run_items(session, stmt)
 
 
+async def list_needs_marking(
+    session: AsyncSession, *, now: datetime, limit: int
+) -> tuple[list[AdminLessonItem], int]:
+    """Дашборд: прошедшие `scheduled` занятия, старейшие первыми, и их общее число."""
+    overdue = (Lesson.status == LessonStatus.SCHEDULED, Lesson.starts_at < now)
+    total = await session.scalar(select(func.count()).select_from(Lesson).where(*overdue))
+    items = await _run_items(session, _items_stmt().where(*overdue).limit(limit))
+    return items, total or 0
+
+
+async def list_day_lessons(
+    session: AsyncSession, *, day_start: datetime, day_end: datetime
+) -> list[AdminLessonItem]:
+    """Занятия с `starts_at ∈ [day_start, day_end)` по времени, кроме отменённых."""
+    stmt = _items_stmt().where(
+        Lesson.starts_at >= day_start,
+        Lesson.starts_at < day_end,
+        Lesson.status.notin_((LessonStatus.CANCELLED, LessonStatus.CANCELLED_LATE)),
+    )
+    return await _run_items(session, stmt)
+
+
 async def get_admin_lesson(session: AsyncSession, lesson_id: uuid.UUID) -> AdminLessonDetail:
     stmt = _joined(LessonNote).outerjoin(LessonNote, LessonNote.lesson_id == Lesson.id)
     stmt = stmt.where(Lesson.id == lesson_id)

@@ -339,6 +339,80 @@ async def test_unknown_request_is_404(tutor_client: AsyncClient) -> None:
         assert r.json()["error"]["code"] == "change_request_not_found"
 
 
+def _lock_positions(sql_log: list[str]) -> tuple[int, int]:
+    lesson = next(i for i, s in enumerate(sql_log) if "FROM lessons" in s and "FOR UPDATE" in s)
+    request = next(
+        i for i, s in enumerate(sql_log) if "FROM change_requests" in s and "FOR UPDATE" in s
+    )
+    return lesson, request
+
+
+@pytest.mark.parametrize("action", ["approve", "reject"])
+async def test_lesson_lock_precedes_request_lock(
+    tutor_client: AsyncClient,
+    db_session: AsyncSession,
+    child: Child,
+    sql_log: list[str],
+    action: str,
+) -> None:
+    """Порядок блокировок занятие → запрос общий с отзывом семьёй: нет взаимоблокировки."""
+    _, request = await request_for(db_session, child)
+    sql_log.clear()
+    if action == "approve":
+        r = await tutor_client.post(approve_url(request.id), json={})
+    else:
+        r = await tutor_client.post(reject_url(request.id), json={"tutor_response": "Нет"})
+    assert r.status_code == 200
+    lesson_lock, request_lock = _lock_positions(sql_log)
+    assert lesson_lock < request_lock
+
+
+async def test_withdraw_after_approve_is_409(client: AsyncClient, db_session: AsyncSession) -> None:
+    family = await make_family(db_session)
+    parent = await make_parent(db_session, family)
+    child = await make_child(db_session, family)
+    lesson, request = await request_for(db_session, child, requested_by=parent)
+    await make_tutor(db_session)
+    await login(client, "tutor@example.com")
+    assert (await client.post(approve_url(request.id), json={})).status_code == 200
+
+    await login(client, "parent@example.com")
+    r = await client.delete(f"/api/me/change-requests/{request.id}")
+    assert r.status_code == 409
+    assert r.json()["error"]["code"] == "change_request_not_pending"
+    await db_session.refresh(request)
+    assert request.status is ChangeRequestStatus.APPROVED
+    await db_session.refresh(lesson)
+    assert lesson.status is LessonStatus.CANCELLED
+
+
+@pytest.mark.parametrize(
+    ("policy", "before", "expected"),
+    [
+        (24, timedelta(hours=24, minutes=1), LessonStatus.CANCELLED),
+        (24, timedelta(hours=23, minutes=59), LessonStatus.CANCELLED_LATE),
+        (0, timedelta(minutes=1), LessonStatus.CANCELLED),
+    ],
+)
+async def test_late_cancel_boundaries_via_approve(
+    tutor_client: AsyncClient,
+    db_session: AsyncSession,
+    child: Child,
+    policy: int,
+    before: timedelta,
+    expected: LessonStatus,
+) -> None:
+    saved = await tutor_client.put(
+        "/api/admin/settings", json={"timezone": "Europe/Moscow", "cancel_policy_hours": policy}
+    )
+    assert saved.status_code == 200
+    lesson, request = await request_for(db_session, child, created_at=LESSON_START - before)
+    r = await tutor_client.post(approve_url(request.id), json={})
+    assert r.status_code == 200
+    await db_session.refresh(lesson)
+    assert lesson.status is expected
+
+
 ENDPOINTS = [
     ("GET", "/api/admin/change-requests", None),
     ("POST", f"/api/admin/change-requests/{uuid.uuid4()}/approve", {}),

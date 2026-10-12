@@ -9,7 +9,8 @@ from taskiq.schedule_sources import LabelScheduleSource
 import app.worker
 from app.core.observability import init_sentry
 
-# Импорт app.worker уже включил Sentry с тегом worker: переинициализация задаёт тег scheduler.
+# Sentry в worker включается в его стартовом хуке (setup_worker), в scheduler этот хук не
+# срабатывает, поэтому процесс планировщика инициализирует Sentry сам, один раз.
 init_sentry(app.worker.settings, "scheduler")
 
 scheduler = TaskiqScheduler(

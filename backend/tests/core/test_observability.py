@@ -7,7 +7,7 @@ import sentry_sdk
 import structlog
 from pydantic import SecretStr
 from sentry_sdk.transport import Transport
-from taskiq import TaskiqMessage, TaskiqResult
+from taskiq import InMemoryBroker, TaskiqMessage, TaskiqResult
 
 from app.core.observability import (
     SentryTaskMiddleware,
@@ -28,9 +28,9 @@ class CollectingTransport(Transport):
         self.events: list[dict[str, Any]] = []
 
     def capture_envelope(self, envelope: Any) -> None:
-        event = envelope.get_event()
-        if event is not None:
-            self.events.append(event)
+        for item in envelope.items:
+            if item.type in ("event", "transaction") and item.payload.json is not None:
+                self.events.append(item.payload.json)
 
 
 @pytest.fixture(autouse=True)
@@ -60,7 +60,7 @@ def test_init_with_dsn_sets_tags() -> None:
     assert event["environment"] == "test"
     assert event["release"] == "abc123"
     assert event["tags"]["component"] == "api"
-    assert sentry_sdk.get_client().options["send_default_pii"] is False
+    assert sentry_sdk.get_client().should_send_default_pii() is False
 
 
 def test_release_is_read_from_image_tag_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -140,6 +140,46 @@ def test_task_middleware_captures_error() -> None:
     assert event["tags"]["task_name"] == "leads.notify"
     assert event["tags"]["component"] == "worker"
     assert event["exception"]["values"][0]["type"] == "RuntimeError"
+
+
+async def test_failing_task_reaches_sentry_once_with_task_name() -> None:
+    transport = CollectingTransport()
+    init_sentry(make_settings(sentry_dsn=DSN), "worker", transport=transport)
+    broker = InMemoryBroker()
+    broker.add_middlewares(SentryTaskMiddleware())
+
+    @broker.task(task_name="demo.fail")
+    async def fail() -> None:
+        raise RuntimeError("boom")
+
+    await broker.startup()
+    try:
+        await fail.kiq()
+        await broker.wait_all()
+    finally:
+        await broker.shutdown()
+
+    (event,) = transport.events
+    assert event["tags"]["task_name"] == "demo.fail"
+    assert event["exception"]["values"][0]["type"] == "RuntimeError"
+
+
+def test_transactions_are_scrubbed() -> None:
+    transport = CollectingTransport()
+    settings = make_settings(sentry_dsn=DSN, sentry_traces_sample_rate=1.0)
+    init_sentry(settings, "api", transport=transport)
+
+    with sentry_sdk.start_transaction(name="/api/auth/invitations/tok1/accept"):
+        with sentry_sdk.start_span(
+            op="http.client", name="POST https://api.telegram.org/bot1:AA/send"
+        ):
+            pass
+
+    (event,) = transport.events
+    assert event["transaction"] == "/api/auth/invitations/***/accept"
+    assert event["spans"][0]["description"] == "POST https://api.telegram.org/bot***/send"
+    assert "tok1" not in repr(event)
+    assert "1:AA" not in repr(event)
 
 
 HEARTBEAT = SecretStr("https://hc.example/ping/secret-uuid")

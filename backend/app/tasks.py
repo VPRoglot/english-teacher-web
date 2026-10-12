@@ -3,7 +3,7 @@ from taskiq import AsyncBroker, TaskiqEvents, TaskiqState
 
 from app.core.config import Settings
 from app.core.db import create_db_engine, create_sessionmaker
-from app.core.observability import SentryTaskMiddleware
+from app.core.observability import SentryTaskMiddleware, init_sentry
 from app.lessons import tasks as lesson_tasks
 from app.notifications import tasks as notification_tasks
 from app.notifications.notifier import DisabledNotifier, Notifier, TelegramNotifier
@@ -25,6 +25,7 @@ def setup_worker(
 
     @broker.on_event(TaskiqEvents.WORKER_STARTUP)
     async def _startup(state: TaskiqState) -> None:
+        init_sentry(settings, "worker")
         state.http = httpx.AsyncClient(timeout=10, transport=transport)
         state.revalidator = HttpRevalidator(
             state.http, settings.revalidate_url, settings.revalidate_secret.get_secret_value()

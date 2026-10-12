@@ -16,6 +16,7 @@ from taskiq.middlewares import SmartRetryMiddleware
 from taskiq_redis import RedisStreamBroker
 
 from app.core.config import Settings
+from app.core.observability import SentryTaskMiddleware
 from app.core.request_id import _request_id, get_request_id
 from app.core.tasks import (
     BrokerTaskQueue,
@@ -173,6 +174,30 @@ async def test_worker_state_has_sessionmaker(settings: Settings) -> None:
     try:
         async with broker.state.sessionmaker() as session:
             assert (await session.execute(text("select 1"))).scalar_one() == 1
+    finally:
+        await broker.shutdown()
+
+
+def test_setup_worker_registers_sentry_middleware() -> None:
+    broker = setup_worker(InMemoryBroker(), make_settings())
+    assert any(isinstance(m, SentryTaskMiddleware) for m in broker.middlewares)
+
+
+async def test_worker_startup_fills_heartbeats_and_inits_sentry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr("app.tasks.init_sentry", lambda _s, component: calls.append(component))
+    settings = make_settings(
+        heartbeat_materialize_url="https://hc.example/m",
+        heartbeat_anonymize_url="https://hc.example/a",
+    )
+    broker = setup_worker(InMemoryBroker(), settings)
+    await broker.startup()
+    try:
+        assert broker.state.heartbeat_materialize_url == settings.heartbeat_materialize_url
+        assert broker.state.heartbeat_anonymize_url == settings.heartbeat_anonymize_url
+        assert calls == ["worker"]
     finally:
         await broker.shutdown()
 

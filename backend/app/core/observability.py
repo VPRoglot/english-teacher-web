@@ -7,6 +7,7 @@ import httpx
 import sentry_sdk
 import structlog
 from pydantic import SecretStr
+from sentry_sdk.integrations.logging import ignore_logger
 from taskiq import TaskiqMessage, TaskiqMiddleware, TaskiqResult
 
 from app.core.config import Settings
@@ -72,13 +73,19 @@ def init_sentry(
     """Включает Sentry, если задан DSN. Без DSN ничего не делает и возвращает False."""
     if not settings.sentry_dsn:
         return False
+    # Receiver Taskiq пишет logger.exception до on_error; LoggingIntegration превратил бы это в
+    # событие без тега task_name, а дедупликация отбросила бы событие middleware.
+    ignore_logger("taskiq.receiver.receiver")
     sentry_sdk.init(
         dsn=settings.sentry_dsn.get_secret_value(),
         environment=settings.app_env,
         release=settings.release,
-        send_default_pii=False,
+        # send_default_pii не передаём: по умолчанию он выключен (PII не отправляется), а явное
+        # значение, даже False, в sentry-sdk 2.x даёт DeprecationWarning.
         traces_sample_rate=settings.sentry_traces_sample_rate,
         before_send=scrub_event,
+        # Транзакции (трассировка) обходят before_send, а в них те же URL с токенами.
+        before_send_transaction=scrub_event,
         before_breadcrumb=scrub_breadcrumb,
         transport=transport,
     )

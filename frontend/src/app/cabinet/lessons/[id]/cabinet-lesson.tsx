@@ -14,6 +14,7 @@ import { useMinuteNow } from "@/lib/use-minute-now";
 import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 import { withChild } from "../../child-link";
+import { ChangeRequestBlock } from "./change-request-block";
 import { JoinButton } from "../../join-button";
 import { useSelectedChild } from "../../use-selected-child";
 
@@ -83,6 +84,7 @@ export function CabinetLesson() {
           <p className="text-sm text-muted-foreground">Заметки пока нет</p>
         )}
       </section>
+      <ChangeRequestBlock lesson={data} />
     </>
   );
 }

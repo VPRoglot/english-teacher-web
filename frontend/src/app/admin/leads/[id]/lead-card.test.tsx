@@ -24,6 +24,10 @@ function stubApi() {
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === "/api/admin/leads/l1" && init?.method === "GET") return leadResponse();
     if (url === "/api/admin/leads/l1" && init?.method === "PATCH") return jsonResponse(200, lead);
+    if (url === "/api/admin/leads/l1/trial-lessons") return jsonResponse(200, []);
+    if (url === "/api/admin/settings") {
+      return jsonResponse(200, { timezone: "Europe/Moscow", cancel_policy_hours: 24 });
+    }
     throw new Error(`unexpected fetch ${init?.method} ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -151,6 +155,13 @@ test("a trial_scheduled lead can be converted", async () => {
   lead = makeLead({ status: "trial_scheduled" });
   renderCard();
   expect(await screen.findByRole("button", { name: "Конвертировать в ученика" })).toBeEnabled();
+});
+
+test("the trial block lets a new lead get a trial and keeps convert disabled", async () => {
+  renderCard();
+  expect(await screen.findByRole("button", { name: "Назначить пробное" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Конвертировать в ученика" })).toBeDisabled();
+  expect(screen.getByText("Сначала назначьте пробное занятие")).toBeInTheDocument();
 });
 
 test("shows the error when the lead cannot be loaded", async () => {

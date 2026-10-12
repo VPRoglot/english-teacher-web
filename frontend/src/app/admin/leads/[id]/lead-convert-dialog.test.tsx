@@ -57,13 +57,13 @@ afterEach(() => {
 test("disabled until trial is scheduled", () => {
   renderDialog("new");
   expect(screen.getByRole("button", { name: "Конвертировать в ученика" })).toBeDisabled();
-  expect(screen.getByText("Доступно после назначения пробного занятия")).toBeInTheDocument();
+  expect(screen.getByText("Сначала назначьте пробное занятие")).toBeInTheDocument();
 });
 
 test("enabled without a hint when the trial is scheduled", () => {
   renderDialog("trial_scheduled");
   expect(screen.getByRole("button", { name: "Конвертировать в ученика" })).toBeEnabled();
-  expect(screen.queryByText("Доступно после назначения пробного занятия")).not.toBeInTheDocument();
+  expect(screen.queryByText("Сначала назначьте пробное занятие")).not.toBeInTheDocument();
 });
 
 test("prefilled from lead and shows invitation link", async () => {

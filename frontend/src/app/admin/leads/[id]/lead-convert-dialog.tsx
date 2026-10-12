@@ -34,7 +34,7 @@ import { useRefreshLead } from "./use-refresh-lead";
 const NO_LEVEL = "none";
 const LEVEL_LABELS = { [NO_LEVEL]: "не указан", A1: "A1", A2: "A2", B1: "B1", B2: "B2", C1: "C1" };
 
-const CONVERT_HINT = "Доступно после назначения пробного занятия";
+const CONVERT_HINT = "Сначала назначьте пробное занятие";
 
 const child = ConvertLeadBody.shape.child.shape;
 const parent = ConvertLeadBody.shape.parent.shape;

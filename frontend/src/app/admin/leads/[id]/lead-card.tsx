@@ -25,6 +25,7 @@ import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 import { LeadConvertDialog } from "./lead-convert-dialog";
 import { LeadHistory } from "./lead-history";
 import { LeadStatusActions } from "./lead-status-actions";
+import { LeadTrial } from "./lead-trial";
 import { useRefreshLead } from "./use-refresh-lead";
 
 const COMMENT_MAX_LENGTH = 2000;
@@ -167,6 +168,7 @@ export function LeadCard() {
           </Link>
         )}
       </section>
+      <LeadTrial lead={data} />
       <TutorComment lead={data} />
       <LeadHistory history={data.history} />
     </>

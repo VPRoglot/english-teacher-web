@@ -39,6 +39,7 @@ export function CabinetShell({ children }: { children: ReactNode }) {
 
   const nav: NavItem[] = [
     { href: "/cabinet", label: "Главная" },
+    { href: "/cabinet/calendar", label: "Календарь" },
     ...(role === "parent" ? [{ href: "/cabinet/children", label: "Дети" }] : []),
     { href: "/cabinet/settings", label: "Настройки" },
   ];

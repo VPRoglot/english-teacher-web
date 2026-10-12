@@ -19,14 +19,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/form-errors";
-import { formatMoscow } from "@/lib/format";
 import {
   CONTACT_METHOD_LABELS,
   LEAD_STATUS_BADGE_VARIANTS,
   LEAD_STATUS_LABELS,
   leadContactHref,
 } from "@/lib/lead-format";
+import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -48,10 +49,10 @@ function parsePage(value: string | null): number {
   return Number.isInteger(page) && page >= 1 ? page : 1;
 }
 
-function LeadRow({ lead }: { lead: LeadListItem }) {
+function LeadRow({ lead, timeZone }: { lead: LeadListItem; timeZone: string }) {
   return (
     <TableRow className="relative">
-      <TableCell className="whitespace-nowrap">{formatMoscow(lead.created_at)}</TableCell>
+      <TableCell className="whitespace-nowrap">{formatDateTime(lead.created_at, timeZone)}</TableCell>
       <TableCell className="font-medium">
         <Link
           href={`/admin/leads/${lead.id}`}
@@ -78,6 +79,7 @@ export function LeadsList() {
   const router = useRouter();
   const pathname = usePathname();
   const currentQuery = useSearchParams().toString();
+  const timeZone = useTutorTimeZone("admin");
 
   // Источник правды для запроса — состояние; адрес страницы только отражает его (и задаёт начальные значения).
   const [initial] = useState(() => new URLSearchParams(currentQuery));
@@ -171,7 +173,7 @@ export function LeadsList() {
           </TableHeader>
           <TableBody>
             {leads.data.items.map((lead) => (
-              <LeadRow key={lead.id} lead={lead} />
+              <LeadRow key={lead.id} lead={lead} timeZone={timeZone} />
             ))}
           </TableBody>
         </Table>

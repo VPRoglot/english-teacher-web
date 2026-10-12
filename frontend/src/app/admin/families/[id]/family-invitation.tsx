@@ -11,14 +11,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatDateTime } from "@/lib/datetime";
 import { applyApiErrors } from "@/lib/form-errors";
-import { formatMoscow } from "@/lib/format";
+import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 import { useRefreshFamily } from "./use-refresh-family";
 
 type Values = { prefill_full_name: string; prefill_phone: string };
 
 export function FamilyInvitation({ family }: { family: FamilyDetail }) {
+  const timeZone = useTutorTimeZone("admin");
   const [link, setLink] = useState<LinkResponse | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const refresh = useRefreshFamily(family.id);
@@ -56,7 +58,7 @@ export function FamilyInvitation({ family }: { family: FamilyDetail }) {
       <h2 className="text-lg font-semibold">Приглашение</h2>
       {family.pending_invitation && (
         <div className="flex flex-col gap-1 text-sm">
-          <p>{`Ссылка отправлена, действует до ${formatMoscow(family.pending_invitation.expires_at)}`}</p>
+          <p>{`Ссылка отправлена, действует до ${formatDateTime(family.pending_invitation.expires_at, timeZone)}`}</p>
           <p className="text-muted-foreground">
             Новая ссылка отменит прежнюю: по старой родитель уже не сможет зарегистрироваться.
           </p>
@@ -90,7 +92,12 @@ export function FamilyInvitation({ family }: { family: FamilyDetail }) {
           Создать ссылку-приглашение
         </Button>
       </form>
-      {link && <CopyLinkCard url={link.url} expiresAt={link.expires_at} title="Ссылка-приглашение" />}
+      {link && <CopyLinkCard
+          url={link.url}
+          expiresAt={link.expires_at}
+          timeZone={timeZone}
+          title="Ссылка-приглашение"
+        />}
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const replace = vi.fn();
@@ -73,6 +73,29 @@ test("у ребёнка нет вкладки «Дети»", async () => {
   renderShell("child");
   expect(await screen.findByRole("link", { name: "Настройки" })).toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Дети" })).not.toBeInTheDocument();
+});
+
+test("навигация родителя: главная, календарь, дети, настройки", async () => {
+  renderShell("parent");
+  await screen.findByRole("link", { name: "Дети" });
+  const nav = within(screen.getByRole("navigation", { name: "Основная навигация" }));
+  expect(nav.getAllByRole("link").map((link) => link.textContent)).toEqual([
+    "Главная",
+    "Календарь",
+    "Дети",
+    "Настройки",
+  ]);
+  expect(nav.getByRole("link", { name: "Календарь" })).toHaveAttribute("href", "/cabinet/calendar");
+});
+
+test("у ребёнка есть «Календарь», активна текущая вкладка", async () => {
+  pathname = "/cabinet/calendar";
+  renderShell("child");
+  expect(await screen.findByRole("link", { name: "Календарь" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  expect(screen.getByRole("link", { name: "Главная" })).not.toHaveAttribute("aria-current");
 });
 
 test("репетитора перенаправляет в админку, содержимое не показывается", async () => {

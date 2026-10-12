@@ -12,14 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDateTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/form-errors";
-import { formatMoscow } from "@/lib/format";
 import {
   CONTACT_METHOD_LABELS,
   LEAD_STATUS_BADGE_VARIANTS,
   LEAD_STATUS_LABELS,
   leadContactHref,
 } from "@/lib/lead-format";
+import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 import { LeadConvertDialog } from "./lead-convert-dialog";
 import { LeadHistory } from "./lead-history";
@@ -47,6 +48,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function LeadFields({ lead }: { lead: LeadDetail }) {
+  const timeZone = useTutorTimeZone("admin");
   const utm = [lead.utm_source, lead.utm_medium, lead.utm_campaign].filter(Boolean).join(" / ");
   return (
     <dl className="grid gap-4 sm:grid-cols-2">
@@ -61,7 +63,7 @@ function LeadFields({ lead }: { lead: LeadDetail }) {
       {lead.preferred_time && <Field label="Удобное время">{lead.preferred_time}</Field>}
       {lead.reject_reason && <Field label="Причина отказа">{lead.reject_reason}</Field>}
       {utm && <Field label="UTM">{utm}</Field>}
-      <Field label="Получена">{formatMoscow(lead.created_at)}</Field>
+      <Field label="Получена">{formatDateTime(lead.created_at, timeZone)}</Field>
     </dl>
   );
 }

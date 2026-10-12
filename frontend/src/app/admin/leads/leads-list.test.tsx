@@ -47,12 +47,16 @@ const items = [
   },
 ];
 
+let tutorTimeZone = "Europe/Moscow";
 let fetchMock: ReturnType<typeof vi.fn>;
 
 function stubApi(body: { items: unknown[]; total: number } = { items, total: items.length }) {
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.startsWith("/api/admin/leads") && init?.method === "GET") {
       return jsonResponse(200, body);
+    }
+    if (url === "/api/admin/settings") {
+      return jsonResponse(200, { timezone: tutorTimeZone, cancel_policy_hours: 24 });
     }
     throw new Error(`unexpected fetch ${url}`);
   });
@@ -78,6 +82,7 @@ beforeEach(() => {
   push.mockReset();
   replace.mockReset();
   search = "";
+  tutorTimeZone = "Europe/Moscow";
 });
 
 afterEach(() => {
@@ -109,6 +114,16 @@ test("renders leads with status labels and links", async () => {
     "https://wa.me/79990001122",
   );
   expect(listUrls()).toEqual(["/api/admin/leads?limit=50&offset=0"]);
+});
+
+test("dates are shown in the tutor time zone from settings", async () => {
+  tutorTimeZone = "Asia/Yekaterinburg";
+  stubApi();
+  renderList();
+
+  const rows = await screen.findAllByRole("row");
+  expect(await within(rows[1]).findByText("10.10.2026 14:30")).toBeInTheDocument();
+  expect(within(rows[1]).queryByText("10.10.2026 12:30")).not.toBeInTheDocument();
 });
 
 test("status filter and search go to the URL and the API", async () => {

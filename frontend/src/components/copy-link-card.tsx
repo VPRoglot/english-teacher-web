@@ -5,16 +5,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatDateTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/form-errors";
-import { formatMoscow } from "@/lib/format";
 
 export function CopyLinkCard({
   url,
   expiresAt,
+  timeZone,
   title,
 }: {
   url: string;
   expiresAt: string;
+  timeZone: string;
   title: string;
 }) {
   const [copied, setCopied] = useState(false);
@@ -47,7 +49,7 @@ export function CopyLinkCard({
           {copied ? "Скопировано" : null}
           {error}
         </p>
-        <p className="text-sm text-muted-foreground">Действует до {formatMoscow(expiresAt)}</p>
+        <p className="text-sm text-muted-foreground">Действует до {formatDateTime(expiresAt, timeZone)}</p>
       </CardContent>
     </Card>
   );

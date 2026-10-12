@@ -9,9 +9,11 @@ import { CopyLinkCard } from "@/components/copy-link-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { errorMessage } from "@/lib/form-errors";
+import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 /** Выпускает ссылку для смены пароля пользователя и показывает её в диалоге для копирования. */
 export function ResetLinkButton({ userId, ownerName }: { userId: string; ownerName: string }) {
+  const timeZone = useTutorTimeZone("admin");
   const [link, setLink] = useState<LinkResponse | null>(null);
   const createLink = useCreateResetLink();
 
@@ -33,7 +35,12 @@ export function ResetLinkButton({ userId, ownerName }: { userId: string; ownerNa
             <DialogTitle>Смена пароля: {ownerName}</DialogTitle>
           </DialogHeader>
           {link && (
-            <CopyLinkCard url={link.url} expiresAt={link.expires_at} title="Ссылка для смены пароля" />
+            <CopyLinkCard
+              url={link.url}
+              expiresAt={link.expires_at}
+              timeZone={timeZone}
+              title="Ссылка для смены пароля"
+            />
           )}
         </DialogContent>
       </Dialog>

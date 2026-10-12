@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ApiError } from "@/lib/api-fetch";
 import { errorMessage } from "@/lib/form-errors";
+import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 import { useRefreshLead } from "./use-refresh-lead";
 
@@ -269,11 +270,13 @@ function ConvertForm({
 }
 
 function ConvertedResult({ result, onClose }: { result: LeadConverted; onClose: () => void }) {
+  const timeZone = useTutorTimeZone("admin");
   return (
     <div className="flex flex-col gap-4">
       <CopyLinkCard
         url={result.invitation.url}
         expiresAt={result.invitation.expires_at}
+        timeZone={timeZone}
         title="Ссылка-приглашение"
       />
       <DialogFooter>

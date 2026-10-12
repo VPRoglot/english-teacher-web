@@ -8,11 +8,28 @@ test("CopyLinkCard копирует ссылку", async () => {
   const writeText = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
   render(
-    <CopyLinkCard title="Приглашение" url="http://x/invite/t" expiresAt="2026-10-18T09:00:00Z" />,
+    <CopyLinkCard
+      title="Приглашение"
+      url="http://x/invite/t"
+      expiresAt="2026-10-18T09:00:00Z"
+      timeZone="Europe/Moscow"
+    />,
   );
   expect(screen.getByDisplayValue("http://x/invite/t")).toHaveAttribute("readonly");
   await userEvent.click(screen.getByRole("button", { name: "Скопировать" }));
   expect(writeText).toHaveBeenCalledWith("http://x/invite/t");
   expect(await screen.findByText("Скопировано")).toBeInTheDocument();
   expect(screen.getByText(/18\.10\.2026 12:00/)).toBeInTheDocument();
+});
+
+test("CopyLinkCard показывает срок в поясе репетитора", () => {
+  render(
+    <CopyLinkCard
+      title="Приглашение"
+      url="http://x/invite/t"
+      expiresAt="2026-10-18T09:00:00Z"
+      timeZone="Asia/Yekaterinburg"
+    />,
+  );
+  expect(screen.getByText(/18\.10\.2026 14:00/)).toBeInTheDocument();
 });

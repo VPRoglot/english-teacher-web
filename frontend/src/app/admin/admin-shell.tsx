@@ -9,9 +9,11 @@ import { errorMessage } from "@/lib/form-errors";
 
 const NAV: NavItem[] = [
   { href: "/admin", label: "Обзор" },
+  { href: "/admin/calendar", label: "Календарь" },
   { href: "/admin/leads", label: "Заявки" },
   { href: "/admin/families", label: "Семьи" },
   { href: "/admin/site", label: "Сайт" },
+  { href: "/admin/settings", label: "Настройки" },
 ];
 
 function Skeleton() {

@@ -16,8 +16,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/form-errors";
-import { formatMoscow } from "@/lib/format";
+import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 import { ResetLinkButton } from "./reset-link-button";
 import { useRefreshFamily } from "./use-refresh-family";
@@ -64,6 +65,7 @@ function ParentActions({ parent, familyId }: { parent: ParentDetail; familyId: s
 }
 
 export function FamilyParents({ family }: { family: FamilyDetail }) {
+  const timeZone = useTutorTimeZone("admin");
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">Родители</h2>
@@ -91,7 +93,7 @@ export function FamilyParents({ family }: { family: FamilyDetail }) {
                 <TableCell className="font-medium">{parent.full_name}</TableCell>
                 <TableCell>{parent.phone}</TableCell>
                 <TableCell>{parent.email}</TableCell>
-                <TableCell>{parent.last_login_at ? formatMoscow(parent.last_login_at) : "—"}</TableCell>
+                <TableCell>{parent.last_login_at ? formatDateTime(parent.last_login_at, timeZone) : "—"}</TableCell>
                 <TableCell>
                   <Badge variant={parent.is_active ? "secondary" : "destructive"}>
                     {parent.is_active ? "Активен" : "Заблокирован"}

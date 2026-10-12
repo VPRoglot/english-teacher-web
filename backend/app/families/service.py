@@ -307,6 +307,15 @@ async def get_child(session: AsyncSession, child_id: uuid.UUID) -> Child:
     return child
 
 
+async def get_active_child(session: AsyncSession, child_id: uuid.UUID) -> Child:
+    """Ребёнок для новых занятий: нет — `NotFound`, он или его семья в архиве — `Conflict`."""
+    child = await get_child(session, child_id)
+    if child.archived_at is not None:
+        raise Conflict("Ученик в архиве", code="child_archived")
+    await get_active_family(session, child.family_id)
+    return child
+
+
 async def get_child_detail(session: AsyncSession, child: Child) -> ChildDetail:
     user = await session.get(User, child.user_id) if child.user_id else None
     return _child_detail(child, user)

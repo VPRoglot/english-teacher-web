@@ -111,6 +111,184 @@
         "title": "AcceptInvitationRequest",
         "type": "object"
       },
+      "AdminLessonDetail": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "has_notes": {
+            "title": "Has Notes",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_detached": {
+            "title": "Is Detached",
+            "type": "boolean"
+          },
+          "join_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Url"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LessonKind"
+          },
+          "meeting_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Url"
+          },
+          "notes": {
+            "$ref": "#/components/schemas/LessonNotes"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LessonStatus"
+          },
+          "student": {
+            "$ref": "#/components/schemas/LessonStudent"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "starts_at",
+          "duration_min",
+          "series_id",
+          "is_detached",
+          "meeting_url",
+          "join_url",
+          "student",
+          "has_notes",
+          "notes",
+          "created_at"
+        ],
+        "title": "AdminLessonDetail",
+        "type": "object"
+      },
+      "AdminLessonItem": {
+        "properties": {
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "has_notes": {
+            "title": "Has Notes",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_detached": {
+            "title": "Is Detached",
+            "type": "boolean"
+          },
+          "join_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Url"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LessonKind"
+          },
+          "meeting_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Url"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LessonStatus"
+          },
+          "student": {
+            "$ref": "#/components/schemas/LessonStudent"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "starts_at",
+          "duration_min",
+          "series_id",
+          "is_detached",
+          "meeting_url",
+          "join_url",
+          "student",
+          "has_notes"
+        ],
+        "title": "AdminLessonItem",
+        "type": "object"
+      },
       "Body_upload_media": {
         "properties": {
           "file": {
@@ -1602,6 +1780,330 @@
         "title": "LeadUpdate",
         "type": "object"
       },
+      "LessonCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "child_id": {
+            "format": "uuid",
+            "title": "Child Id",
+            "type": "string"
+          },
+          "duration_min": {
+            "maximum": 240.0,
+            "minimum": 15.0,
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "meeting_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Url"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "child_id",
+          "starts_at",
+          "duration_min"
+        ],
+        "title": "LessonCreate",
+        "type": "object"
+      },
+      "LessonKind": {
+        "enum": [
+          "regular",
+          "trial"
+        ],
+        "title": "LessonKind",
+        "type": "string"
+      },
+      "LessonNotes": {
+        "properties": {
+          "private_text": {
+            "title": "Private Text",
+            "type": "string"
+          },
+          "shared_text": {
+            "title": "Shared Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shared_text",
+          "private_text"
+        ],
+        "title": "LessonNotes",
+        "type": "object"
+      },
+      "LessonNotesUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "private_text": {
+            "maxLength": 20000,
+            "title": "Private Text",
+            "type": "string"
+          },
+          "shared_text": {
+            "maxLength": 20000,
+            "title": "Shared Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shared_text",
+          "private_text"
+        ],
+        "title": "LessonNotesUpdate",
+        "type": "object"
+      },
+      "LessonSaved": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "has_notes": {
+            "title": "Has Notes",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_detached": {
+            "title": "Is Detached",
+            "type": "boolean"
+          },
+          "join_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Url"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LessonKind"
+          },
+          "meeting_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Url"
+          },
+          "notes": {
+            "$ref": "#/components/schemas/LessonNotes"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LessonStatus"
+          },
+          "student": {
+            "$ref": "#/components/schemas/LessonStudent"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/OverlapWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "starts_at",
+          "duration_min",
+          "series_id",
+          "is_detached",
+          "meeting_url",
+          "join_url",
+          "student",
+          "has_notes",
+          "notes",
+          "created_at",
+          "warnings"
+        ],
+        "title": "LessonSaved",
+        "type": "object"
+      },
+      "LessonStatus": {
+        "enum": [
+          "scheduled",
+          "completed",
+          "cancelled",
+          "cancelled_late",
+          "no_show"
+        ],
+        "title": "LessonStatus",
+        "type": "string"
+      },
+      "LessonStudent": {
+        "description": "Кому принадлежит занятие: ученику или (пробное) заявке — тогда `family_*` пусты.",
+        "properties": {
+          "child_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Id"
+          },
+          "family_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Id"
+          },
+          "family_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Name"
+          },
+          "lead_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "child_id",
+          "lead_id",
+          "name",
+          "family_id",
+          "family_name"
+        ],
+        "title": "LessonStudent",
+        "type": "object"
+      },
+      "LessonUpdate": {
+        "additionalProperties": false,
+        "description": "Частичная правка: `meeting_url: null` очищает ссылку, остальные поля не принимают null.",
+        "properties": {
+          "duration_min": {
+            "anyOf": [
+              {
+                "maximum": 240.0,
+                "minimum": 15.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Min"
+          },
+          "meeting_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Url"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LessonStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "LessonUpdate",
+        "type": "object"
+      },
       "LinkResponse": {
         "properties": {
           "expires_at": {
@@ -1769,6 +2271,37 @@
           "height"
         ],
         "title": "MediaRef",
+        "type": "object"
+      },
+      "OverlapWarning": {
+        "properties": {
+          "code": {
+            "const": "overlap",
+            "title": "Code",
+            "type": "string"
+          },
+          "lesson_id": {
+            "format": "uuid",
+            "title": "Lesson Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "lesson_id",
+          "starts_at"
+        ],
+        "title": "OverlapWarning",
         "type": "object"
       },
       "ParentDetail": {
@@ -2846,6 +3379,300 @@
           }
         },
         "summary": "Convert Lead",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/lessons": {
+      "get": {
+        "operationId": "list_lessons",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "child_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminLessonItem"
+                  },
+                  "title": "Response List Lessons",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "List Lessons",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "create_lesson",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Create Lesson",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/lessons/{lesson_id}": {
+      "delete": {
+        "operationId": "delete_lesson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Delete Lesson",
+        "tags": [
+          "admin"
+        ]
+      },
+      "get": {
+        "operationId": "get_lesson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLessonDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get Lesson",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "update_lesson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Update Lesson",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/lessons/{lesson_id}/notes": {
+      "put": {
+        "operationId": "save_lesson_notes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonNotesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonNotes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Save Lesson Notes",
         "tags": [
           "admin"
         ]

@@ -68,6 +68,7 @@ async def make_child(
     password: str = TEST_PASSWORD,
     archived: bool = False,
     is_active: bool = True,
+    default_meeting_url: str | None = None,
 ) -> Child:
     now = datetime.now(UTC)
     user_id = None
@@ -85,6 +86,7 @@ async def make_child(
         family_id=family.id,
         user_id=user_id,
         full_name=full_name,
+        default_meeting_url=default_meeting_url,
         archived_at=now if archived else None,
     )
     session.add(child)

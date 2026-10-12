@@ -456,6 +456,200 @@ export const ConvertLeadResponse = zod.object({
 })
 
 /**
+ * @summary List Lessons
+ */
+export const ListLessonsQueryParams = zod.object({
+  "from": zod.iso.datetime({"offset":true}),
+  "to": zod.iso.datetime({"offset":true}),
+  "child_id": zod.union([zod.uuid(),zod.null()]).optional()
+})
+
+export const ListLessonsResponseItem = zod.object({
+  "duration_min": zod.int(),
+  "has_notes": zod.boolean(),
+  "id": zod.uuid(),
+  "is_detached": zod.boolean(),
+  "join_url": zod.union([zod.string(),zod.null()]),
+  "kind": zod.enum(['regular', 'trial']),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "series_id": zod.union([zod.uuid(),zod.null()]),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show']),
+  "student": zod.object({
+  "child_id": zod.union([zod.uuid(),zod.null()]),
+  "family_id": zod.union([zod.uuid(),zod.null()]),
+  "family_name": zod.union([zod.string(),zod.null()]),
+  "lead_id": zod.union([zod.uuid(),zod.null()]),
+  "name": zod.string()
+}).describe('Кому принадлежит занятие: ученику или (пробное) заявке — тогда `family_*` пусты.')
+})
+export const ListLessonsResponse = zod.array(ListLessonsResponseItem)
+
+/**
+ * @summary Create Lesson
+ */
+export const createLessonBodyDurationMinMin = 15;
+export const createLessonBodyDurationMinMax = 240;
+
+export const createLessonBodyMeetingUrlOneMax = 2083;
+
+
+
+export const CreateLessonBody = zod.object({
+  "child_id": zod.uuid(),
+  "duration_min": zod.int().min(createLessonBodyDurationMinMin).max(createLessonBodyDurationMinMax),
+  "meeting_url": zod.union([zod.url().min(1).max(createLessonBodyMeetingUrlOneMax),zod.null()]).optional(),
+  "starts_at": zod.iso.datetime({"offset":true})
+})
+
+export const CreateLessonResponse = zod.object({
+  "created_at": zod.iso.datetime({"offset":true}),
+  "duration_min": zod.int(),
+  "has_notes": zod.boolean(),
+  "id": zod.uuid(),
+  "is_detached": zod.boolean(),
+  "join_url": zod.union([zod.string(),zod.null()]),
+  "kind": zod.enum(['regular', 'trial']),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "notes": zod.object({
+  "private_text": zod.string(),
+  "shared_text": zod.string()
+}),
+  "series_id": zod.union([zod.uuid(),zod.null()]),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show']),
+  "student": zod.object({
+  "child_id": zod.union([zod.uuid(),zod.null()]),
+  "family_id": zod.union([zod.uuid(),zod.null()]),
+  "family_name": zod.union([zod.string(),zod.null()]),
+  "lead_id": zod.union([zod.uuid(),zod.null()]),
+  "name": zod.string()
+}).describe('Кому принадлежит занятие: ученику или (пробное) заявке — тогда `family_*` пусты.'),
+  "warnings": zod.array(zod.object({
+  "code": zod.literal("overlap").meta({ title: 'Code' }),
+  "lesson_id": zod.uuid(),
+  "message": zod.string(),
+  "starts_at": zod.iso.datetime({"offset":true})
+}))
+})
+
+/**
+ * @summary Delete Lesson
+ */
+export const DeleteLessonParams = zod.object({
+  "lesson_id": zod.uuid()
+})
+
+export const DeleteLessonResponse = zod.void()
+
+/**
+ * @summary Get Lesson
+ */
+export const GetLessonParams = zod.object({
+  "lesson_id": zod.uuid()
+})
+
+export const GetLessonResponse = zod.object({
+  "created_at": zod.iso.datetime({"offset":true}),
+  "duration_min": zod.int(),
+  "has_notes": zod.boolean(),
+  "id": zod.uuid(),
+  "is_detached": zod.boolean(),
+  "join_url": zod.union([zod.string(),zod.null()]),
+  "kind": zod.enum(['regular', 'trial']),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "notes": zod.object({
+  "private_text": zod.string(),
+  "shared_text": zod.string()
+}),
+  "series_id": zod.union([zod.uuid(),zod.null()]),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show']),
+  "student": zod.object({
+  "child_id": zod.union([zod.uuid(),zod.null()]),
+  "family_id": zod.union([zod.uuid(),zod.null()]),
+  "family_name": zod.union([zod.string(),zod.null()]),
+  "lead_id": zod.union([zod.uuid(),zod.null()]),
+  "name": zod.string()
+}).describe('Кому принадлежит занятие: ученику или (пробное) заявке — тогда `family_*` пусты.')
+})
+
+/**
+ * @summary Update Lesson
+ */
+export const UpdateLessonParams = zod.object({
+  "lesson_id": zod.uuid()
+})
+
+export const updateLessonBodyDurationMinOneMin = 15;
+export const updateLessonBodyDurationMinOneMax = 240;
+
+export const updateLessonBodyMeetingUrlOneMax = 2083;
+
+
+
+export const UpdateLessonBody = zod.object({
+  "duration_min": zod.union([zod.int().min(updateLessonBodyDurationMinOneMin).max(updateLessonBodyDurationMinOneMax),zod.null()]).optional(),
+  "meeting_url": zod.union([zod.url().min(1).max(updateLessonBodyMeetingUrlOneMax),zod.null()]).optional(),
+  "starts_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "status": zod.union([zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show']),zod.null()]).optional()
+}).describe('Частичная правка: `meeting_url: null` очищает ссылку, остальные поля не принимают null.')
+
+export const UpdateLessonResponse = zod.object({
+  "created_at": zod.iso.datetime({"offset":true}),
+  "duration_min": zod.int(),
+  "has_notes": zod.boolean(),
+  "id": zod.uuid(),
+  "is_detached": zod.boolean(),
+  "join_url": zod.union([zod.string(),zod.null()]),
+  "kind": zod.enum(['regular', 'trial']),
+  "meeting_url": zod.union([zod.string(),zod.null()]),
+  "notes": zod.object({
+  "private_text": zod.string(),
+  "shared_text": zod.string()
+}),
+  "series_id": zod.union([zod.uuid(),zod.null()]),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show']),
+  "student": zod.object({
+  "child_id": zod.union([zod.uuid(),zod.null()]),
+  "family_id": zod.union([zod.uuid(),zod.null()]),
+  "family_name": zod.union([zod.string(),zod.null()]),
+  "lead_id": zod.union([zod.uuid(),zod.null()]),
+  "name": zod.string()
+}).describe('Кому принадлежит занятие: ученику или (пробное) заявке — тогда `family_*` пусты.'),
+  "warnings": zod.array(zod.object({
+  "code": zod.literal("overlap").meta({ title: 'Code' }),
+  "lesson_id": zod.uuid(),
+  "message": zod.string(),
+  "starts_at": zod.iso.datetime({"offset":true})
+}))
+})
+
+/**
+ * @summary Save Lesson Notes
+ */
+export const SaveLessonNotesParams = zod.object({
+  "lesson_id": zod.uuid()
+})
+
+export const saveLessonNotesBodyPrivateTextMax = 20000;
+
+export const saveLessonNotesBodySharedTextMax = 20000;
+
+
+
+export const SaveLessonNotesBody = zod.object({
+  "private_text": zod.string().max(saveLessonNotesBodyPrivateTextMax),
+  "shared_text": zod.string().max(saveLessonNotesBodySharedTextMax)
+})
+
+export const SaveLessonNotesResponse = zod.object({
+  "private_text": zod.string(),
+  "shared_text": zod.string()
+})
+
+/**
  * @summary Upload Media
  */
 export const UploadMediaBody = zod.object({

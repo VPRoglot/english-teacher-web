@@ -81,3 +81,10 @@ jobs:
       - uses: actions/checkout@v5
       - run: docker build -t english-tutor-backend:ci backend
       - run: docker build -t english-tutor-frontend:ci frontend
+
+  nginx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # Собирает образ nginx и проверяет его на заглушках api/web (infra/nginx/test.sh)
+      - run: bash infra/nginx/test.sh

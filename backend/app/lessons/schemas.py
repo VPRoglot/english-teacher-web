@@ -218,3 +218,26 @@ class SeriesSaved(BaseModel):
     series: SeriesDetail
     lessons_created: int
     warnings: list[OverlapWarning]
+
+
+class LessonForFamily(BaseModel):
+    """Занятие в кабинете семьи.
+
+    Отдельный класс, а не наследник админских схем: поле, добавленное в админскую схему,
+    не попадёт в ответ семье само.
+    """
+
+    id: uuid.UUID
+    child_id: uuid.UUID
+    child_name: str
+    starts_at: datetime
+    duration_min: int
+    status: LessonStatus
+    # Эффективная ссылка: своя у занятия, иначе ссылка ребёнка.
+    join_url: str | None
+    has_shared_note: bool
+
+
+class LessonForFamilyDetail(LessonForFamily):
+    # Общая заметка (Markdown); `None`, если она пуста.
+    shared_note: str | None

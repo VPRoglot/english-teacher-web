@@ -48,6 +48,46 @@ export const SetMyChildAccountResponse = zod.object({
 })
 
 /**
+ * @summary List My Lessons
+ */
+export const ListMyLessonsQueryParams = zod.object({
+  "from": zod.iso.datetime({"offset":true}),
+  "to": zod.iso.datetime({"offset":true}),
+  "child_id": zod.union([zod.uuid(),zod.null()]).optional()
+})
+
+export const ListMyLessonsResponseItem = zod.object({
+  "child_id": zod.uuid(),
+  "child_name": zod.string(),
+  "duration_min": zod.int(),
+  "has_shared_note": zod.boolean(),
+  "id": zod.uuid(),
+  "join_url": zod.union([zod.string(),zod.null()]),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show'])
+}).describe('Занятие в кабинете семьи.\n\nОтдельный класс, а не наследник админских схем: поле, добавленное в админскую схему,\nне попадёт в ответ семье само.')
+export const ListMyLessonsResponse = zod.array(ListMyLessonsResponseItem)
+
+/**
+ * @summary Get My Lesson
+ */
+export const GetMyLessonParams = zod.object({
+  "lesson_id": zod.uuid()
+})
+
+export const GetMyLessonResponse = zod.object({
+  "child_id": zod.uuid(),
+  "child_name": zod.string(),
+  "duration_min": zod.int(),
+  "has_shared_note": zod.boolean(),
+  "id": zod.uuid(),
+  "join_url": zod.union([zod.string(),zod.null()]),
+  "shared_note": zod.union([zod.string(),zod.null()]),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['scheduled', 'completed', 'cancelled', 'cancelled_late', 'no_show'])
+})
+
+/**
  * @summary Get Schedule Settings
  */
 export const GetScheduleSettingsResponse = zod.object({

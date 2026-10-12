@@ -1822,6 +1822,133 @@
         "title": "LessonCreate",
         "type": "object"
       },
+      "LessonForFamily": {
+        "description": "Занятие в кабинете семьи.\n\nОтдельный класс, а не наследник админских схем: поле, добавленное в админскую схему,\nне попадёт в ответ семье само.",
+        "properties": {
+          "child_id": {
+            "format": "uuid",
+            "title": "Child Id",
+            "type": "string"
+          },
+          "child_name": {
+            "title": "Child Name",
+            "type": "string"
+          },
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "has_shared_note": {
+            "title": "Has Shared Note",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "join_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Url"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LessonStatus"
+          }
+        },
+        "required": [
+          "id",
+          "child_id",
+          "child_name",
+          "starts_at",
+          "duration_min",
+          "status",
+          "join_url",
+          "has_shared_note"
+        ],
+        "title": "LessonForFamily",
+        "type": "object"
+      },
+      "LessonForFamilyDetail": {
+        "properties": {
+          "child_id": {
+            "format": "uuid",
+            "title": "Child Id",
+            "type": "string"
+          },
+          "child_name": {
+            "title": "Child Name",
+            "type": "string"
+          },
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "has_shared_note": {
+            "title": "Has Shared Note",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "join_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Url"
+          },
+          "shared_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared Note"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LessonStatus"
+          }
+        },
+        "required": [
+          "id",
+          "child_id",
+          "child_name",
+          "starts_at",
+          "duration_min",
+          "status",
+          "join_url",
+          "has_shared_note",
+          "shared_note"
+        ],
+        "title": "LessonForFamilyDetail",
+        "type": "object"
+      },
       "LessonKind": {
         "enum": [
           "regular",
@@ -5231,6 +5358,123 @@
           }
         },
         "summary": "Set My Child Account",
+        "tags": [
+          "cabinet"
+        ]
+      }
+    },
+    "/api/me/lessons": {
+      "get": {
+        "operationId": "list_my_lessons",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "child_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LessonForFamily"
+                  },
+                  "title": "Response List My Lessons",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "List My Lessons",
+        "tags": [
+          "cabinet"
+        ]
+      }
+    },
+    "/api/me/lessons/{lesson_id}": {
+      "get": {
+        "operationId": "get_my_lesson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonForFamilyDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка в едином формате"
+          }
+        },
+        "summary": "Get My Lesson",
         "tags": [
           "cabinet"
         ]

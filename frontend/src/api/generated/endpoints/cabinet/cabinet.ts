@@ -27,6 +27,9 @@ import type {
   CabinetChild,
   ChildAccountSet,
   ErrorResponse,
+  LessonForFamily,
+  LessonForFamilyDetail,
+  ListMyLessonsParams,
   ScheduleSettings
 } from '../../model';
 
@@ -241,7 +244,214 @@ export const useSetMyChildAccount = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getSetMyChildAccountMutationOptions(options), queryClient);
     }
-    export const getGetScheduleSettingsUrl = () => {
+    export const getListMyLessonsUrl = (params: ListMyLessonsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/me/lessons?${stringifiedParams}` : `/api/me/lessons`
+}
+
+/**
+ * @summary List My Lessons
+ */
+export const listMyLessons = async (params: ListMyLessonsParams, options?: Parameters<typeof apiFetch>[1]): Promise<LessonForFamily[]> => {
+
+  return apiFetch<LessonForFamily[]>(getListMyLessonsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyLessonsQueryKey = (params?: ListMyLessonsParams,) => {
+    return [
+    `/api/me/lessons`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMyLessonsQueryOptions = <TData = Awaited<ReturnType<typeof listMyLessons>>, TError = ErrorType<ErrorResponse>>(params: ListMyLessonsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyLessons>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyLessonsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyLessons>>> = ({ signal }) => listMyLessons(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyLessons>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListMyLessonsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyLessons>>>
+export type ListMyLessonsQueryError = ErrorType<ErrorResponse>
+
+
+export function useListMyLessons<TData = Awaited<ReturnType<typeof listMyLessons>>, TError = ErrorType<ErrorResponse>>(
+ params: ListMyLessonsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyLessons>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyLessons>>,
+          TError,
+          Awaited<ReturnType<typeof listMyLessons>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListMyLessons<TData = Awaited<ReturnType<typeof listMyLessons>>, TError = ErrorType<ErrorResponse>>(
+ params: ListMyLessonsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyLessons>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyLessons>>,
+          TError,
+          Awaited<ReturnType<typeof listMyLessons>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListMyLessons<TData = Awaited<ReturnType<typeof listMyLessons>>, TError = ErrorType<ErrorResponse>>(
+ params: ListMyLessonsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyLessons>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List My Lessons
+ */
+
+export function useListMyLessons<TData = Awaited<ReturnType<typeof listMyLessons>>, TError = ErrorType<ErrorResponse>>(
+ params: ListMyLessonsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyLessons>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListMyLessonsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetMyLessonUrl = (lessonId: string,) => {
+
+
+
+
+  return `/api/me/lessons/${lessonId}`
+}
+
+/**
+ * @summary Get My Lesson
+ */
+export const getMyLesson = async (lessonId: string, options?: Parameters<typeof apiFetch>[1]): Promise<LessonForFamilyDetail> => {
+
+  return apiFetch<LessonForFamilyDetail>(getGetMyLessonUrl(lessonId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyLessonQueryKey = (lessonId: string,) => {
+    return [
+    `/api/me/lessons/${lessonId}`
+    ] as const;
+    }
+
+
+export const getGetMyLessonQueryOptions = <TData = Awaited<ReturnType<typeof getMyLesson>>, TError = ErrorType<ErrorResponse>>(lessonId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyLesson>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyLessonQueryKey(lessonId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyLesson>>> = ({ signal }) => getMyLesson(lessonId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lessonId !== null && lessonId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyLesson>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMyLessonQueryResult = NonNullable<Awaited<ReturnType<typeof getMyLesson>>>
+export type GetMyLessonQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetMyLesson<TData = Awaited<ReturnType<typeof getMyLesson>>, TError = ErrorType<ErrorResponse>>(
+ lessonId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyLesson>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyLesson>>,
+          TError,
+          Awaited<ReturnType<typeof getMyLesson>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyLesson<TData = Awaited<ReturnType<typeof getMyLesson>>, TError = ErrorType<ErrorResponse>>(
+ lessonId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyLesson>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyLesson>>,
+          TError,
+          Awaited<ReturnType<typeof getMyLesson>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyLesson<TData = Awaited<ReturnType<typeof getMyLesson>>, TError = ErrorType<ErrorResponse>>(
+ lessonId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyLesson>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get My Lesson
+ */
+
+export function useGetMyLesson<TData = Awaited<ReturnType<typeof getMyLesson>>, TError = ErrorType<ErrorResponse>>(
+ lessonId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyLesson>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMyLessonQueryOptions(lessonId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetScheduleSettingsUrl = () => {
 
 
 

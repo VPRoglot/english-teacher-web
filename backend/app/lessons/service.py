@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import NotFound
 from app.families import service as families_service
 from app.families.models import Child, Family
 from app.leads import service as leads_service
@@ -25,6 +26,8 @@ from app.lessons.schemas import (
     AdminLessonDetail,
     AdminLessonItem,
     LessonCreate,
+    LessonForFamily,
+    LessonForFamilyDetail,
     LessonNotes,
     LessonNotesUpdate,
     LessonSaved,
@@ -312,3 +315,66 @@ async def save_notes(
     )
     await session.execute(stmt)
     return LessonNotes(shared_text=data.shared_text, private_text=data.private_text)
+
+
+def _family_data(lesson: Lesson, child: Child, shared_text: str | None) -> dict[str, Any]:
+    return {
+        "id": lesson.id,
+        "child_id": child.id,
+        "child_name": child.full_name,
+        "starts_at": lesson.starts_at,
+        "duration_min": lesson.duration_min,
+        "status": lesson.status,
+        "join_url": lesson.meeting_url or child.default_meeting_url,
+        "has_shared_note": bool(shared_text and shared_text.strip()),
+    }
+
+
+def _family_stmt(child_ids: frozenset[uuid.UUID]) -> Select[Any]:
+    """Регулярные занятия детей из области доступа с общей заметкой.
+
+    Колонка `private_text` в выборку не входит: до семьи она не доходит даже в памяти.
+    """
+    columns: list[Any] = [Lesson, Child, LessonNote.shared_text]
+    return (
+        select(*columns)
+        .join(Child, Child.id == Lesson.child_id)
+        .outerjoin(LessonNote, LessonNote.lesson_id == Lesson.id)
+        .where(Lesson.kind == LessonKind.REGULAR, Lesson.child_id.in_(child_ids))
+    )
+
+
+async def list_family_lessons(
+    session: AsyncSession,
+    child_ids: frozenset[uuid.UUID],
+    *,
+    start: datetime,
+    end: datetime,
+    child_id: uuid.UUID | None,
+) -> list[LessonForFamily]:
+    """Занятия детей семьи с `starts_at ∈ [start, end)`; `child_id` вне области — 404."""
+    if child_id is not None and child_id not in child_ids:
+        raise NotFound("Ученик не найден", code="child_not_found")
+    stmt = _family_stmt(child_ids).where(Lesson.starts_at >= start, Lesson.starts_at < end)
+    if child_id is not None:
+        stmt = stmt.where(Lesson.child_id == child_id)
+    stmt = stmt.order_by(Lesson.starts_at, Lesson.id)
+    return [
+        LessonForFamily(**_family_data(lesson, child, shared))
+        for lesson, child, shared in await session.execute(stmt)
+    ]
+
+
+async def get_family_lesson(
+    session: AsyncSession, child_ids: frozenset[uuid.UUID], lesson_id: uuid.UUID
+) -> LessonForFamilyDetail:
+    """Занятие из области доступа; чужое, пробное или несуществующее — `LessonNotFound`."""
+    stmt = _family_stmt(child_ids).where(Lesson.id == lesson_id)
+    row = (await session.execute(stmt.execution_options(populate_existing=True))).one_or_none()
+    if row is None:
+        raise LessonNotFound
+    lesson, child, shared = row
+    return LessonForFamilyDetail(
+        **_family_data(lesson, child, shared),
+        shared_note=shared if shared and shared.strip() else None,
+    )

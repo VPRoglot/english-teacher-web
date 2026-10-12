@@ -19,6 +19,7 @@ import {
   lessonTimeShape,
   meetingUrlShape,
 } from "@/components/lesson-time-fields";
+import { TutorSettingsError } from "@/components/tutor-settings-error";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -36,7 +37,7 @@ import { ApiError } from "@/lib/api-fetch";
 import { applyApiErrors, errorMessage } from "@/lib/form-errors";
 import { LESSON_STATUS_LABELS } from "@/lib/lesson-format";
 import { invalidateSchedule, toastWarnings } from "@/lib/lesson-mutations";
-import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
+import { useTutorTimeZoneStatus } from "@/lib/use-tutor-time-zone";
 
 import { useRefreshLead } from "./use-refresh-lead";
 
@@ -163,8 +164,7 @@ function TrialForm({
  */
 export function LeadTrial({ lead }: { lead: LeadDetail }) {
   const [open, setOpen] = useState(false);
-  const timeZone = useTutorTimeZone("admin");
-  const ready = useTutorTimeZoneReady("admin");
+  const { timeZone, ready, error: settingsError } = useTutorTimeZoneStatus("admin");
   const trials = useListTrialLessons(lead.id);
   const canSchedule = SCHEDULABLE_STATUSES.includes(lead.status);
 
@@ -210,14 +210,18 @@ export function LeadTrial({ lead }: { lead: LeadDetail }) {
             <DialogTitle>Назначить пробное</DialogTitle>
             <DialogDescription>Время указывается в поясе репетитора.</DialogDescription>
           </DialogHeader>
-          <TrialForm
-            key={`${ready}:${timeZone}`}
-            lead={lead}
-            timeZone={timeZone}
-            ready={ready}
-            onSaved={() => setOpen(false)}
-            onCancel={() => setOpen(false)}
-          />
+          {settingsError ? (
+            <TutorSettingsError />
+          ) : (
+            <TrialForm
+              key={`${ready}:${timeZone}`}
+              lead={lead}
+              timeZone={timeZone}
+              ready={ready}
+              onSaved={() => setOpen(false)}
+              onCancel={() => setOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </section>

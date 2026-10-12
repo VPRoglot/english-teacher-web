@@ -16,6 +16,7 @@ import {
   meetingUrlShape,
 } from "@/components/lesson-time-fields";
 import { NATIVE_SELECT_CLASS } from "@/components/native-select";
+import { TutorSettingsError } from "@/components/tutor-settings-error";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,7 +27,7 @@ import { todayInZone } from "@/lib/datetime";
 import { applyApiErrors } from "@/lib/form-errors";
 import { buildRule, parseRule, WEEKDAYS } from "@/lib/lesson-format";
 import { invalidateSchedule, lessonsCount, toastWarnings } from "@/lib/lesson-mutations";
-import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
+import { useTutorTimeZoneStatus } from "@/lib/use-tutor-time-zone";
 
 const INTERVAL_LABELS: Record<string, string> = {
   "1": "каждую неделю",
@@ -146,8 +147,8 @@ function defaultValues(
  * появился, чтобы даты по умолчанию («Начало», «Изменить начиная с») считались в настоящем поясе.
  */
 export function SeriesForm(props: SeriesFormProps) {
-  const timeZone = useTutorTimeZone("admin");
-  const ready = useTutorTimeZoneReady("admin");
+  const { timeZone, ready, error } = useTutorTimeZoneStatus("admin");
+  if (error) return <TutorSettingsError />;
   return (
     <SeriesFormBody key={`${ready}:${timeZone}`} {...props} timeZone={timeZone} ready={ready} />
   );

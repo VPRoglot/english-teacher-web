@@ -245,18 +245,16 @@ test("client validation blocks the request", async () => {
   expect(schedules()).toHaveLength(0);
 });
 
-test("submit is disabled until the tutor time zone is loaded", async () => {
+test("the trial form shows the settings load error and has no submit", async () => {
   settingsFail = true;
   renderTrial("new");
   await userEvent.click(await screen.findByRole("button", { name: "Назначить пробное" }));
   const dialog = await screen.findByRole("dialog");
-  await waitFor(() =>
-    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
-  );
 
-  const submit = within(dialog).getByRole("button", { name: "Назначить" });
-  expect(submit).toBeDisabled();
-  await userEvent.click(submit);
+  expect(
+    await within(dialog).findByText("Не удалось загрузить настройки репетитора. Обновите страницу."),
+  ).toBeInTheDocument();
+  expect(within(dialog).queryByRole("button", { name: "Назначить" })).not.toBeInTheDocument();
   expect(schedules()).toHaveLength(0);
 });
 

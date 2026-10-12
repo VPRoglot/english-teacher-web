@@ -296,34 +296,30 @@ test("the regular tab creates a series for the chosen student with the slot pref
   expect(posts("/api/admin/lessons")).toHaveLength(0);
 });
 
-test("the one-off submit is disabled until the tutor time zone is loaded", async () => {
+const SETTINGS_ERROR = "Не удалось загрузить настройки репетитора. Обновите страницу.";
+
+test("the one-off form shows the settings load error and has no submit", async () => {
   settingsFail = true;
   const user = userEvent.setup();
   renderDialogNow();
 
   await chooseStudent(user, "c1");
-  await waitFor(() =>
-    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
-  );
-  const submit = screen.getByRole("button", { name: "Создать" });
-  expect(submit).toBeDisabled();
-  await user.click(submit);
+
+  expect(await screen.findByText(SETTINGS_ERROR)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Создать" })).not.toBeInTheDocument();
   expect(posts("/api/admin/lessons")).toHaveLength(0);
 });
 
-test("the regular submit is disabled until the tutor time zone is loaded", async () => {
+test("the regular form shows the settings load error and has no submit", async () => {
   settingsFail = true;
   const user = userEvent.setup();
   renderDialogNow();
 
   await chooseStudent(user, "c1");
   await user.click(screen.getByRole("button", { name: "Регулярное" }));
-  await waitFor(() =>
-    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
-  );
-  const submit = screen.getByRole("button", { name: "Создать" });
-  expect(submit).toBeDisabled();
-  await user.click(submit);
+
+  expect(await screen.findByText(SETTINGS_ERROR)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Создать" })).not.toBeInTheDocument();
   expect(posts("/api/admin/series")).toHaveLength(0);
 });
 

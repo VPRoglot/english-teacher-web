@@ -14,6 +14,7 @@ import {
   meetingUrlShape,
 } from "@/components/lesson-time-fields";
 import { NATIVE_SELECT_CLASS } from "@/components/native-select";
+import { TutorSettingsError } from "@/components/tutor-settings-error";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { zonedToUtcIso } from "@/lib/datetime";
 import { applyApiErrors, errorMessage } from "@/lib/form-errors";
 import { invalidateSchedule, toastWarnings } from "@/lib/lesson-mutations";
-import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
+import { useTutorTimeZoneStatus } from "@/lib/use-tutor-time-zone";
 
 import { SeriesForm } from "../series-form-dialog";
 
@@ -52,8 +53,7 @@ function OneOffForm({
   onSaved: () => void;
 }) {
   const queryClient = useQueryClient();
-  const timeZone = useTutorTimeZone("admin");
-  const ready = useTutorTimeZoneReady("admin");
+  const { timeZone, ready, error: settingsError } = useTutorTimeZoneStatus("admin");
   const createLesson = useCreateLesson();
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -99,6 +99,8 @@ function OneOffForm({
       },
     );
   }
+
+  if (settingsError) return <TutorSettingsError />;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">

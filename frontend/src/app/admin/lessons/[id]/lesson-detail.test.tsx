@@ -301,6 +301,21 @@ test("edit submit is disabled until the tutor time zone is loaded", async () => 
   expect(within(dialog).getByLabelText("Время")).toHaveValue("20:00");
 });
 
+test("the edit dialog shows the settings load error instead of an endless disabled form", async () => {
+  settingsResponse = async () =>
+    jsonResponse(500, { error: { code: "boom", message: "Сбой", details: {} } });
+  const user = userEvent.setup();
+  renderDetail();
+
+  await user.click(await screen.findByRole("button", { name: "Перенести" }));
+  const dialog = await screen.findByRole("dialog");
+
+  expect(
+    await within(dialog).findByText("Не удалось загрузить настройки репетитора. Обновите страницу."),
+  ).toBeInTheDocument();
+  expect(within(dialog).queryByRole("button", { name: "Сохранить" })).not.toBeInTheDocument();
+});
+
 test("a conflict while rescheduling is shown in the dialog", async () => {
   patchResponse = () =>
     jsonResponse(409, {

@@ -15,14 +15,38 @@ type Area = "admin" | "cabinet";
 function useTutorSettings(area: Area) {
   const admin = useGetTutorSettingsAdmin({ query: { enabled: area === "admin" } });
   const cabinet = useGetScheduleSettings({ query: { enabled: area === "cabinet" } });
-  return area === "admin" ? admin.data : cabinet.data;
+  return area === "admin" ? admin : cabinet;
+}
+
+export type TutorTimeZoneStatus = {
+  /** Пояс репетитора; пока настройки не загружены (или не загрузились) — `DEFAULT_TIME_ZONE`. */
+  timeZone: string;
+  /** Настройки загружены, и `timeZone` настоящий, а не запасной. */
+  ready: boolean;
+  /** Настройки не загрузились: `ready` уже не станет `true` без перезагрузки страницы. */
+  error: boolean;
+};
+
+/**
+ * Пояс репетитора вместе с состоянием загрузки настроек. Формы, которые переводят местное время
+ * в UTC, не отправляют данные, пока `ready` ложно, а при `error` показывают сообщение вместо
+ * вечно неактивной формы.
+ */
+export function useTutorTimeZoneStatus(area: Area): TutorTimeZoneStatus {
+  const settings = useTutorSettings(area);
+  const data = settings.data;
+  return {
+    timeZone: data?.timezone ?? DEFAULT_TIME_ZONE,
+    ready: data !== undefined,
+    error: data === undefined && settings.isError,
+  };
 }
 
 /**
  * Пояс репетитора. Пока настройки не загружены (или не загрузились) — `DEFAULT_TIME_ZONE`.
  */
 export function useTutorTimeZone(area: Area): string {
-  return useTutorSettings(area)?.timezone ?? DEFAULT_TIME_ZONE;
+  return useTutorTimeZoneStatus(area).timeZone;
 }
 
 /**
@@ -30,5 +54,5 @@ export function useTutorTimeZone(area: Area): string {
  * Формы, которые переводят местное время в UTC, не отправляют данные, пока это не так.
  */
 export function useTutorTimeZoneReady(area: Area): boolean {
-  return useTutorSettings(area) !== undefined;
+  return useTutorTimeZoneStatus(area).ready;
 }

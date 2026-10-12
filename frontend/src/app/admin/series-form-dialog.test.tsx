@@ -284,18 +284,15 @@ test("edit mode asks for the date to change from instead of the start date", asy
 
 const EDIT_SERIES: SeriesDetail = { ...SAVED.series, ends_on: null };
 
-test("create submit is disabled until the tutor time zone is loaded", async () => {
+const SETTINGS_ERROR = "Не удалось загрузить настройки репетитора. Обновите страницу.";
+
+test("create form shows the settings load error instead of an endless disabled form", async () => {
   settingsResponse = () =>
     jsonResponse(500, { error: { code: "boom", message: "Сбой", details: {} } });
-  const user = userEvent.setup();
   renderDialogNow({ initial: { date: "2026-10-20", time: "18:00" } });
 
-  const submit = await screen.findByRole("button", { name: "Создать" });
-  await waitFor(() =>
-    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
-  );
-  expect(submit).toBeDisabled();
-  await user.click(submit);
+  expect(await screen.findByText(SETTINGS_ERROR)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Создать" })).not.toBeInTheDocument();
   expect(posts()).toHaveLength(0);
 });
 
@@ -318,19 +315,14 @@ test("create submit becomes enabled once the settings arrive", async () => {
   await waitFor(() => expect(screen.getByRole("button", { name: "Создать" })).toBeEnabled());
 });
 
-test("edit submit is disabled until the tutor time zone is loaded", async () => {
+test("edit form shows the settings load error and cannot be submitted", async () => {
   settingsResponse = () =>
     jsonResponse(500, { error: { code: "boom", message: "Сбой", details: {} } });
   const onEditSubmit = vi.fn();
-  const user = userEvent.setup();
   renderDialogNow({ mode: "edit", series: EDIT_SERIES, onEditSubmit });
 
-  const submit = await screen.findByRole("button", { name: "Сохранить" });
-  await waitFor(() =>
-    expect(fetchMock.mock.calls.some(([url]) => url === "/api/admin/settings")).toBe(true),
-  );
-  expect(submit).toBeDisabled();
-  await user.click(submit);
+  expect(await screen.findByText(SETTINGS_ERROR)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Сохранить" })).not.toBeInTheDocument();
   expect(onEditSubmit).not.toHaveBeenCalled();
 });
 

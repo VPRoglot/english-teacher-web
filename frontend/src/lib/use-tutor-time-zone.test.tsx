@@ -3,7 +3,11 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 
-import { useTutorTimeZone, useTutorTimeZoneReady } from "./use-tutor-time-zone";
+import {
+  useTutorTimeZone,
+  useTutorTimeZoneReady,
+  useTutorTimeZoneStatus,
+} from "./use-tutor-time-zone";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -86,4 +90,28 @@ test("ready stays false when settings fail to load", async () => {
   const { result } = renderHook(() => useTutorTimeZoneReady("admin"), { wrapper });
   await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   expect(result.current).toBe(false);
+});
+
+test("status: loading, then ready, without an error", async () => {
+  stubApi();
+  const { result } = renderHook(() => useTutorTimeZoneStatus("admin"), { wrapper });
+  expect(result.current).toEqual({ timeZone: "Europe/Moscow", ready: false, error: false });
+  await waitFor(() => expect(result.current.ready).toBe(true));
+  expect(result.current).toEqual({ timeZone: "Asia/Yekaterinburg", ready: true, error: false });
+  expect(requestedUrls()).toEqual(["/api/admin/settings"]);
+});
+
+test("status: a load failure is exposed as an error, not as an endless loading", async () => {
+  fetchMock = vi.fn(async () => jsonResponse(500, { error: { code: "x", message: "boom" } }));
+  vi.stubGlobal("fetch", fetchMock);
+  const { result } = renderHook(() => useTutorTimeZoneStatus("admin"), { wrapper });
+  await waitFor(() => expect(result.current.error).toBe(true));
+  expect(result.current).toEqual({ timeZone: "Europe/Moscow", ready: false, error: true });
+});
+
+test("status for the cabinet never asks for admin settings", async () => {
+  stubApi();
+  const { result } = renderHook(() => useTutorTimeZoneStatus("cabinet"), { wrapper });
+  await waitFor(() => expect(result.current.ready).toBe(true));
+  expect(requestedUrls()).toEqual(["/api/me/schedule-settings"]);
 });

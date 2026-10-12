@@ -11,12 +11,13 @@ import {
 } from "@/api/generated/endpoints/admin/admin";
 import type { ChildDetail, SeriesDetail, SeriesUpdate } from "@/api/generated/model";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { TutorSettingsError } from "@/components/tutor-settings-error";
 import { Button } from "@/components/ui/button";
 import { formatDate, todayInZone } from "@/lib/datetime";
 import { errorMessage } from "@/lib/form-errors";
 import { buildRule, describeSeries, parseRule } from "@/lib/lesson-format";
 import { invalidateSchedule, seriesEditedMessage, toastWarnings } from "@/lib/lesson-mutations";
-import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
+import { useTutorTimeZoneStatus } from "@/lib/use-tutor-time-zone";
 
 import { SeriesFormDialog, type SeriesEditValues } from "../../series-form-dialog";
 
@@ -89,14 +90,12 @@ function SeriesRow({
 /** Блок «Расписание» активного ребёнка: регулярные занятия, их правка «с даты» и завершение. */
 export function ChildSeries({ child }: { child: ChildDetail }) {
   const queryClient = useQueryClient();
-  const timeZone = useTutorTimeZone("admin");
+  const { timeZone, ready, error: settingsError } = useTutorTimeZoneStatus("admin");
   const list = useListSeries({ child_id: child.id });
   const updateSeries = useUpdateSeries();
   const archiveSeries = useArchiveSeries();
   const [editing, setEditing] = useState<SeriesDetail | null>(null);
   const [archiving, setArchiving] = useState<SeriesDetail | null>(null);
-
-  const ready = useTutorTimeZoneReady("admin");
 
   // «Сегодня» зависит от пояса: пока он запасной, список не показываем и не фильтруем.
   const today = todayInZone(timeZone);
@@ -136,7 +135,9 @@ export function ChildSeries({ child }: { child: ChildDetail }) {
         <h3 className="text-sm font-semibold">Расписание</h3>
         <SeriesFormDialog mode="create" childId={child.id} />
       </div>
-      {list.error ? (
+      {settingsError ? (
+        <TutorSettingsError />
+      ) : list.error ? (
         <p className="text-sm text-destructive">{errorMessage(list.error)}</p>
       ) : list.isPending || !ready ? (
         <p className="text-sm text-muted-foreground">Загружаем расписание…</p>

@@ -14,6 +14,7 @@ import {
   lessonTimeShape,
   meetingUrlShape,
 } from "@/components/lesson-time-fields";
+import { TutorSettingsError } from "@/components/tutor-settings-error";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { utcToZonedParts, zonedToUtcIso } from "@/lib/datetime";
 import { applyApiErrors, errorMessage } from "@/lib/form-errors";
 import { invalidateSchedule, toastWarnings } from "@/lib/lesson-mutations";
-import { useTutorTimeZone, useTutorTimeZoneReady } from "@/lib/use-tutor-time-zone";
+import { useTutorTimeZoneStatus } from "@/lib/use-tutor-time-zone";
 
 const schema = z.object({
   date: lessonTimeShape.date,
@@ -157,8 +158,7 @@ export function EditLessonDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const timeZone = useTutorTimeZone("admin");
-  const ready = useTutorTimeZoneReady("admin");
+  const { timeZone, ready, error } = useTutorTimeZoneStatus("admin");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -166,13 +166,17 @@ export function EditLessonDialog({
           <DialogTitle>Перенести занятие</DialogTitle>
           <DialogDescription>Время указывается в поясе репетитора.</DialogDescription>
         </DialogHeader>
-        <EditLessonForm
-          key={`${ready}:${timeZone}`}
-          lesson={lesson}
-          timeZone={timeZone}
-          ready={ready}
-          onSaved={() => onOpenChange(false)}
-        />
+        {error ? (
+          <TutorSettingsError />
+        ) : (
+          <EditLessonForm
+            key={`${ready}:${timeZone}`}
+            lesson={lesson}
+            timeZone={timeZone}
+            ready={ready}
+            onSaved={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -432,6 +432,18 @@ test("the list waits for the tutor time zone and does not filter by the fallback
   expect(await screen.findAllByRole("listitem")).toHaveLength(2);
 });
 
+test("shows the settings load error instead of an endless loading state", async () => {
+  settingsResponse = () =>
+    jsonResponse(500, { error: { code: "boom", message: "Сбой", details: {} } });
+  renderBlock();
+
+  expect(
+    await screen.findByText("Не удалось загрузить настройки репетитора. Обновите страницу."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText("Загружаем расписание…")).not.toBeInTheDocument();
+  expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
+});
+
 test("finishing asks for confirmation and then sends DELETE", async () => {
   routes["DELETE /api/admin/series/s1"] = () => new Response(null, { status: 204 });
   const user = userEvent.setup();

@@ -259,8 +259,16 @@ export function LessonDetail() {
             <Button type="button" variant="outline" onClick={() => setEditing(true)}>
               Перенести
             </Button>
-            {future && <DeleteLesson lesson={data} />}
+            {future && !data.has_requests && <DeleteLesson lesson={data} />}
           </div>
+        )}
+        {data.has_requests && (
+          <p className="flex flex-wrap gap-x-2 text-sm text-muted-foreground">
+            <span>По занятию есть запрос семьи</span>
+            <Link href="/admin/requests?tab=all" className="underline underline-offset-2">
+              Открыть запросы
+            </Link>
+          </p>
         )}
       </section>
       <LessonNotes lesson={data} />

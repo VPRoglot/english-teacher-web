@@ -408,6 +408,26 @@ test("delete only for future scheduled", async () => {
   expect(await screen.findByRole("button", { name: "Удалить" })).toBeInTheDocument();
 });
 
+test("lesson with requests hides delete and links to queue", async () => {
+  lesson = makeLesson({ has_requests: true });
+  renderDetail();
+
+  expect(await screen.findByText("По занятию есть запрос семьи")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Открыть запросы" })).toHaveAttribute(
+    "href",
+    "/admin/requests?tab=all",
+  );
+  expect(screen.queryByRole("button", { name: "Удалить" })).toBeNull();
+  // перенос остаётся доступным
+  expect(screen.getByRole("button", { name: "Перенести" })).toBeInTheDocument();
+});
+
+test("lesson without requests has no hint", async () => {
+  renderDetail();
+  expect(await screen.findByRole("button", { name: "Удалить" })).toBeInTheDocument();
+  expect(screen.queryByText("По занятию есть запрос семьи")).toBeNull();
+});
+
 test("confirmed delete sends DELETE, goes to the calendar and toasts", async () => {
   const user = userEvent.setup();
   renderDetail();

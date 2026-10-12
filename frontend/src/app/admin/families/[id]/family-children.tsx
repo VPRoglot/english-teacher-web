@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { useUpdateChild } from "@/api/generated/endpoints/admin/admin";
 import type { ChildDetail, FamilyDetail } from "@/api/generated/model";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,18 +22,25 @@ function ChildCard({ child, familyId }: { child: ChildDetail; familyId: string }
   const refresh = useRefreshFamily(familyId);
   const updateChild = useUpdateChild();
   const archived = child.archived_at !== null;
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  function setArchived(value: boolean) {
+  function restore() {
     updateChild.mutate(
-      { childId: child.id, data: { archived: value } },
+      { childId: child.id, data: { archived: false } },
       {
         onSuccess: async () => {
-          toast.success(value ? "Ребёнок отправлен в архив" : "Ребёнок возвращён из архива");
+          toast.success("Ребёнок возвращён из архива");
           await refresh();
         },
         onError: (error) => toast.error(errorMessage(error)),
       },
     );
+  }
+
+  async function archive() {
+    await updateChild.mutateAsync({ childId: child.id, data: { archived: true } });
+    toast.success("Ребёнок отправлен в архив");
+    await refresh();
   }
 
   return (
@@ -75,10 +84,18 @@ function ChildCard({ child, familyId }: { child: ChildDetail; familyId: string }
             size="sm"
             aria-label={archived ? "Вернуть ребёнка" : "В архив ребёнка"}
             disabled={updateChild.isPending}
-            onClick={() => setArchived(!archived)}
+            onClick={() => (archived ? restore() : setConfirmOpen(true))}
           >
             {archived ? "Вернуть" : "В архив"}
           </Button>
+          <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title="Отправить ребёнка в архив?"
+            description="Регулярные занятия будут завершены, будущие занятия удалены. Вернуть ребёнка можно в любой момент, но расписание не восстановится."
+            confirmLabel="Да, в архив"
+            onConfirm={archive}
+          />
         </div>
         {!archived && <ChildSeries child={child} />}
       </CardContent>

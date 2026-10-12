@@ -408,6 +408,25 @@ test("ошибка валидации года рождения под поле�
   expect(await within(dialog).findByText("Год рождения: от 1990 до 2026")).toBeInTheDocument();
 });
 
+test("archive confirmation mentions series", async () => {
+  stubApi();
+  renderDetail();
+  await userEvent.click(await screen.findByRole("button", { name: "В архив ребёнка" }));
+  const childDialog = await screen.findByRole("dialog");
+  expect(
+    within(childDialog).getByText(/Регулярные занятия будут завершены, будущие занятия удалены/),
+  ).toBeInTheDocument();
+  expect(calls("PATCH", "/api/admin/children/c1")).toHaveLength(0);
+  await userEvent.click(within(childDialog).getByRole("button", { name: "Отмена" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+  await userEvent.click(screen.getByRole("button", { name: "В архив" }));
+  const familyDialog = await screen.findByRole("dialog");
+  expect(
+    within(familyDialog).getByText(/Регулярные занятия будут завершены, будущие занятия удалены/),
+  ).toBeInTheDocument();
+});
+
 test("архивация и возврат ребёнка", async () => {
   routes["PATCH /api/admin/children/c1"] = (body) => {
     const { archived } = body as { archived: boolean };
@@ -420,6 +439,9 @@ test("архивация и возврат ребёнка", async () => {
   stubApi();
   renderDetail();
   await userEvent.click(await screen.findByRole("button", { name: "В архив ребёнка" }));
+  await userEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", { name: "Да, в архив" }),
+  );
   await waitFor(() =>
     expect(bodyOf(calls("PATCH", "/api/admin/children/c1")[0])).toEqual({ archived: true }),
   );

@@ -1,7 +1,8 @@
 "use client";
 
+import { keepPreviousData } from "@tanstack/react-query";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { useGetMe } from "@/api/generated/endpoints/auth/auth";
 import { useListMyLessons } from "@/api/generated/endpoints/cabinet/cabinet";
@@ -11,14 +12,17 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatLessonWhen, timeZoneNote } from "@/lib/datetime";
 import { errorMessage } from "@/lib/form-errors";
-import { LESSON_STATUS_LABELS } from "@/lib/lesson-format";
+import { LESSON_STATUS_LABELS, lessonEndMs } from "@/lib/lesson-format";
+import { useMinuteNow } from "@/lib/use-minute-now";
 import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 import { withChild } from "./child-link";
 import { JoinButton } from "./join-button";
 import { useSelectedChild } from "./use-selected-child";
 
+const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
+const MAX_LESSON_MIN = 240; // максимальная длительность занятия (см. backend)
 const UPCOMING_DAYS = 28;
 const NOTES_DAYS = 56;
 const UPCOMING_LIMIT = 5;
@@ -27,13 +31,17 @@ const NOTES_LIMIT = 3;
 const byStart = (a: LessonForFamily, b: LessonForFamily) =>
   new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
 
-/** Границы запросов; «сейчас» фиксируется при открытии страницы, чтобы ключи запросов не менялись. */
-function useWindows() {
-  const [now] = useState(() => Date.now());
+/**
+ * Границы запросов от «сейчас» с точностью до минуты: ключи запросов стабильны внутри минуты,
+ * а открытая страница каждую минуту сдвигает окно (запрос обновляется, данные не мигают).
+ * Окно предстоящих начинается на максимальную длительность занятия раньше «сейчас»: так в него
+ * попадает занятие, которое уже идёт.
+ */
+function useWindows(now: number) {
   return useMemo(
     () => ({
       upcoming: {
-        from: new Date(now).toISOString(),
+        from: new Date(now - MAX_LESSON_MIN * MINUTE_MS).toISOString(),
         to: new Date(now + UPCOMING_DAYS * DAY_MS).toISOString(),
       },
       notes: {
@@ -83,15 +91,22 @@ function ScheduleCards() {
   const me = useGetMe().data;
   const timeZone = useTutorTimeZone("cabinet");
   const { childId } = useSelectedChild();
-  const windows = useWindows();
+  const now = useMinuteNow();
+  const windows = useWindows(now);
   const childParam = childId ? { child_id: childId } : {};
 
-  const upcoming = useListMyLessons({ ...windows.upcoming, ...childParam });
-  const past = useListMyLessons({ ...windows.notes, ...childParam });
+  // Смена окна меняет ключ запроса: прежние данные остаются на экране, пока грузятся новые.
+  const keepPrevious = { query: { placeholderData: keepPreviousData } };
+  const upcoming = useListMyLessons({ ...windows.upcoming, ...childParam }, keepPrevious);
+  const past = useListMyLessons({ ...windows.notes, ...childParam }, keepPrevious);
 
+  // Запланированные и ещё не закончившиеся: идущее сейчас занятие остаётся ближайшим.
   const scheduled = useMemo(
-    () => (upcoming.data ?? []).filter((lesson) => lesson.status === "scheduled").sort(byStart),
-    [upcoming.data],
+    () =>
+      (upcoming.data ?? [])
+        .filter((lesson) => lesson.status === "scheduled" && lessonEndMs(lesson) > now)
+        .sort(byStart),
+    [upcoming.data, now],
   );
   const nearest = scheduled[0];
   const following = scheduled.slice(1, 1 + UPCOMING_LIMIT);

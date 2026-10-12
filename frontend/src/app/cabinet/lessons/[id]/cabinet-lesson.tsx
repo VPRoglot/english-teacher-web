@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { formatLessonWhen, timeZoneNote } from "@/lib/datetime";
 import { ApiError } from "@/lib/api-fetch";
 import { errorMessage } from "@/lib/form-errors";
-import { LESSON_STATUS_LABELS } from "@/lib/lesson-format";
+import { isJoinable, LESSON_STATUS_LABELS } from "@/lib/lesson-format";
+import { useMinuteNow } from "@/lib/use-minute-now";
 import { useTutorTimeZone } from "@/lib/use-tutor-time-zone";
 
 import { withChild } from "../../child-link";
@@ -32,6 +33,7 @@ export function CabinetLesson() {
   const { id } = useParams<{ id: string }>();
   const lesson = useGetMyLesson(id);
   const timeZone = useTutorTimeZone("cabinet");
+  const now = useMinuteNow();
   const { childId } = useSelectedChild();
   const backLink = (
     <Link
@@ -71,7 +73,7 @@ export function CabinetLesson() {
           {formatLessonWhen(data.starts_at, data.duration_min, timeZone)}
           {note && <span className="text-muted-foreground">{` (${note})`}</span>}
         </p>
-        <JoinButton url={data.join_url} />
+        {isJoinable(data, now) && <JoinButton url={data.join_url} />}
       </div>
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Заметка репетитора</h2>

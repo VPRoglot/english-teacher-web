@@ -77,6 +77,8 @@ function renderLesson() {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-12T09:00:00Z"));
   search = "";
   lessonResponse = () => jsonResponse(200, makeLesson());
   document.cookie = "csrf_token=t";
@@ -84,6 +86,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.cookie = "csrf_token=; max-age=0";
 });
@@ -105,6 +108,32 @@ test("join button is disabled without a link", async () => {
   expect(await screen.findByText("Ссылку пришлёт репетитор")).toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Подключиться" })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Подключиться" })).toBeDisabled();
+});
+
+test.each([
+  ["cancelled", { status: "cancelled", starts_at: "2026-10-13T15:00:00Z" }, "Отменено"],
+  ["late-cancelled", { status: "cancelled_late", starts_at: "2026-10-13T15:00:00Z" }, "Поздняя отмена"],
+  ["completed", { status: "completed", starts_at: "2026-10-05T15:00:00Z" }, "Проведено"],
+  ["long past but still scheduled", { starts_at: "2026-10-05T15:00:00Z" }, "Запланировано"],
+  ["just ended", { starts_at: "2026-10-12T07:30:00Z", duration_min: 60 }, "Запланировано"],
+] as const)("%s lesson has no join button, only the status", async (_name, overrides, label) => {
+  lessonResponse = () => jsonResponse(200, makeLesson(overrides));
+  renderLesson();
+  expect(await screen.findByRole("heading", { name: "Петя" })).toBeInTheDocument();
+  expect(screen.getByText(label)).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Подключиться" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Подключиться" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Ссылку пришлёт репетитор")).not.toBeInTheDocument();
+});
+
+test("a scheduled lesson in progress still has the join link", async () => {
+  lessonResponse = () =>
+    jsonResponse(200, makeLesson({ starts_at: "2026-10-12T08:30:00Z", duration_min: 60 }));
+  renderLesson();
+  expect(await screen.findByRole("link", { name: "Подключиться" })).toHaveAttribute(
+    "href",
+    "https://meet.example.com/petya",
+  );
 });
 
 test("renders shared note as markdown", async () => {

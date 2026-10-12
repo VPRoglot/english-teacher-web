@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { LessonForFamily } from "@/api/generated/model";
@@ -189,15 +189,120 @@ test("recent notes list only lessons with shared notes", async () => {
   ]);
 });
 
-test("requests cover the next 28 days and the last 56 days", async () => {
+test("recent notes are ordered newest first whatever the API order", async () => {
+  past = [
+    lesson({ id: "n4", starts_at: "2026-10-08T15:00:00Z", has_shared_note: true }),
+    lesson({ id: "n9", starts_at: "2026-10-09T15:00:00Z", has_shared_note: true }),
+    lesson({ id: "n1", starts_at: "2026-10-01T15:00:00Z", has_shared_note: true }),
+    lesson({ id: "n7", starts_at: "2026-10-07T15:00:00Z", has_shared_note: true }),
+  ];
+  renderHome();
+  const card = await cardOf("Последние заметки");
+  const links = await card.findAllByRole("link");
+  expect(links.map((link) => link.getAttribute("href"))).toEqual([
+    "/cabinet/lessons/n9",
+    "/cabinet/lessons/n4",
+    "/cabinet/lessons/n7",
+  ]);
+});
+
+test("nearest and upcoming are right for unsorted API data", async () => {
+  upcoming = [
+    lesson({ id: "c", starts_at: "2026-10-15T15:00:00Z" }),
+    lesson({ id: "a", starts_at: "2026-10-13T15:00:00Z" }),
+    lesson({ id: "b", starts_at: "2026-10-14T15:00:00Z" }),
+  ];
+  renderHome();
+  const nearest = await cardOf("Ближайшее занятие");
+  expect((await nearest.findByRole("link", { name: /18:00/ })).getAttribute("href")).toBe(
+    "/cabinet/lessons/a",
+  );
+  const card = await cardOf("Предстоящие");
+  const links = await card.findAllByRole("link");
+  expect(links.map((link) => link.getAttribute("href"))).toEqual([
+    "/cabinet/lessons/b",
+    "/cabinet/lessons/c",
+  ]);
+});
+
+test("a lesson in progress stays the nearest one with the join button", async () => {
+  upcoming = [
+    lesson({
+      id: "live",
+      starts_at: new Date(NOW.getTime() - 30 * 60_000).toISOString(),
+      duration_min: 60,
+      child_name: "Идёт сейчас",
+    }),
+    lesson({ id: "later", starts_at: "2026-10-14T15:00:00Z" }),
+  ];
+  renderHome();
+  const card = await cardOf("Ближайшее занятие");
+  expect(await card.findByText(/Идёт сейчас/)).toBeInTheDocument();
+  expect(card.getByRole("link", { name: "Подключиться" })).toHaveAttribute(
+    "href",
+    "https://meet.example.com/petya",
+  );
+  const following = await cardOf("Предстоящие");
+  expect(
+    (await following.findAllByRole("link")).map((link) => link.getAttribute("href")),
+  ).toEqual(["/cabinet/lessons/later"]);
+});
+
+test("a lesson that has already ended is not shown as upcoming", async () => {
+  upcoming = [
+    lesson({
+      id: "over",
+      starts_at: new Date(NOW.getTime() - 90 * 60_000).toISOString(),
+      duration_min: 60,
+      child_name: "Закончилось",
+    }),
+  ];
+  renderHome();
+  expect(await screen.findByText("Ближайших занятий нет")).toBeInTheDocument();
+  expect(screen.queryByText(/Закончилось/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Подключиться" })).not.toBeInTheDocument();
+});
+
+test("the upcoming window follows the clock instead of freezing at mount", async () => {
+  vi.useRealTimers();
+  vi.useFakeTimers({
+    toFake: ["Date", "setTimeout", "clearTimeout"],
+    shouldAdvanceTime: true,
+  });
+  vi.setSystemTime(NOW);
+  upcoming = [
+    lesson({
+      id: "short",
+      starts_at: new Date(NOW.getTime() - 30 * 60_000).toISOString(),
+      duration_min: 45,
+      child_name: "Скоро закончится",
+    }),
+  ];
+  renderHome();
+  expect(await screen.findByText(/Скоро закончится/)).toBeInTheDocument();
+
+  // Через 20 минут занятие (45 минут с -30) закончилось: страница сама это замечает.
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(20 * 60_000);
+  });
+
+  await waitFor(() => expect(screen.queryByText(/Скоро закончится/)).not.toBeInTheDocument());
+  expect(await screen.findByText("Ближайших занятий нет")).toBeInTheDocument();
+  const froms = lessonRequests().map((url) => url.searchParams.get("from"));
+  const laterFrom = new Date(NOW.getTime() + 20 * 60_000 - 240 * 60_000).toISOString();
+  expect(froms.some((from) => from !== null && new Date(from) >= new Date(laterFrom))).toBe(true);
+});
+
+test("requests cover the in-progress window, the next 28 days and the last 56 days", async () => {
   renderHome();
   await waitFor(() => expect(lessonRequests()).toHaveLength(2));
   const windows = lessonRequests().map((url) => [
     url.searchParams.get("from"),
     url.searchParams.get("to"),
   ]);
+  // Начало окна — «сейчас» минус максимальная длительность занятия (240 минут).
   expect(windows).toContainEqual([
-    NOW.toISOString(),
+    new Date(NOW.getTime() - 240 * 60_000).toISOString(),
     new Date(NOW.getTime() + 28 * DAY_MS).toISOString(),
   ]);
   expect(windows).toContainEqual([

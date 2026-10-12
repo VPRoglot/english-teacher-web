@@ -18,6 +18,21 @@ export function needsMarking(
   return lesson.status === "scheduled" && new Date(lesson.starts_at).getTime() <= now.getTime();
 }
 
+const MINUTE_MS = 60_000;
+
+/** Конец занятия (мс с эпохи). */
+export function lessonEndMs(lesson: { starts_at: string; duration_min: number }): number {
+  return new Date(lesson.starts_at).getTime() + lesson.duration_min * MINUTE_MS;
+}
+
+/** К занятию ещё можно подключиться: оно запланировано и не закончилось (`now` — мс с эпохи). */
+export function isJoinable(
+  lesson: { status: LessonStatus; starts_at: string; duration_min: number },
+  now: number,
+): boolean {
+  return lesson.status === "scheduled" && lessonEndMs(lesson) > now;
+}
+
 /** Коды дней недели в порядке RRULE и их подписи. */
 export const WEEKDAYS: readonly (readonly [string, string])[] = [
   ["MO", "пн"],

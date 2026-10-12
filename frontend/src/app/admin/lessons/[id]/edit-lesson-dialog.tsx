@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -61,6 +61,7 @@ function EditLessonForm({
     register,
     handleSubmit,
     setError,
+    control,
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -71,8 +72,13 @@ function EditLessonForm({
       meeting_url: lesson.meeting_url ?? "",
     },
   });
-  // Занятие отделяется от серии, только если сдвигается время; о длительности и ссылке не предупреждаем.
-  const willDetach = lesson.series_id !== null && !lesson.is_detached;
+  // Занятие отделяется от серии, только если сдвигается время; о длительности и ссылке не
+  // предупреждаем. Предупреждение появляется, когда дата или время отличаются от исходных.
+  const [date, time] = useWatch({ control, name: ["date", "time"] });
+  const willDetach =
+    lesson.series_id !== null &&
+    !lesson.is_detached &&
+    (date !== initial.date || time !== initial.time);
 
   function onSubmit(values: Values) {
     setFormError(null);

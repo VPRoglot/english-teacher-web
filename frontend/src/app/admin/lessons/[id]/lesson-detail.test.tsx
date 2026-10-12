@@ -22,8 +22,12 @@ import type { AdminLessonDetail } from "@/api/generated/model";
 
 import { LessonDetail } from "./lesson-detail";
 
-const PAST = "2020-10-20T15:00:00Z"; // вт, 18:00 по Москве
-const FUTURE = "2030-10-22T15:00:00Z"; // вт, 18:00 по Москве
+// «Сейчас» заморожено (только `Date`, таймеры настоящие): PAST и FUTURE не зависят от часов машины.
+const NOW = new Date("2026-10-12T09:00:00Z");
+const PAST = "2026-10-06T15:00:00Z"; // вт, 18:00 по Москве
+const FUTURE = "2026-10-20T15:00:00Z"; // вт, 18:00 по Москве
+
+const DETACH_WARNING = "Занятие отделится от расписания";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -102,6 +106,8 @@ function renderDetail() {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
   toastSuccess.mockReset();
   toastWarning.mockReset();
   push.mockReset();
@@ -118,6 +124,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.cookie = "csrf_token=; max-age=0";
 });
@@ -129,7 +136,7 @@ test("shows lesson, student link and needs-marking badge", async () => {
   expect(await screen.findByRole("heading", { name: "Петя" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Петя" })).toHaveAttribute("href", "/admin/families/f1");
   expect(screen.getByText("Ивановы")).toBeInTheDocument();
-  expect(screen.getByText(/вт, 20 окт\., 18:00–19:00/)).toBeInTheDocument();
+  expect(screen.getByText(/вт, 6 окт\., 18:00–19:00/)).toBeInTheDocument();
   expect(screen.getByText(/60 мин/)).toBeInTheDocument();
   expect(screen.getByText("Запланировано", { selector: "[data-slot=badge]" })).toBeInTheDocument();
   expect(screen.getByText("Нужно отметить")).toBeInTheDocument();
@@ -229,7 +236,7 @@ test("edit time of series lesson warns about detaching and sends UTC", async () 
         {
           code: "overlap",
           lesson_id: "l9",
-          starts_at: "2030-10-22T16:30:00Z",
+          starts_at: "2026-10-20T16:30:00Z",
           message: "Пересекается с занятием Саша в 19:30",
         },
       ],
@@ -240,21 +247,59 @@ test("edit time of series lesson warns about detaching and sends UTC", async () 
 
   await user.click(await screen.findByRole("button", { name: "Перенести" }));
   const dialog = await screen.findByRole("dialog");
-  expect(within(dialog).getByText("Занятие отделится от расписания")).toBeInTheDocument();
-  expect(within(dialog).getByLabelText("Дата")).toHaveValue("2030-10-22");
+  expect(within(dialog).getByLabelText("Дата")).toHaveValue("2026-10-20");
   expect(within(dialog).getByLabelText("Время")).toHaveValue("18:00");
   expect(within(dialog).getByLabelText("Длительность, мин")).toHaveValue(60);
+  // Время не менялось — предупреждения ещё нет.
+  expect(within(dialog).queryByText(DETACH_WARNING)).toBeNull();
 
   const submit = within(dialog).getByRole("button", { name: "Сохранить" });
   await waitFor(() => expect(submit).toBeEnabled());
   fireEvent.change(within(dialog).getByLabelText("Время"), { target: { value: "19:00" } });
+  expect(within(dialog).getByText(DETACH_WARNING)).toBeInTheDocument();
   await user.click(submit);
 
-  await waitFor(() => expect(bodies("PATCH")).toEqual([{ starts_at: "2030-10-22T16:00:00.000Z" }]));
+  await waitFor(() => expect(bodies("PATCH")).toEqual([{ starts_at: "2026-10-20T16:00:00.000Z" }]));
   await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Занятие обновлено"));
   expect(toastWarning).toHaveBeenCalledWith("Пересекается с занятием Саша в 19:30");
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(await screen.findByText("Перенесено")).toBeInTheDocument();
+});
+
+test("the detaching warning follows the date and time fields, live", async () => {
+  lesson = makeLesson({ series_id: "s1" });
+  const user = userEvent.setup();
+  renderDetail();
+
+  await user.click(await screen.findByRole("button", { name: "Перенести" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).queryByText(DETACH_WARNING)).toBeNull();
+
+  // Длительность и ссылка занятие от серии не отделяют.
+  fireEvent.change(within(dialog).getByLabelText("Длительность, мин"), { target: { value: "45" } });
+  await user.type(within(dialog).getByLabelText("Ссылка на занятие"), "https://meet.example.com/x");
+  expect(within(dialog).queryByText(DETACH_WARNING)).toBeNull();
+
+  fireEvent.change(within(dialog).getByLabelText("Дата"), { target: { value: "2026-10-21" } });
+  expect(within(dialog).getByText(DETACH_WARNING)).toBeInTheDocument();
+
+  // Вернули исходную дату — предупреждение пропало.
+  fireEvent.change(within(dialog).getByLabelText("Дата"), { target: { value: "2026-10-20" } });
+  expect(within(dialog).queryByText(DETACH_WARNING)).toBeNull();
+
+  fireEvent.change(within(dialog).getByLabelText("Время"), { target: { value: "19:00" } });
+  expect(within(dialog).getByText(DETACH_WARNING)).toBeInTheDocument();
+});
+
+test("an already detached lesson gets no detaching warning even when moved", async () => {
+  lesson = makeLesson({ series_id: "s1", is_detached: true });
+  const user = userEvent.setup();
+  renderDetail();
+
+  await user.click(await screen.findByRole("button", { name: "Перенести" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Время"), { target: { value: "19:00" } });
+  expect(within(dialog).queryByText(DETACH_WARNING)).toBeNull();
 });
 
 test("the detaching warning is absent for a one-off lesson", async () => {

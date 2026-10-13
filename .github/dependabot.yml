@@ -7,11 +7,16 @@
 # pg_upgrade не откроет базу). Мажорные обновления делаются вручную отдельной задачей.
 version: 2
 updates:
+  # Backend объявлен под Python 3.12 (backend/pyproject.toml: requires-python >=3.12,<3.13), а
+  # для Docker 3.12 → 3.14 — «минорное» обновление тега: образ на нём не соберётся.
+  # Переход на новый Python — отдельная задача вместе с requires-python.
   - package-ecosystem: docker
     directory: /backend
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      - dependency-name: python
+        versions: [">= 3.13"]
     schedule:
       interval: weekly
     groups:

@@ -1,10 +1,17 @@
 # Закрепление: сторонний образ = tag@sha256, сторонний action = SHA коммита.
 # Dependabot обновляет и тег, и digest. У Chainguard (бесплатный тариф) есть только latest,
 # поэтому его digest обновляется вместе с самим latest.
+#
+# Мажорные версии Dependabot не предлагает (правило `semver-major` в каждой записи): в них
+# ломающие изменения, а для postgres — ещё и несовместимый формат данных (16 → 18 без
+# pg_upgrade не откроет базу). Мажорные обновления делаются вручную отдельной задачей.
 version: 2
 updates:
   - package-ecosystem: docker
     directory: /backend
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -14,6 +21,9 @@ updates:
           - patch
   - package-ecosystem: docker
     directory: /frontend
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -23,6 +33,9 @@ updates:
           - patch
   - package-ecosystem: docker
     directory: /infra/nginx
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -37,6 +50,8 @@ updates:
     directory: /infra/backup
     ignore:
       - dependency-name: postgres
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -51,6 +66,8 @@ updates:
     directory: /e2e
     ignore:
       - dependency-name: "*playwright"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -60,6 +77,9 @@ updates:
           - patch
   - package-ecosystem: docker-compose
     directory: /infra
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -69,6 +89,9 @@ updates:
           - patch
   - package-ecosystem: github-actions
     directory: /
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -78,6 +101,9 @@ updates:
           - patch
   - package-ecosystem: uv
     directory: /backend
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -87,6 +113,9 @@ updates:
           - patch
   - package-ecosystem: npm
     directory: /frontend
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:
@@ -98,6 +127,9 @@ updates:
   # mcr.microsoft.com/playwright в e2e/Dockerfile (см. запись docker /e2e выше).
   - package-ecosystem: npm
     directory: /e2e
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
     groups:

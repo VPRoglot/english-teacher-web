@@ -99,7 +99,13 @@ def test_scrub_event_masks_request_url_and_breadcrumbs() -> None:
         "request": {
             "url": "https://site.ru/invite/tok2",
             "cookies": {"session": "s"},
-            "headers": {"Cookie": "session=s", "X-CSRF-Token": "c", "Accept": "*/*"},
+            "headers": {
+                "Cookie": "session=s",
+                "X-CSRF-Token": "c",
+                "X-Forwarded-For": "1.2.3.4",
+                "x-real-ip": "1.2.3.4",
+                "Accept": "*/*",
+            },
         },
         "breadcrumbs": {
             "values": [

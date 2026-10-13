@@ -1,7 +1,13 @@
 import type { Breadcrumb, ErrorEvent } from "@sentry/nextjs";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
-import { browserSentryOptions, scrubUrl, sentryOptions, tunnelFor } from "./sentry-options";
+import {
+  browserSentryOptions,
+  envelopeUrl,
+  parseDsn,
+  scrubUrl,
+  sentryOptions,
+} from "./sentry-options";
 
 const SAAS_DSN = "https://public@o123.ingest.sentry.io/456";
 const SAAS_DSN_EU = "https://public@o123.ingest.de.sentry.io/456";
@@ -109,28 +115,94 @@ describe("sentryOptions", () => {
   });
 });
 
-describe("браузер: только через туннель /monitoring", () => {
-  test("tunnelFor строит путь туннеля для DSN sentry.io", () => {
-    expect(tunnelFor(SAAS_DSN)).toBe("/monitoring?o=123&p=456");
-    expect(tunnelFor(SAAS_DSN_EU)).toBe("/monitoring?o=123&p=456&r=de");
+describe("scrubDeep не ломается на живых объектах console", () => {
+  test("циклические data.arguments", () => {
+    const cyclic: Record<string, unknown> = { url: "/invite/tok" };
+    cyclic.self = cyclic;
+    const crumb: Breadcrumb = {
+      category: "console",
+      message: "see /reset/tok",
+      data: { arguments: [cyclic], logger: "console" },
+    };
+
+    const result = sentryOptions({ dsn: SAAS_DSN }).beforeBreadcrumb(crumb);
+
+    expect(result.message).toBe("see /reset/***");
+    expect(result.data?.arguments).toEqual([{ url: "/invite/***", self: "[Circular]" }]);
   });
 
-  test("tunnelFor не умеет DSN вне sentry.io", () => {
-    expect(tunnelFor(GLITCHTIP_DSN)).toBeUndefined();
-    expect(tunnelFor("не dsn")).toBeUndefined();
+  test("общая ссылка без цикла не считается циклом", () => {
+    const shared = { url: "/invite/tok" };
+    const crumb: Breadcrumb = { data: { a: shared, b: shared } };
+    expect(sentryOptions({ dsn: SAAS_DSN }).beforeBreadcrumb(crumb).data).toEqual({
+      a: { url: "/invite/***" },
+      b: { url: "/invite/***" },
+    });
   });
 
-  test("события идут в туннель, без cookie", () => {
-    const options = browserSentryOptions({ dsn: SAAS_DSN });
+  test("не простые объекты (DOM-узлы, классы) не обходятся, геттеры не вызываются", () => {
+    const element = document.createElement("div");
+    const getter = vi.fn(() => "/invite/tok");
+    class Model {
+      get url() {
+        return getter();
+      }
+    }
+    const model = new Model();
+    const crumb: Breadcrumb = { category: "console", data: { arguments: [element, model] } };
+
+    const result = sentryOptions({ dsn: SAAS_DSN }).beforeBreadcrumb(crumb);
+
+    const args = result.data?.arguments as unknown[];
+    expect(args[0]).toBe(element);
+    expect(args[1]).toBe(model);
+    expect(getter).not.toHaveBeenCalled();
+  });
+
+  test("слишком глубокая вложенность заменяется заглушкой", () => {
+    let nested: Record<string, unknown> = { url: "/invite/tok" };
+    for (let i = 0; i < 20; i++) nested = { nested };
+    const result = sentryOptions({ dsn: SAAS_DSN }).beforeBreadcrumb({ data: nested });
+    expect(JSON.stringify(result)).toContain("[Truncated]");
+    expect(JSON.stringify(result)).not.toContain("tok");
+  });
+});
+
+test("серверное событие captureRequestError: заголовки в нижнем регистре", () => {
+  const event = {
+    transaction: "GET /invite/[token]",
+    request: {
+      url: "/reset/tok1",
+      method: "GET",
+      headers: {
+        cookie: "session=s; csrf_token=c",
+        referer: "https://site.ru/invite/tok2",
+        "x-forwarded-for": "1.2.3.4",
+        "x-real-ip": "1.2.3.4",
+        "user-agent": "UA",
+      },
+    },
+  } as unknown as ErrorEvent;
+
+  const result = sentryOptions({ dsn: SAAS_DSN }).beforeSend(event);
+
+  expect(result.request?.url).toBe("/reset/***");
+  expect(result.request?.headers).toEqual({
+    referer: "https://site.ru/invite/***",
+    "user-agent": "UA",
+  });
+});
+
+describe("браузер: всегда через туннель /monitoring", () => {
+  test.each([SAAS_DSN, SAAS_DSN_EU, GLITCHTIP_DSN])("DSN %s → туннель, без cookie", (dsn) => {
+    const options = browserSentryOptions({ dsn });
     expect(options.enabled).toBe(true);
-    expect(options.tunnel).toBe("/monitoring?o=123&p=456");
+    expect(options.tunnel).toBe("/monitoring");
     expect(options.transportOptions).toEqual({ fetchOptions: { credentials: "omit" } });
   });
 
-  test("DSN вне sentry.io отключает браузерный Sentry: CSP не пустит запрос напрямую", () => {
-    const options = browserSentryOptions({ dsn: GLITCHTIP_DSN });
-    expect(options.enabled).toBe(false);
-    expect(options.tunnel).toBeUndefined();
+  test("без DSN выключен", () => {
+    expect(browserSentryOptions({ dsn: "" }).enabled).toBe(false);
   });
 
   test("без трассировки в браузере: BrowserTracing убран", () => {
@@ -138,4 +210,30 @@ describe("браузер: только через туннель /monitoring", (
     const integrations = [{ name: "BrowserTracing" }, { name: "Breadcrumbs" }];
     expect(options.integrations(integrations as never)).toEqual([{ name: "Breadcrumbs" }]);
   });
+});
+
+describe("parseDsn / envelopeUrl", () => {
+  test("sentry.io", () => {
+    const dsn = parseDsn(SAAS_DSN_EU);
+    expect(dsn).toEqual({
+      protocol: "https:",
+      host: "o123.ingest.de.sentry.io",
+      pathPrefix: "",
+      projectId: "456",
+      publicKey: "public",
+    });
+    expect(envelopeUrl(dsn!)).toBe("https://o123.ingest.de.sentry.io/api/456/envelope/");
+  });
+
+  test("GlitchTip с портом и префиксом пути", () => {
+    const dsn = parseDsn("http://key@gt.local:8000/sub/path/7");
+    expect(envelopeUrl(dsn!)).toBe("http://gt.local:8000/sub/path/api/7/envelope/");
+  });
+
+  test.each([undefined, "", "не dsn", "https://host/1", "https://k@host/abc", "ftp://k@host/1"])(
+    "некорректный DSN %s → undefined",
+    (raw) => {
+      expect(parseDsn(raw)).toBeUndefined();
+    },
+  );
 });

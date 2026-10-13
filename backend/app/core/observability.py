@@ -23,7 +23,9 @@ _SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"(/(?:invite|reset|api/auth/invitations|api/auth/password-resets)/)[^/?#\s\"']+"),
     re.compile(r"(api\.telegram\.org/bot)[^/?#\s\"']+"),
 )
-_DROPPED_HEADERS = frozenset({"cookie", "set-cookie", "authorization", "x-csrf-token"})
+_DROPPED_HEADERS = frozenset(
+    {"cookie", "set-cookie", "authorization", "x-csrf-token", "x-forwarded-for", "x-real-ip"}
+)
 _HEARTBEAT_TIMEOUT = 10.0
 
 

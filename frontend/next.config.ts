@@ -1,8 +1,6 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
-import { SENTRY_TUNNEL_ROUTE } from "./src/lib/sentry-options";
-
 const nextConfig: NextConfig = {
   output: "standalone",
   cacheComponents: true,
@@ -27,11 +25,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Браузер шлёт события Sentry на свой домен (`/monitoring`), Next проксирует их в sentry.io:
-// CSP `connect-src 'self'` не расширяется. Source maps не создаются и не загружаются — у MVP нет
-// SENTRY_AUTH_TOKEN; сборка не обращается к Sentry (telemetry выключена, релиз не создаётся).
+// Туннель браузерных событий — свой Route Handler `src/app/monitoring/route.ts` (принимает только
+// конверты нашего DSN, работает и с GlitchTip), поэтому `tunnelRoute` не задаётся.
+// Source maps не создаются и не загружаются — у MVP нет SENTRY_AUTH_TOKEN; сборка не обращается
+// к Sentry (telemetry выключена, релиз не создаётся).
 export default withSentryConfig(nextConfig, {
-  tunnelRoute: SENTRY_TUNNEL_ROUTE,
   silent: true,
   telemetry: false,
   sourcemaps: { disable: true },

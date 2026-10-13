@@ -10,7 +10,8 @@
 #   корневого .env разработчика в e2e не попадают.
 # - nginx с self-signed сертификатом на tutor.test (сетевой alias); снаружи — только
 #   127.0.0.1:8443 для ручной проверки (default_server: https://localhost:8443 — тот же стек).
-# - Хранилище — MinIO, как в dev; certbot и backup отключены.
+# - Хранилище — MinIO из prod-оверлея (тот же init.sh и пользователь приложения, что на сервере);
+#   certbot и backup отключены.
 
 # Образ backend собирает только api (local/english-tutor-backend:e2e); migrate, worker и scheduler
 # берут его же: `build` у нескольких сервисов с одним тегом — гонка при параллельной сборке
@@ -34,9 +35,6 @@ services:
     environment:
       # prod-валидаторы требуют ключи SmartCaptcha и Telegram; environment важнее env_file.
       APP_ENV: test
-    depends_on:
-      minio-init:
-        condition: service_completed_successfully
     volumes:
       # Создание репетитора e2e (`just e2e`): пароль читается из окружения контейнера.
       - ../e2e/create-tutor.sh:/e2e/create-tutor.sh:ro
@@ -45,9 +43,6 @@ services:
     <<: *backend-e2e
     environment:
       APP_ENV: test
-    depends_on:
-      minio-init:
-        condition: service_completed_successfully
 
   scheduler:
     <<: *backend-e2e
@@ -67,8 +62,6 @@ services:
       - "127.0.0.1:8443:443"
     environment:
       SERVER_NAME: tutor.test
-      MEDIA_UPSTREAM: http://minio:9000/media
-      MEDIA_UPSTREAM_HOST: minio:9000
     networks:
       default:
         aliases:
@@ -81,34 +74,6 @@ services:
     build:
       context: backup
     profiles: ["never"]
-
-  # Как в dev (docker-compose.dev.yml), но без опубликованных портов.
-  minio:
-    image: cgr.dev/chainguard/minio:latest@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
-    command: ["server", "/data"]
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
-    volumes:
-      - miniodata:/data
-    restart: unless-stopped
-
-  minio-init:
-    image: cgr.dev/chainguard/minio-client:latest-dev@sha256:799f7e86017c3ee8d00f6372e1ee28dd73453f271d5b306a47af8e8a408a777a
-    depends_on:
-      - minio
-    environment:
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
-      S3_BUCKET: ${S3_BUCKET}
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        set -e
-        until mc alias set local http://minio:9000 "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY"; do sleep 1; done
-        mc mb --ignore-existing "local/$$S3_BUCKET"
-        mc anonymous set download "local/$$S3_BUCKET"
-    restart: "no"
 
   # Playwright в контейнере: ходит на https://tutor.test через nginx (`--profile e2e run --rm e2e`).
   e2e:
@@ -130,6 +95,3 @@ services:
       nginx:
         condition: service_healthy
     restart: "no"
-
-volumes:
-  miniodata:

@@ -34,9 +34,12 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       sha: ${{ steps.vars.outputs.sha }}
       owner_lc: ${{ steps.vars.outputs.owner_lc }}
+      stale: ${{ steps.vars.outputs.stale }}
     steps:
       - name: Resolve commit sha and lowercase owner
         id: vars
@@ -45,6 +48,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           INPUT_SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             sha="$INPUT_SHA"
@@ -56,11 +60,27 @@ jobs:
             echo "::error::sha должен состоять из 40 символов 0-9a-f"
             exit 1
           fi
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          stale=false
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            # CI старого коммита мог закончиться позже CI нового (или очередь deploy отдала ему
+            # ход позже): такой прогон не должен откатить сервер на прежний релиз. Деплоится
+            # только текущая вершина main; workflow_dispatch (ручной откат) не ограничен.
+            main_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+            if [ "$sha" != "$main_sha" ]; then
+              echo "::notice::$sha уже не вершина main ($main_sha) — сборка и деплой пропущены"
+              stale=true
+            fi
+          fi
+          {
+            echo "sha=$sha"
+            echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}"
+            echo "stale=$stale"
+          } >> "$GITHUB_OUTPUT"
 
   images:
     needs: prepare
+    # Пропуск images пропускает и deploy (он зависит от images).
+    if: needs.prepare.outputs.stale != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -136,14 +156,20 @@ jobs:
 
       - name: Run deploy.sh on the server
         run: |
-          # Скрипт идёт в stdin удалённого `bash -s`, а путь и sha — позиционными аргументами:
-          # так не нужно экранировать значения в командной строке, и bash на сервере точно
-          # есть (login-шелл пользователя может быть любым).
-          # pipefail: код выхода конвейера = код deploy.sh (0 — успех, 1 — откат выполнен,
-          # 2 — ошибка аргументов/блокировка/откат не удался), а не tee.
-          # tee -a дописывает весь вывод в $DEPLOY_PATH/deploy.log: журнал остаётся на сервере
-          # даже при обрыве сессии (сам deploy.sh игнорирует SIGHUP), а в логе Actions виден тот же вывод.
-          # </dev/null у deploy.sh: иначе он (или docker compose) прочитает остаток скрипта из stdin.
+          # Скрипт идёт в stdin удалённого `bash -s` (bash на сервере точно есть, login-шелл
+          # пользователя может быть любым), путь и sha — его позиционными аргументами. ssh склеивает
+          # аргументы в одну строку для login-шелла сервера, поэтому путь с пробелами или
+          # спецсимволами сломался бы: DEPLOY_PATH ограничен безопасными символами.
+          if ! [[ "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::DEPLOY_PATH должен быть абсолютным путём из символов A-Za-z0-9._/-"
+            exit 2
+          fi
+          # На сервере deploy.sh запускается отвязанным от ssh (setsid nohup) с выводом в отдельный
+          # журнал $DEPLOY_PATH/deploy-logs/<время>-<sha>.log; tail --pid показывает его здесь.
+          # Обрыв ssh не прерывает деплой (он дойдёт до конца или до отката сам), а wait возвращает
+          # настоящий код deploy.sh: 0 — успех, 1 — откат выполнен, 2 — ошибка аргументов,
+          # блокировка или неудачный откат. </dev/null у deploy.sh: иначе он (или docker compose)
+          # прочитает остаток скрипта из stdin.
           set +e
           ssh -i ~/.ssh/deploy_key \
             -o IdentitiesOnly=yes \
@@ -153,8 +179,19 @@ jobs:
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=10 \
             "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_PATH" "$SHA" <<'REMOTE'
-          set -euo pipefail
-          "$1/infra/scripts/deploy.sh" "$2" </dev/null 2>&1 | tee -a "$1/deploy.log"
+          set -u
+          mkdir -p "$1/deploy-logs"
+          log="$1/deploy-logs/$(date -u +%Y%m%dT%H%M%SZ)-$2.log"
+          : >"$log"
+          setsid -w nohup "$1/infra/scripts/deploy.sh" "$2" </dev/null >"$log" 2>&1 &
+          pid=$!
+          tail -n +1 -f --pid="$pid" "$log" &
+          tailpid=$!
+          rc=0
+          wait "$pid" || rc=$?
+          wait "$tailpid"
+          echo "Журнал на сервере: $log"
+          exit "$rc"
           REMOTE
           rc=$?
           set -e
@@ -162,7 +199,8 @@ jobs:
             0) echo "Деплой $SHA выполнен" ;;
             1) echo "::error::Релиз не прошёл smoke-проверку, выполнен откат на прежнюю версию" ;;
             2) echo "::error::deploy.sh отказался работать (аргументы, блокировка или неудачный откат)" ;;
-            *) echo "::error::SSH или deploy.sh завершились с кодом $rc" ;;
+            255) echo "::error::Соединение SSH оборвалось или не установилось; если деплой успел начаться, он продолжается на сервере — смотрите $DEPLOY_PATH/deploy-logs/" ;;
+            *) echo "::error::deploy.sh завершился с кодом $rc" ;;
           esac
           exit "$rc"
 

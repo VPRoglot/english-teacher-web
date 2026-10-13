@@ -23,8 +23,10 @@ e2e/.auth/
 .env.*
 !.env.example
 !frontend/.env.development
-# Блокировка infra/scripts/deploy.sh на сервере
+# Блокировка и журналы infra/scripts/deploy.sh на сервере (ручной запуск и CD)
 .deploy.lock
+deploy.log
+deploy-logs/
 
 # IDE / OS
 .idea/

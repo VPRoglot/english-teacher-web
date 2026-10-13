@@ -30,8 +30,13 @@ updates:
         update-types:
           - minor
           - patch
+  # postgres здесь и в infra/docker-compose.yml — один и тот же tag@digest (pg_dump должен
+  # совпадать по версии с сервером). Его обновляет PR экосистемы docker-compose (/infra);
+  # в этот же PR вручную переносится тот же tag@digest в FROM infra/backup/Dockerfile.
   - package-ecosystem: docker
     directory: /infra/backup
+    ignore:
+      - dependency-name: postgres
     schedule:
       interval: weekly
     groups:
@@ -39,8 +44,13 @@ updates:
         update-types:
           - minor
           - patch
+  # Образ Playwright (браузеры) и @playwright/test обязаны совпадать по версии. Образ
+  # Dependabot не обновляет: его tag@digest в e2e/Dockerfile переносится вручную в PR
+  # экосистемы npm (/e2e) с @playwright/test — иначе job e2e в CI падает.
   - package-ecosystem: docker
     directory: /e2e
+    ignore:
+      - dependency-name: "*playwright"
     schedule:
       interval: weekly
     groups:
@@ -84,6 +94,8 @@ updates:
         update-types:
           - minor
           - patch
+  # PR с @playwright/test дополняется вручную: тот же номер версии и новый digest образа
+  # mcr.microsoft.com/playwright в e2e/Dockerfile (см. запись docker /e2e выше).
   - package-ecosystem: npm
     directory: /e2e
     schedule:

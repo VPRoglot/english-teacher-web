@@ -90,10 +90,12 @@ dc build
 dc up -d
 
 echo "--- 0. image"
-expect_eq "CMD is crond -f" "$(docker inspect -f '{{json .Config.Cmd}}' english-tutor-backup:test)" '["crond","-f"]'
+expect_eq "CMD is crond -f -d 8" "$(docker inspect -f '{{json .Config.Cmd}}' english-tutor-backup:test)" '["crond","-f","-d","8"]'
 expect_eq "crontab runs backup.sh daily at 02:30" \
 	"$(bx backup sh -c 'grep -v "^#" /etc/crontabs/root | sed "/^$/d"' | tr -d '\r')" "30 2 * * * /usr/local/bin/backup.sh"
-expect_contains "crond is running" "$(bx backup ps -o args | tr -d '\r')" "crond -f"
+expect_contains "crond is running" "$(bx backup ps -o args | tr -d '\r')" "crond -f -d 8"
+# Сообщения самого crond (в том числе ошибки) идут в stderr контейнера, а не в syslog.
+expect_contains "crond logs to docker logs" "$(dc logs --no-color backup 2>&1)" "crond (busybox"
 expect_eq "age is installed" "$(bx backup sh -c 'command -v age >/dev/null && command -v age-keygen >/dev/null && echo ok' | tr -d '\r' || true)" "ok"
 
 echo "--- 1. source data"

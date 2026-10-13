@@ -52,6 +52,25 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  # Типы сценариев Playwright: job e2e запускает их без tsc, ошибки типов он бы не заметил.
+  e2e-typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: e2e/package.json
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: e2e/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
   api-contract:
     runs-on: ubuntu-latest
     steps:
@@ -130,17 +149,19 @@ jobs:
         run: docker compose -p english-tutor-e2e --env-file infra/e2e.env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml -f infra/docker-compose.e2e.yml exec -T api sh /e2e/create-tutor.sh
       - name: Playwright
         run: docker compose -p english-tutor-e2e --env-file infra/e2e.env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml -f infra/docker-compose.e2e.yml --profile e2e run --rm e2e
+      # В RUNNER_TEMP, а не в e2e/test-results: тот каталог создаёт контейнер e2e (root),
+      # раннер может не иметь права писать в него.
       - name: Stack logs
         if: failure()
-        run: |
-          mkdir -p e2e/test-results
-          docker compose -p english-tutor-e2e --env-file infra/e2e.env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml -f infra/docker-compose.e2e.yml logs --no-color > e2e/test-results/stack.log 2>&1 || true
-      # Трассы, скриншоты и HTML-отчёт Playwright (спека 8.2 п.3).
+        run: docker compose -p english-tutor-e2e --env-file infra/e2e.env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml -f infra/docker-compose.e2e.yml logs --no-color > "$RUNNER_TEMP/stack.log" 2>&1 || true
+      # Трассы, скриншоты и HTML-отчёт Playwright (спека 8.2 п.3) и логи стека.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
           name: e2e-test-results
-          path: e2e/test-results
+          path: |
+            e2e/test-results
+            ${{ runner.temp }}/stack.log
           retention-days: 14
       - name: Stop stack
         if: always()

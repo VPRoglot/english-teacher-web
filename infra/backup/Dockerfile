@@ -15,6 +15,7 @@ COPY --chmod=0755 backup.sh restore.sh /usr/local/bin/
 COPY --chmod=0600 crontab /etc/crontabs/root
 
 # crond из busybox работает от root внутри контейнера, портов нет.
-# Окружение контейнера передаётся заданиям, их вывод попадает в docker logs.
+# Окружение контейнера передаётся заданиям, их вывод попадает в docker logs. -d 8: ошибки
+# самого crond — в stderr (docker logs), а не в syslog, которого в контейнере нет.
 ENTRYPOINT []
-CMD ["crond", "-f"]
+CMD ["crond", "-f", "-d", "8"]

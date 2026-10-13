@@ -17,10 +17,12 @@ test.describe("платформа за nginx", () => {
       expect([302, 307]).toContain(response.status());
       const location = response.headers()["location"] ?? "";
       expect(location).not.toBe("");
-      // Next отдаёт относительный Location; браузер разрешает его от адреса запроса. Абсолютный
-      // адрес не должен указывать на внутренний хост или http (web:3000, localhost и т. п.).
-      expect(new URL(location, response.url()).href).toMatch(/^https:\/\/tutor\.test\/login/);
+      // Главная проверка — сырой заголовок: относительный /login (сейчас Next отдаёт его) или
+      // абсолютный https://tutor.test/login, но не внутренний хост или http (web:3000, localhost).
       expect(location).toMatch(/^(\/login|https:\/\/tutor\.test\/login)/);
+      // Разрешённый адрес что-то добавляет, только если Location станет абсолютным: относительный
+      // разрешается от адреса запроса и совпадёт всегда.
+      expect(new URL(location, response.url()).href).toMatch(/^https:\/\/tutor\.test\/login/);
     } finally {
       await anonymous.dispose();
     }

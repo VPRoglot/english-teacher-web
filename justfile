@@ -54,9 +54,13 @@ lint-frontend:
     pnpm --dir frontend lint
     pnpm --dir frontend typecheck
 
+# Типы сценариев Playwright (зависимости: `pnpm --dir e2e install`)
+lint-e2e:
+    pnpm --dir e2e typecheck
+
 test: test-backend test-frontend
 
-lint: lint-backend lint-frontend
+lint: lint-backend lint-frontend lint-e2e
 
 # frontend на http://localhost:3000; /api проксируется на backend (frontend/.env.development)
 web:

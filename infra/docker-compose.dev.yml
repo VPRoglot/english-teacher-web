@@ -11,7 +11,7 @@ services:
   # Локальное S3. Образ minio/minio убран с Docker Hub, поэтому chainguard-сборка (тег latest).
   # В образе нет оболочки и curl, healthcheck невозможен: minio-init сам ждёт готовности.
   minio:
-    image: cgr.dev/chainguard/minio:latest
+    image: cgr.dev/chainguard/minio:latest@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
@@ -25,7 +25,7 @@ services:
 
   # Одноразово: создаёт бакет и включает анонимное чтение (так отдаются фото на лендинге).
   minio-init:
-    image: cgr.dev/chainguard/minio-client:latest-dev
+    image: cgr.dev/chainguard/minio-client:latest-dev@sha256:799f7e86017c3ee8d00f6372e1ee28dd73453f271d5b306a47af8e8a408a777a
     depends_on:
       - minio
     environment:

@@ -124,11 +124,11 @@ jobs:
       - run: bash infra/minio/test.sh
       # base-compose читает env_file ../.env — в CI его нет, берём пример prod-окружения
       - run: cp infra/prod.env.example .env
-      # Root-учётка MinIO не должна доходить до backend-сервисов (они получают .env целиком)
-      - name: backend services get no MinIO root credentials
+      # Root-учётка MinIO не должна доходить до сервисов, получающих .env целиком (env_file)
+      - name: services with env_file get no MinIO root credentials
         run: |
           cfg="$(docker compose --env-file infra/prod.env.example -f infra/docker-compose.yml -f infra/docker-compose.prod.yml --profile migrate config --format json)"
-          for svc in api worker scheduler migrate; do
+          for svc in postgres api worker scheduler migrate; do
             for var in MINIO_ROOT_USER MINIO_ROOT_PASSWORD; do
               value="$(jq -r --arg s "$svc" --arg v "$var" '.services[$s].environment[$v] // "unset"' <<<"$cfg")"
               if [ -n "$value" ]; then echo "::error::$svc получает непустой $var"; exit 1; fi

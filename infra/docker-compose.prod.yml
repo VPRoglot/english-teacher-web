@@ -28,6 +28,10 @@ x-backend-env: &backend-env
 
 services:
   postgres:
+    # postgres тоже получает .env целиком (env_file в базовом файле): root-учётка MinIO ему не нужна.
+    environment:
+      MINIO_ROOT_USER: ""
+      MINIO_ROOT_PASSWORD: ""
     logging: *logging
     restart: unless-stopped
     deploy:

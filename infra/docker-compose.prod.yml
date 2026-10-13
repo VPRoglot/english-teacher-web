@@ -143,9 +143,10 @@ services:
 
   # Продление сертификата раз в 12 часов (certbot сам решает, пора ли). nginx подхватывает
   # новый сертификат своим циклом select-cert (раз в 6 часов). Первый выпуск — вручную:
-  #   docker compose … run --rm --entrypoint certbot certbot certonly --webroot \
-  #     -w /var/www/certbot -d "$DOMAIN" --email "$LETSENCRYPT_EMAIL" --agree-tos --no-eff-email
-  # (переменные DOMAIN и LETSENCRYPT_EMAIL есть в окружении контейнера).
+  #   docker compose … run --rm --entrypoint sh certbot -c 'certbot certonly --webroot \
+  #     -w /var/www/certbot -d "$DOMAIN" --email "$LETSENCRYPT_EMAIL" --agree-tos --no-eff-email'
+  # (одинарные кавычки обязательны: DOMAIN и LETSENCRYPT_EMAIL раскрывает оболочка контейнера,
+  # где они заданы в environment, а не оболочка хоста).
   certbot:
     image: certbot/certbot:v5.8.0@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20
     entrypoint:

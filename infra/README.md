@@ -46,7 +46,7 @@ ufw default allow outgoing
 ufw allow 22/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
-ufw enable
+ufw --force enable
 
 systemctl enable --now fail2ban        # защита sshd включена по умолчанию
 dpkg-reconfigure -plow unattended-upgrades
@@ -153,12 +153,11 @@ nginx стартует сразу, пока на **self-signed** сертифи�
 **Выпуск сертификата Let's Encrypt.** Убедитесь, что A-запись домена указывает на сервер и порт 80 доступен снаружи. **Условия использования Let's Encrypt принимает владелец сервера** — флаг `--agree-tos` означает ваше согласие с ними:
 
 ```bash
-$DC run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
-  -d "$DOMAIN" --email "$LETSENCRYPT_EMAIL" --agree-tos --no-eff-email
+$DC run --rm --entrypoint sh certbot -c 'certbot certonly --webroot -w /var/www/certbot -d "$DOMAIN" --email "$LETSENCRYPT_EMAIL" --agree-tos --no-eff-email'
 $DC exec nginx select-cert
 ```
 
-(`--entrypoint certbot` нужен потому, что у сервиса `certbot` в compose entrypoint — цикл продления. Переменные `DOMAIN` и `LETSENCRYPT_EMAIL` берутся из окружения контейнера; если оболочка их не знает, подставьте значения вручную.)
+(Команда в одинарных кавычках, поэтому `$DOMAIN` и `$LETSENCRYPT_EMAIL` раскрывает оболочка внутри контейнера, куда compose передаёт их из `.env`. `--entrypoint sh` нужен потому, что entrypoint сервиса `certbot` — цикл продления.)
 
 `select-cert` подхватывает сертификат Let's Encrypt (если он читается, не просрочен и ключ соответствует) и перечитывает конфигурацию nginx; иначе остаётся на self-signed. Дальше всё автоматически:
 
@@ -169,7 +168,7 @@ $DC exec nginx select-cert
 
 ```bash
 $DC exec nginx sh -c "sed -i 's/error.log crit;/error.log warn;/' /etc/nginx/conf.d/default.conf && nginx -s reload"
-$DC exec nginx tail -n 100 /var/log/nginx/error.log
+$DC logs --tail 100 nginx      # error_log nginx пишет в stderr контейнера, строки видны в docker logs среди JSON access-лога
 $DC exec nginx sh -c "sed -i 's/error.log warn;/error.log crit;/' /etc/nginx/conf.d/default.conf && nginx -s reload"
 ```
 
@@ -230,7 +229,7 @@ $DC exec backup sh -c 'AWS_ACCESS_KEY_ID="$BACKUP_S3_ACCESS_KEY" AWS_SECRET_ACCE
 
 Восстанавливать можно **только в пустую базу** (`restore.sh` откажется, если в схеме `public` есть таблицы). На диске должно быть место примерно в **2× размера сжатого дампа** (скачанный `.age` и расшифрованный `.gz` лежат во временном каталоге контейнера).
 
-1. Скопируйте приватный ключ с рабочей машины на сервер (временно): `scp age-key.txt deploy@<сервер>:~/age-key.txt`, затем `chmod 600 ~/age-key.txt`.
+1. Скопируйте приватный ключ с рабочей машины на сервер (временно): `scp age-key.txt deploy@<сервер>:~/age-key.txt`, затем на сервере `chmod 600 ~/age-key.txt`. Если копируете через оболочку на сервере, сначала выполните `umask 077`, чтобы файл не создался доступным другим пользователям.
 2. Остановите сервисы, пишущие в базу:
 
    ```bash
@@ -251,7 +250,7 @@ $DC exec backup sh -c 'AWS_ACCESS_KEY_ID="$BACKUP_S3_ACCESS_KEY" AWS_SECRET_ACCE
    ```
 
 5. Удалите ключ с сервера: `shred -u ~/age-key.txt` (или `rm`).
-6. Поднимите сервисы и проверьте: `$DC up -d`, затем `curl -fsS https://$DOMAIN/api/health/ready`. Если после восстановления схема старее текущего релиза, догоните её: `$DC run --rm migrate`.
+6. Поднимите сервисы и проверьте: `$DC up -d`, затем `curl -fsS https://<домен>/api/health/ready`. Если после восстановления схема старее текущего релиза, догоните её: `$DC run --rm migrate`.
 
 ### Учебное восстановление (раз в квартал)
 
@@ -318,7 +317,14 @@ $DC exec api python -m app.cli purge-family <family_id>
 - [ ] Сертификат выпущен Let's Encrypt (не self-signed), `select-cert` выполнен.
 - [ ] На следующий день пришли все три heartbeat'а (01:00, 01:30, 02:30 UTC) — cron реально срабатывает.
 - [ ] В бакете бэкапов появился `backups/daily/…sql.gz.age`; бакет приватный.
-- [ ] Тестовое событие Sentry из api и из web (браузер и сервер).
+- [ ] Тестовое событие Sentry из api и из web:
+  - api (должен быть задан `SENTRY_DSN`; событие появится в проекте backend):
+
+    ```bash
+    $DC exec api python -c "import sentry_sdk; from app.core.config import get_settings; from app.core.observability import init_sentry; init_sentry(get_settings(), 'api'); sentry_sdk.capture_message('deploy check'); sentry_sdk.flush()"
+    ```
+
+  - web (браузер): откройте сайт, в консоли браузера выполните `setTimeout(() => { throw new Error('deploy check') })` — событие уйдёт через `/monitoring` в проект frontend. Серверная часть web отдельной простой проверки не имеет: убедитесь, что `SENTRY_DSN_WEB` задан, а браузерное событие дошло.
 - [ ] Внешний uptime-монитор зелёный, оповещение в Telegram проверено.
 - [ ] Учебное восстановление бэкапа выполнено (раздел 7).
 - [ ] В `/admin/site` заполнены `hero.name` и `contacts`.

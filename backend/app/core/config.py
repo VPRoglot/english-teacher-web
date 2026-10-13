@@ -49,6 +49,22 @@ class Settings(BaseSettings):
     heartbeat_materialize_url: SecretStr | None = None
     heartbeat_anonymize_url: SecretStr | None = None
 
+    @field_validator(
+        "smartcaptcha_server_key",
+        "telegram_bot_token",
+        "telegram_chat_id",
+        "sentry_dsn",
+        "heartbeat_materialize_url",
+        "heartbeat_anonymize_url",
+        mode="before",
+    )
+    @classmethod
+    def _empty_means_absent(cls, value: object) -> object:
+        # `KEY=` (или пробелы) в .env — то же, что закомментированная строка: интеграция выключена.
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     @field_validator("revalidate_secret")
     @classmethod
     def _require_long_secret(cls, value: SecretStr) -> SecretStr:

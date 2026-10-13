@@ -201,3 +201,30 @@ def test_prod_requires_captcha_and_telegram() -> None:
         _prod(**{**missing, "smartcaptcha_server_key": "k", "telegram_bot_token": "t"})
     s = _prod()
     assert s.telegram_bot_token is not None and s.telegram_bot_token.get_secret_value() == "t"
+
+
+_OPTIONAL_OFF_WHEN_EMPTY = (
+    "sentry_dsn",
+    "heartbeat_materialize_url",
+    "heartbeat_anonymize_url",
+    "smartcaptcha_server_key",
+    "telegram_bot_token",
+    "telegram_chat_id",
+)
+
+
+@pytest.mark.parametrize("name", _OPTIONAL_OFF_WHEN_EMPTY)
+@pytest.mark.parametrize("raw", ["", "   "])
+def test_empty_optional_value_means_off(name: str, raw: str) -> None:
+    # `KEY=` в .env — то же, что закомментированная строка: иначе heartbeat пинговал бы "".
+    assert getattr(make_settings(**{name: raw}), name) is None
+
+
+def test_empty_heartbeat_url_from_env_means_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HEARTBEAT_ANONYMIZE_URL", "")
+    assert make_settings().heartbeat_anonymize_url is None
+
+
+def test_whitespace_telegram_token_does_not_satisfy_prod() -> None:
+    with pytest.raises(ValidationError, match="TELEGRAM_BOT_TOKEN"):
+        _prod(telegram_bot_token="  ")

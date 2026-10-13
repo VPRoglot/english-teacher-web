@@ -15,6 +15,8 @@ out/
 coverage/
 playwright-report/
 test-results/
+# Сессия репетитора e2e (global-setup Playwright)
+e2e/.auth/
 
 # Env & secrets
 .env

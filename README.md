@@ -40,6 +40,7 @@ just web                      # frontend на http://localhost:3000, /api про
 | `just web` | Next.js dev-сервер |
 | `just gen-api` | OpenAPI из backend → типизированный клиент `frontend/src/api/generated` |
 | `just test` / `just test-backend` / `just test-frontend` | тесты |
+| `just e2e` / `just e2e-down` | Playwright на production-подобном стеке (см. «Тесты») / остановить его и удалить данные |
 | `just lint` / `just fmt` | линтеры и автоформатирование |
 
 ## Первый запуск: репетитор, семья, приглашение
@@ -224,4 +225,9 @@ docker compose exec api python -m app.cli purge-family <FAMILY_ID>
 
 - Backend: `just test-backend` — pytest поднимает PostgreSQL и Redis через testcontainers (нужен запущенный Docker), порог покрытия 85%.
 - Frontend: `just test-frontend` — Vitest + Testing Library.
+- E2E: `just e2e` — Playwright на production-подобном стеке: образы backend, frontend и nginx собираются локально, стек `english-tutor-e2e` поднимается заново (nginx с self-signed TLS на `https://tutor.test`, MinIO, без certbot и backup), применяются миграции, создаётся репетитор, затем в контейнере `e2e` (образ `mcr.microsoft.com/playwright`) выполняются сценарии спеки 7.2 — `e2e/tests/00-platform.spec.ts` … `07-child-login.spec.ts`, по порядку и на общей базе. Код выхода — результат тестов. Нужен только Docker; первый запуск долгий (сборка образов).
+  - Окружение стека — только `infra/e2e.env` (тестовые значения для `tutor.test`, коммитится); корневой `.env` в e2e не попадает.
+  - Стек остаётся после прогона для отладки: `https://localhost:8443` (тот же nginx, предупреждение о сертификате ожидаемо), отчёт Playwright — `e2e/test-results/report/index.html`, трассы и скриншоты упавших тестов — `e2e/test-results/artifacts` (`npx playwright show-trace <trace.zip>`). Остановить и удалить данные: `just e2e-down`.
+  - Тест падает и на любом нарушении CSP в консоли браузера («Content Security Policy», «Refused to»).
+  - В CI это job `e2e`: те же команды; при падении `e2e/test-results` и логи стека сохраняются артефактом `e2e-test-results`.
 - После изменения API backend выполните `just gen-api` и закоммитьте результат — CI проверяет, что клиент актуален.

@@ -75,3 +75,22 @@ prod-config:
 fmt:
     uv --directory backend run ruff check --fix .
     uv --directory backend run ruff format .
+
+# E2E: production-подобный стек (nginx + TLS на tutor.test) и Playwright в контейнере.
+# Окружение — только infra/e2e.env; корневой .env в e2e не попадает.
+e2e_compose := "docker compose -p english-tutor-e2e --env-file infra/e2e.env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml -f infra/docker-compose.e2e.yml"
+
+# Сборка образов, свежий стек, миграции, репетитор, прогон. Код выхода — результат тестов;
+# стек остаётся для отладки (https://localhost:8443), отчёт — e2e/test-results/report.
+# migrate вне графа `up` (prod-оверлей), поэтому отдельно и до `up`. `up` без имени сервиса:
+# worker и scheduler не зависимости nginx, а без worker не сбрасывается кеш лендинга.
+e2e:
+    {{e2e_compose}} --profile e2e down -v --remove-orphans
+    {{e2e_compose}} --profile e2e build
+    {{e2e_compose}} run --rm migrate
+    {{e2e_compose}} up -d --wait
+    {{e2e_compose}} exec -T api sh /e2e/create-tutor.sh
+    {{e2e_compose}} --profile e2e run --rm e2e
+
+e2e-down:
+    {{e2e_compose}} --profile e2e down -v --remove-orphans

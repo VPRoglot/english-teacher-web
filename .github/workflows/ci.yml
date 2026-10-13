@@ -152,6 +152,16 @@ jobs:
           services="$(docker compose --env-file infra/prod.env.example -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config --services)"
           echo "$services"
           ! grep -qx migrate <<<"$services"
+      # Бэкапы выключены в MVP: стек собирается без единой BACKUP_*, backup только в профиле
+      - name: prod stack runs without backup settings
+        run: |
+          grep -v '^BACKUP_' infra/prod.env.example > /tmp/nobackup.env
+          cp /tmp/nobackup.env .env
+          dc() { docker compose --env-file /tmp/nobackup.env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml "$@"; }
+          dc config -q
+          services="$(dc config --services)"
+          if grep -qx backup <<<"$services"; then echo "::error::backup входит в обычный up"; exit 1; fi
+          dc --profile backup config --services | grep -qx backup
 
   # Playwright на production-подобном стеке (nginx + TLS на tutor.test); команды — как в `just e2e`.
   # Корневой .env не нужен: e2e-оверлей берёт окружение только из infra/e2e.env.

@@ -223,21 +223,27 @@ services:
     logging: *logging
     restart: "no"
 
-  # Ежедневный зашифрованный pg_dump в S3 (infra/backup). Получает только нужные переменные:
-  # PG* выводятся из POSTGRES_* в .env, остальные секреты backend сюда не попадают.
+  # Ежедневный зашифрованный pg_dump в S3 (infra/backup). В MVP выключен: сервис в профиле
+  # `backup`, обычный `up` и deploy.sh его не запускают. Включение — infra/README.md, «Бэкапы».
+  # Переменные BACKUP_* здесь необязательны (`:-`): compose интерполирует весь файл даже при
+  # выключенном профиле, а `:?` уронил бы `up` на сервере без бэкапов. Проверяет их сам
+  # backup.sh при каждом запуске — пустое значение для него ошибка.
+  # Получает только нужные переменные: PG* выводятся из POSTGRES_* в .env, остальные секреты
+  # backend сюда не попадают.
   backup:
     image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY is required}/english-tutor-backup:${IMAGE_TAG:?IMAGE_TAG is required}
+    profiles: ["backup"]
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:?POSTGRES_USER is required}
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       PGDATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
-      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:?BACKUP_S3_BUCKET is required}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
       BACKUP_S3_ENDPOINT_URL: ${BACKUP_S3_ENDPOINT_URL:-}
-      BACKUP_S3_REGION: ${BACKUP_S3_REGION:?BACKUP_S3_REGION is required}
-      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:?BACKUP_S3_ACCESS_KEY is required}
-      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:?BACKUP_S3_SECRET_KEY is required}
-      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?BACKUP_AGE_RECIPIENT is required}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-}
+      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-}
+      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
       S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
       HEARTBEAT_BACKUP_URL: ${HEARTBEAT_BACKUP_URL:-}
     depends_on:

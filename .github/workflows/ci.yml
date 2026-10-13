@@ -115,6 +115,27 @@ jobs:
       # Бэкап в MinIO, ротация 14/6, восстановление зашифрованного дампа в пустую базу (infra/backup/test.sh)
       - run: bash infra/backup/test.sh
 
+  minio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # infra/minio/init.sh: повторный запуск, права пользователя приложения, анонимное чтение,
+      # смена пароля, данные после пересоздания minio, отказ работать под root
+      - run: bash infra/minio/test.sh
+      # base-compose читает env_file ../.env — в CI его нет, берём пример prod-окружения
+      - run: cp infra/prod.env.example .env
+      # Root-учётка MinIO не должна доходить до backend-сервисов (они получают .env целиком)
+      - name: backend services get no MinIO root credentials
+        run: |
+          cfg="$(docker compose --env-file infra/prod.env.example -f infra/docker-compose.yml -f infra/docker-compose.prod.yml --profile migrate config --format json)"
+          for svc in api worker scheduler migrate; do
+            for var in MINIO_ROOT_USER MINIO_ROOT_PASSWORD; do
+              value="$(jq -r --arg s "$svc" --arg v "$var" '.services[$s].environment[$v] // "unset"' <<<"$cfg")"
+              if [ -n "$value" ]; then echo "::error::$svc получает непустой $var"; exit 1; fi
+              echo "$svc $var: пусто"
+            done
+          done
+
   deploy-script:
     runs-on: ubuntu-latest
     steps:

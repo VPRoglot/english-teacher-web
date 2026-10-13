@@ -1,5 +1,5 @@
-# Поверх docker-compose.yml на сервере: образы из реестра, nginx + certbot, контейнер backup,
-# ограничения ресурсов, json-логи с ротацией. Наружу открыты только 80 и 443 (nginx).
+# Поверх docker-compose.yml на сервере: образы из реестра, nginx + certbot, MinIO для фото,
+# контейнер backup, ограничения ресурсов, json-логи с ротацией. Наружу открыты только 80 и 443 (nginx).
 #
 #   docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml …
 #
@@ -16,6 +16,15 @@ x-backend-prod: &backend-prod
   image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY is required}/english-tutor-backend:${IMAGE_TAG:?IMAGE_TAG is required}
   logging: *logging
   restart: unless-stopped
+
+# Окружение всех backend-сервисов. Корневой .env подключается к ним целиком (env_file в базовом
+# файле), поэтому root-учётку MinIO явно обнуляем: приложению она не нужна, оно работает
+# под своим пользователем S3_ACCESS_KEY (infra/minio/init.sh).
+x-backend-env: &backend-env
+  APP_ENV: prod
+  LOG_JSON: "true"
+  MINIO_ROOT_USER: ""
+  MINIO_ROOT_PASSWORD: ""
 
 services:
   postgres:
@@ -40,8 +49,7 @@ services:
     <<: *backend-prod
     build: !reset null
     environment:
-      APP_ENV: prod
-      LOG_JSON: "true"
+      <<: *backend-env
     # Одноразовый и вне графа `up`: deploy.sh запускает `run --rm migrate` до `up`
     # (сервис, названный явно, запускается и с профилем). Если бы api/worker/scheduler зависели
     # от migrate, откат (`up -d` на прежнем образе) запустил бы старый migrate против базы,
@@ -60,9 +68,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # Бакет медиа и пользователь приложения в MinIO готовы (infra/minio/init.sh).
+      # worker и scheduler в S3 не ходят — им эта зависимость не нужна.
+      minio-init:
+        condition: service_completed_successfully
     environment:
-      APP_ENV: prod
-      LOG_JSON: "true"
+      <<: *backend-env
+      # Хранилище медиа — MinIO на этом же сервере (сервис minio ниже).
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ADDRESSING_STYLE: path
       # Порт api не опубликован, до него доходит только nginx, а nginx перезаписывает
       # X-Forwarded-For адресом клиента — поэтому доверять любому прокси безопасно.
       FORWARDED_ALLOW_IPS: "*"
@@ -81,8 +95,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      APP_ENV: prod
-      LOG_JSON: "true"
+      <<: *backend-env
     deploy:
       resources:
         limits:
@@ -98,8 +111,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      APP_ENV: prod
-      LOG_JSON: "true"
+      <<: *backend-env
     deploy:
       resources:
         limits:
@@ -126,8 +138,9 @@ services:
       - "443:443"
     environment:
       SERVER_NAME: ${DOMAIN:?DOMAIN is required}
-      MEDIA_UPSTREAM: ${MEDIA_UPSTREAM:?MEDIA_UPSTREAM is required}
-      MEDIA_UPSTREAM_HOST: ${MEDIA_UPSTREAM_HOST:?MEDIA_UPSTREAM_HOST is required}
+      # /media/ — прямо из бакета во внутреннем MinIO (анонимное чтение объектов).
+      MEDIA_UPSTREAM: http://minio:9000/${S3_BUCKET:?S3_BUCKET is required}
+      MEDIA_UPSTREAM_HOST: minio:9000
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot-webroot:/var/www/certbot
@@ -173,6 +186,43 @@ services:
         limits:
           memory: 128m
 
+  # Хранилище фото лендинга на этом же сервере. Наружу не публикуется: загрузки идут от api,
+  # отдача — через nginx (/media/). Данные — в томе miniodata.
+  # В chainguard-образе нет оболочки, healthcheck невозможен: готовности ждёт minio-init.
+  minio:
+    image: cgr.dev/chainguard/minio:latest@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - miniodata:/data
+    logging: *logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # Одноразово при каждом `up`: бакет, анонимное чтение, пользователь приложения и его политика
+  # (infra/minio/init.sh; повторный запуск безопасен, смена S3_SECRET_KEY применяется здесь).
+  # Root-учётку MinIO получают только minio и minio-init.
+  minio-init:
+    image: cgr.dev/chainguard/minio-client:latest-dev@sha256:799f7e86017c3ee8d00f6372e1ee28dd73453f271d5b306a47af8e8a408a777a
+    entrypoint: ["/bin/sh", "/init.sh"]
+    volumes:
+      - ./minio/init.sh:/init.sh:ro
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+    depends_on:
+      - minio
+    logging: *logging
+    restart: "no"
+
   # Ежедневный зашифрованный pg_dump в S3 (infra/backup). Получает только нужные переменные:
   # PG* выводятся из POSTGRES_* в .env, остальные секреты backend сюда не попадают.
   backup:
@@ -203,3 +253,4 @@ services:
 volumes:
   letsencrypt:
   certbot-webroot:
+  miniodata:

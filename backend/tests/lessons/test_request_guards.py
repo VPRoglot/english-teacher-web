@@ -1,7 +1,7 @@
 """Занятие с запросом (в любом статусе) не удаляется и не правится правкой серии."""
 
 from collections.abc import Iterator
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from fastapi import FastAPI
@@ -47,7 +47,10 @@ async def _exists(db_session: AsyncSession, lesson_id: object) -> bool:
 async def test_delete_lesson_with_request_is_409(
     tutor_client: AsyncClient, db_session: AsyncSession, child: Child
 ) -> None:
-    lesson = await make_lesson(db_session, child=child, starts_at=datetime(2026, 11, 2, tzinfo=UTC))
+    # DELETE /api/admin/lessons берёт реальное время (не get_now): занятие обязано быть в будущем
+    # по настоящим часам, иначе 409 был бы из-за прошедшего времени, а не из-за запроса.
+    starts_at = datetime.now(UTC) + timedelta(days=30)
+    lesson = await make_lesson(db_session, child=child, starts_at=starts_at)
     await _rejected(db_session, lesson)
     r = await tutor_client.delete(f"/api/admin/lessons/{lesson.id}")
     assert r.status_code == 409

@@ -56,6 +56,10 @@ async def request_for(
     values: dict[str, Any] = {"starts_at": LESSON_START}
     values.update(lesson_overrides or {})
     lesson = await make_lesson(session, child=child, **values)
+    # Без явного `created_at` server_default дал бы реальное «сейчас», и поздняя отмена
+    # (`starts_at - created_at < 24 ч`) зависела бы от часов, а не от NOW. Сутки до NOW —
+    # раньше всех `resolved_at` в тестах и за трое суток до LESSON_START.
+    overrides.setdefault("created_at", NOW - timedelta(days=1))
     request = await make_change_request(session, lesson, **overrides)
     return lesson, request
 

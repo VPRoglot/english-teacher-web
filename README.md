@@ -223,7 +223,7 @@ docker compose exec api python -m app.cli purge-family <FAMILY_ID>
 
 ## Production
 
-Запуск на сервере (VPS, Docker Compose, nginx + Let's Encrypt, CD в GHCR с деплоем по SSH и автоматическим откатом, зашифрованные бэкапы в S3) описан в [infra/README.md](infra/README.md): подготовка сервера, `.env` на основе [infra/prod.env.example](infra/prod.env.example), первый деплой, CD, восстановление из бэкапа, мониторинг, удаление данных по 152-ФЗ и чек-лист после первого деплоя. Правило для миграций: только расширяющие (откат релиза не откатывает схему БД).
+Запуск на сервере (VPS, Docker Compose, nginx + Let's Encrypt, CD в GHCR с деплоем по SSH и автоматическим откатом; фото лендинга — в MinIO на самом сервере; зашифрованные бэкапы в S3 подготовлены, но в MVP выключены) описан в [infra/README.md](infra/README.md): подготовка сервера, `.env` на основе [infra/prod.env.example](infra/prod.env.example), первый деплой, CD, восстановление из бэкапа, мониторинг, удаление данных по 152-ФЗ и чек-лист после первого деплоя. Правило для миграций: только расширяющие (откат релиза не откатывает схему БД).
 
 ## Мониторинг
 
@@ -238,7 +238,7 @@ docker compose exec api python -m app.cli purge-family <FAMILY_ID>
 
 - Backend: `just test-backend` — pytest поднимает PostgreSQL и Redis через testcontainers (нужен запущенный Docker), порог покрытия 85%.
 - Frontend: `just test-frontend` — Vitest + Testing Library.
-- E2E: `just e2e` — Playwright на production-подобном стеке: образы backend, frontend и nginx собираются локально, стек `english-tutor-e2e` поднимается заново (nginx с self-signed TLS на `https://tutor.test`, MinIO, без certbot и backup), применяются миграции, создаётся репетитор, затем в контейнере `e2e` (образ `mcr.microsoft.com/playwright`) выполняются сценарии спеки 7.2 — `e2e/tests/00-platform.spec.ts` … `07-child-login.spec.ts`, по порядку и на общей базе. Код выхода — результат тестов. Нужен только Docker; первый запуск долгий (сборка образов).
+- E2E: `just e2e` — Playwright на production-подобном стеке: образы backend, frontend и nginx собираются локально, стек `english-tutor-e2e` поднимается заново (nginx с self-signed TLS на `https://tutor.test`, MinIO из prod-оверлея с тем же `infra/minio/init.sh`, без certbot и backup), применяются миграции, создаётся репетитор, затем в контейнере `e2e` (образ `mcr.microsoft.com/playwright`) выполняются сценарии спеки 7.2 — `e2e/tests/00-platform.spec.ts` … `07-child-login.spec.ts`, плюс `08-photo.spec.ts` (загрузка фото hero и отдача через `/media`), по порядку и на общей базе. Код выхода — результат тестов. Нужен только Docker; первый запуск долгий (сборка образов).
   - Окружение стека — только `infra/e2e.env` (тестовые значения для `tutor.test`, коммитится); корневой `.env` в e2e не попадает.
   - Что покрыто: production-топология (nginx с TLS, заголовки безопасности, проксирование `/api` и `/media`, prod-оверлей compose, собранные образы), но backend работает с `APP_ENV=test`. Не проверяются: настоящая SmartCaptcha и Telegram (ключей нет — капча выключена, уведомления пишутся в лог), Sentry (DSN не задан), Let's Encrypt, бэкапы и certbot — их проверяет чек-лист после первого деплоя (`infra/README.md`, раздел 10).
   - Стек остаётся после прогона для отладки: `https://localhost:8443` (тот же nginx, предупреждение о сертификате ожидаемо), отчёт Playwright — `e2e/test-results/report/index.html`, трассы и скриншоты упавших тестов — `e2e/test-results/artifacts` (`npx playwright show-trace <trace.zip>`). Остановить и удалить данные: `just e2e-down`.

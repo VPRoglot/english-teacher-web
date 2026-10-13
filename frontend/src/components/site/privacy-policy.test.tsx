@@ -63,6 +63,6 @@ test("policy points to the site contacts when none are published", () => {
 test("policy states how long deleted data stays in backups", () => {
   render(<PrivacyPolicy operatorName="Анна Смирнова" contacts={siteFixture.contacts} />);
   expect(
-    screen.getByText("Удалённые данные исчезают из резервных копий не позднее чем через 6 месяцев."),
+    screen.getByText("Если ведутся резервные копии, удалённые данные исчезают из них не позднее чем через 6 месяцев."),
   ).toBeInTheDocument();
 });

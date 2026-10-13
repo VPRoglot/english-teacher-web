@@ -1,13 +1,16 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { LessonCalendar } from "./lesson-calendar";
 
 const VIEWS = { desktop: ["timeGridWeek", "timeGridDay"], mobile: "listWeek" };
 
-// The calendar opens on the current week, so the event starts now.
-const NOW = Date.now();
+// The calendar opens on the current week, so the event starts "now" — a frozen now. With the real
+// clock an hour-long event started after 23:00 crosses midnight, the time grid splits it into two
+// segments and "Петя" appears twice. 09:00Z is daytime in every zone these tests render
+// (UTC 09:00, Moscow 12:00, Tokyo 18:00).
+const NOW = Date.parse("2026-10-14T09:00:00Z");
 const EVENT = {
   id: "l1",
   title: "Петя",
@@ -27,7 +30,12 @@ function stubMatchMedia(matches: boolean) {
   );
 }
 
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: NOW });
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 

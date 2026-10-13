@@ -221,6 +221,19 @@ docker compose exec api python -m app.cli purge-family <FAMILY_ID>
 
 Из резервных копий удалённые данные исчезают не позднее чем через 6 месяцев (срок указан в политике конфиденциальности).
 
+## Production
+
+Запуск на сервере (VPS, Docker Compose, nginx + Let's Encrypt, CD в GHCR с деплоем по SSH и автоматическим откатом, зашифрованные бэкапы в S3) описан в [infra/README.md](infra/README.md): подготовка сервера, `.env` на основе [infra/prod.env.example](infra/prod.env.example), первый деплой, CD, восстановление из бэкапа, мониторинг, удаление данных по 152-ФЗ и чек-лист после первого деплоя. Правило для миграций: только расширяющие (откат релиза не откатывает схему БД).
+
+## Мониторинг
+
+- **Ошибки:** Sentry или GlitchTip в api, worker, scheduler и web. Включаются необязательными `SENTRY_DSN` (backend), `SENTRY_DSN_WEB` (web), `SENTRY_TRACES_SAMPLE_RATE`; события браузера идут через туннель `/monitoring`. Подробности про frontend — в [frontend/README.md](frontend/README.md#sentry).
+- **Живость сервиса:** `GET /api/health` (процесс) и `GET /api/health/ready` (БД и Redis); внешний uptime-монитор должен опрашивать `/api/health/ready` и `/`.
+- **Ночные задачи:** необязательные heartbeat-пинги `HEARTBEAT_MATERIALIZE_URL` (01:00 UTC), `HEARTBEAT_ANONYMIZE_URL` (01:30 UTC), `HEARTBEAT_BACKUP_URL` (02:30 UTC); монитор оповещает, если пинг не пришёл.
+- **Логи:** JSON, `X-Request-ID` проходит через nginx, api и worker; одноразовые токены в URL маскируются (`***`).
+
+Настройка мониторов — в [infra/README.md](infra/README.md#8-мониторинг).
+
 ## Тесты
 
 - Backend: `just test-backend` — pytest поднимает PostgreSQL и Redis через testcontainers (нужен запущенный Docker), порог покрытия 85%.

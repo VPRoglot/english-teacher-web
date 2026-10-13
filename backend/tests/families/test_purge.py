@@ -3,7 +3,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 import pytest
+import structlog
 from redis.asyncio import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -235,6 +237,37 @@ async def test_describe_purge_is_read_only(
     assert summary.users == 4
     assert summary.lessons == 4
     assert await family_rows(db_session, a) == EXPECTED_FULL
+
+
+async def test_purge_without_redis_still_succeeds(
+    db_session: AsyncSession, redis: Redis, tutor: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    a = await build_graph(db_session, redis, tutor, tag="a")
+
+    async def redis_down(self: SessionStore, user_id: uuid.UUID) -> int:
+        raise RedisConnectionError("redis недоступен")
+
+    monkeypatch.setattr(SessionStore, "delete_all_for_user", redis_down)
+
+    with structlog.testing.capture_logs() as logs:
+        summary = await purge_family(db_session, redis, a.family_id)
+
+    # Данные уже удалены (коммит прошёл), а сессии без пользователей и так недействительны.
+    assert summary.sessions_revoked is False
+    assert summary.users == 4
+    assert set((await family_rows(db_session, a)).values()) == {0}
+    (warning,) = [e for e in logs if e["event"] == "family_purge_sessions_not_revoked"]
+    assert warning["log_level"] == "warning"
+    assert warning["family_id"] == str(a.family_id)
+    assert sorted(warning["user_ids"]) == sorted(str(u) for u in a.user_ids)
+    assert any(e["event"] == "family_purged" for e in logs)
+
+
+async def test_purge_reports_sessions_revoked(
+    db_session: AsyncSession, redis: Redis, tutor: User
+) -> None:
+    a = await build_graph(db_session, redis, tutor, tag="a")
+    assert (await purge_family(db_session, redis, a.family_id)).sessions_revoked is True
 
 
 async def test_purge_is_atomic(

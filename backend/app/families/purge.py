@@ -1,8 +1,9 @@
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import structlog
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +27,8 @@ class PurgeSummary:
     lessons: int
     change_requests: int
     leads: int
+    # Только у результата purge_family: False — Redis был недоступен после коммита.
+    sessions_revoked: bool = True
 
 
 class FamilyNotFound(NotFound):
@@ -119,9 +122,22 @@ async def purge_family(session: AsyncSession, redis: Redis, family_id: uuid.UUID
     except BaseException:
         await session.rollback()
         raise
+    # Данные уже удалены: сбой Redis не делает операцию неудачной. Оставшиеся сессии
+    # недействительны — их пользователей больше нет, а Redis-ключи истекут сами.
+    sessions_revoked = True
     store = SessionStore(redis)
-    for user_id in scope.user_ids:
-        await store.delete_all_for_user(user_id)
+    try:
+        for user_id in scope.user_ids:
+            await store.delete_all_for_user(user_id)
+    except RedisError as exc:
+        sessions_revoked = False
+        log.warning(
+            "family_purge_sessions_not_revoked",
+            family_id=str(family_id),
+            user_ids=[str(user_id) for user_id in scope.user_ids],
+            error=type(exc).__name__,
+        )
+    summary = replace(summary, sessions_revoked=sessions_revoked)
     log.info(
         "family_purged",
         family_id=str(family_id),

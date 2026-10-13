@@ -114,6 +114,11 @@ def purge_family_command(
         )
         raise typer.Exit(1) from exc
     typer.echo(f"Семья удалена: {_summary_line(summary)}")
+    if not summary.sessions_revoked:
+        typer.echo(
+            "Сессии не отозваны (Redis недоступен) — они уже недействительны: "
+            "пользователей больше нет."
+        )
 
 
 @cli.command("export-openapi")

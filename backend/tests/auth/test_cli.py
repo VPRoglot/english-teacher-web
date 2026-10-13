@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -12,6 +13,7 @@ from typer.testing import CliRunner
 
 from app.auth.models import User
 from app.auth.passwords import verify_password
+from app.auth.sessions import SessionStore
 from app.cli import cli
 from app.core.config import get_settings
 from tests.factories import make_child, make_family, make_parent
@@ -171,6 +173,22 @@ def test_purge_cli_yes(purge_env: str) -> None:
     assert r.exit_code == 0, r.output
     assert "Семья удалена: Ивановы: пользователей 2, детей 1" in r.output
     assert asyncio.run(_count(purge_env, "families")) == 0
+    assert asyncio.run(_count(purge_env, "users")) == 0
+
+
+def test_purge_cli_redis_down_after_commit(purge_env: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def redis_down(self: SessionStore, user_id: uuid.UUID) -> int:
+        raise RedisConnectionError("redis недоступен")
+
+    monkeypatch.setattr(SessionStore, "delete_all_for_user", redis_down)
+    family_id = asyncio.run(_make_archived_family(purge_env))
+    r = CliRunner().invoke(cli, ["purge-family", family_id, "--yes"])
+    assert r.exit_code == 0, r.output
+    assert "Семья удалена: Ивановы: пользователей 2, детей 1" in r.output
+    assert (
+        "Сессии не отозваны (Redis недоступен) — они уже недействительны: пользователей больше нет."
+    ) in r.output
+    assert "Не удалось подключиться" not in r.output
     assert asyncio.run(_count(purge_env, "users")) == 0
 
 

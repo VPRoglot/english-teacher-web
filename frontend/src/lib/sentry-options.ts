@@ -101,6 +101,32 @@ export function sentryOptions(env: SentryEnv) {
   };
 }
 
+/** Фабрика `Sentry.httpIntegration` (только Node; в edge-сборке её нет). */
+export type HttpIntegrationFactory = (options: {
+  disableIncomingRequestSpans: boolean;
+  maxRequestBodySize: "none";
+}) => Integration;
+
+/**
+ * Сервер (Node и edge): тело входящего запроса (формы, Server Actions) Http-интеграция по
+ * умолчанию прикладывает к событию до 10 КБ независимо от sendDefaultPii — отключаем; локальные
+ * переменные кадров содержат те же данные — тоже. `disableIncomingRequestSpans` — как в
+ * интеграции по умолчанию @sentry/nextjs: входящие запросы инструментирует сам Next.js.
+ */
+export function serverSentryOptions(env: SentryEnv, httpIntegration?: HttpIntegrationFactory) {
+  return {
+    ...sentryOptions(env),
+    includeLocalVariables: false,
+    integrations: (defaults: Integration[]): Integration[] =>
+      httpIntegration
+        ? [
+            ...defaults.filter((integration) => integration.name !== "Http"),
+            httpIntegration({ disableIncomingRequestSpans: true, maxRequestBodySize: "none" }),
+          ]
+        : defaults,
+  };
+}
+
 /**
  * Браузер: события идут только в туннель `/monitoring` на своём домене (CSP `connect-src 'self'`),
  * для любого DSN — sentry.io или GlitchTip. Ingest-хост браузер не вызывает никогда.

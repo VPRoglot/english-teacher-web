@@ -7,6 +7,7 @@ import {
   parseDsn,
   scrubUrl,
   sentryOptions,
+  serverSentryOptions,
 } from "./sentry-options";
 
 const SAAS_DSN = "https://public@o123.ingest.sentry.io/456";
@@ -209,6 +210,29 @@ describe("браузер: всегда через туннель /monitoring", (
     const options = browserSentryOptions({ dsn: SAAS_DSN });
     const integrations = [{ name: "BrowserTracing" }, { name: "Breadcrumbs" }];
     expect(options.integrations(integrations as never)).toEqual([{ name: "Breadcrumbs" }]);
+  });
+});
+
+describe("сервер: без тела запроса и локальных переменных", () => {
+  test("локальные переменные выключены", () => {
+    const options = serverSentryOptions({ dsn: SAAS_DSN });
+    expect(options).toMatchObject({ enabled: true, includeLocalVariables: false });
+  });
+
+  test("Http заменён интеграцией без тела входящих запросов", () => {
+    const httpIntegration = vi.fn((options: object) => ({ name: "Http", options }));
+    const options = serverSentryOptions({ dsn: SAAS_DSN }, httpIntegration as never);
+    const integrations = [{ name: "Http" }, { name: "OnUncaughtException" }];
+    expect(options.integrations(integrations as never)).toEqual([
+      { name: "OnUncaughtException" },
+      { name: "Http", options: { disableIncomingRequestSpans: true, maxRequestBodySize: "none" } },
+    ]);
+  });
+
+  test("без httpIntegration (edge) список интеграций не меняется", () => {
+    const options = serverSentryOptions({ dsn: SAAS_DSN });
+    const integrations = [{ name: "Breadcrumbs" }];
+    expect(options.integrations(integrations as never)).toEqual(integrations);
   });
 });
 

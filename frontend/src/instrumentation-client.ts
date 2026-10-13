@@ -6,7 +6,8 @@ import { browserSentryOptions } from "@/lib/sentry-options";
 // События уходят только через туннель /monitoring (см. browserSentryOptions).
 const options = browserSentryOptions({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  environment: process.env.NODE_ENV,
+  // То же окружение, что у сервера и backend (prod); в CD — build arg NEXT_PUBLIC_SENTRY_ENVIRONMENT.
+  environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NODE_ENV,
   release: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
 });
 if (options.enabled) Sentry.init(options);

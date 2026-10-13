@@ -57,6 +57,8 @@ services:
   web:
     build:
       context: ../frontend
+    environment:
+      SENTRY_ENVIRONMENT: test
 
   nginx:
     build:

@@ -108,6 +108,8 @@ services:
   web:
     image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY is required}/english-tutor-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
     build: !reset null
+    environment:
+      SENTRY_ENVIRONMENT: prod  # как APP_ENV у api/worker/scheduler
     logging: *logging
     restart: unless-stopped
     deploy:

@@ -98,6 +98,8 @@ services:
       # Браузерный DSN встраивается при сборке (NEXT_PUBLIC_SENTRY_DSN, build arg).
       SENTRY_DSN: ${SENTRY_DSN_WEB:-}
       SENTRY_RELEASE: ${IMAGE_TAG:-}
+      # То же окружение событий, что у backend (APP_ENV); prod и e2e задают его явно.
+      SENTRY_ENVIRONMENT: ${APP_ENV:-dev}
     depends_on:
       api:
         condition: service_healthy

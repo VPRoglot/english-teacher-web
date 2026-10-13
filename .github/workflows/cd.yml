@@ -78,6 +78,7 @@ jobs:
             build_args: |
               NEXT_PUBLIC_SENTRY_DSN=${{ vars.SENTRY_DSN_WEB }}
               NEXT_PUBLIC_SENTRY_RELEASE=sha-${{ needs.prepare.outputs.sha }}
+              NEXT_PUBLIC_SENTRY_ENVIRONMENT=prod
           - image: nginx
             context: infra/nginx
             build_args: ""

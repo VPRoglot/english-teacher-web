@@ -85,13 +85,18 @@ def init_sentry(
         # send_default_pii не передаём: по умолчанию он выключен (PII не отправляется), а явное
         # значение, даже False, в sentry-sdk 2.x даёт DeprecationWarning.
         traces_sample_rate=settings.sentry_traces_sample_rate,
+        # Интеграция FastAPI прикладывает JSON-тело запроса независимо от send_default_pii, а
+        # локальные переменные кадров содержат те же данные: в Sentry не уходит ни то, ни другое.
+        max_request_body_size="never",
+        include_local_variables=False,
         before_send=scrub_event,
         # Транзакции (трассировка) обходят before_send, а в них те же URL с токенами.
         before_send_transaction=scrub_event,
         before_breadcrumb=scrub_breadcrumb,
         transport=transport,
     )
-    sentry_sdk.set_tag("component", component)
+    # Глобальный scope: тег есть у событий из любого контекста (свой поток, чужой цикл событий).
+    sentry_sdk.get_global_scope().set_tag("component", component)
     return True
 
 

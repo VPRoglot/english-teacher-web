@@ -1,3 +1,4 @@
+import contextvars
 from collections.abc import Iterator
 from typing import Any
 
@@ -61,6 +62,17 @@ def test_init_with_dsn_sets_tags() -> None:
     assert event["release"] == "abc123"
     assert event["tags"]["component"] == "api"
     assert sentry_sdk.get_client().should_send_default_pii() is False
+
+
+def test_component_tag_reaches_events_from_any_context() -> None:
+    transport = CollectingTransport()
+    init_sentry(make_settings(sentry_dsn=DSN), "worker", transport=transport)
+
+    # Пустой контекст — как у кода, не унаследовавшего scope (свой поток, чужой цикл событий).
+    contextvars.Context().run(sentry_sdk.capture_message, "x")
+
+    (event,) = transport.events
+    assert event["tags"]["component"] == "worker"
 
 
 def test_release_is_read_from_image_tag_env(monkeypatch: pytest.MonkeyPatch) -> None:

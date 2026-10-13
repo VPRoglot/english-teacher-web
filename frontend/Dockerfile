@@ -12,6 +12,9 @@ FROM deps AS build
 # Next встраивает NEXT_PUBLIC_* в бандл при сборке; пустое значение допустимо.
 ARG NEXT_PUBLIC_SENTRY_DSN=
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
+# Релиз браузерных событий (в CD — sha-<commit>, как IMAGE_TAG); серверный берётся из SENTRY_RELEASE.
+ARG NEXT_PUBLIC_SENTRY_RELEASE=
+ENV NEXT_PUBLIC_SENTRY_RELEASE=$NEXT_PUBLIC_SENTRY_RELEASE
 COPY . .
 RUN pnpm build
 

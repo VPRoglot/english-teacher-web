@@ -28,6 +28,18 @@ Next.js 16 (App Router, `cacheComponents`), TanStack Query, Tailwind + shadcn/ui
 | `SMARTCAPTCHA_CLIENT_KEY` | необязательный клиентский ключ Yandex SmartCaptcha для формы заявки на `/`; пустой — форма работает без капчи. Серверный ключ (`SMARTCAPTCHA_SERVER_KEY`) нужен backend. В Docker передаётся контейнеру `web` из корневого `.env` |
 | `API_PROXY_URL` | только dev: куда проксировать `/api` (в production — nginx) |
 | `MEDIA_PROXY_URL` | только dev: куда проксировать `/media` (MinIO, `http://localhost:9000/media`; в production — nginx) |
+| `SENTRY_DSN` | необязательный DSN Sentry для серверной части Next (рантайм). В Docker — из `SENTRY_DSN_WEB` корневого `.env`; пустой — отключён |
+| `SENTRY_RELEASE` | релиз серверных событий; в Docker — `IMAGE_TAG` |
+| `NEXT_PUBLIC_SENTRY_DSN` | необязательный DSN для браузера, встраивается **при сборке** (build arg образа, в CD — `vars.SENTRY_DSN_WEB`) |
+| `NEXT_PUBLIC_SENTRY_RELEASE` | релиз браузерных событий, при сборке (в CD — `sha-<commit>`) |
+
+## Sentry
+
+Настройки — `src/lib/sentry-options.ts`, инициализация — `src/instrumentation.ts` (сервер) и `src/instrumentation-client.ts` (браузер), сборка — `withSentryConfig` в `next.config.ts`.
+
+- Браузер отправляет события только через туннель `/monitoring` на своём домене: Next проксирует их в sentry.io, и CSP (`connect-src 'self'`) не расширяется. `@sentry/nextjs` строит туннель только для DSN sentry.io (`o<org>.ingest[.<region>].sentry.io`); с другим DSN (GlitchTip, self-hosted) браузерный Sentry отключается, серверный работает. Запросы в туннель идут без cookie (`credentials: "omit"`). `proxy.ts` `/monitoring` не перехватывает.
+- Одноразовые токены (`/invite/<t>`, `/reset/<t>`, `/api/auth/invitations/<t>`, `/api/auth/password-resets/<t>`) маскируются как `***` во всех строках событий и breadcrumb'ов — те же правила, что у backend (`scrub_text`). Cookie и заголовки `Cookie`, `Authorization`, `X-CSRF-Token` удаляются, PII не отправляется, трассировка выключена.
+- **Source maps не создаются и не загружаются**: у MVP нет `SENTRY_AUTH_TOKEN`, поэтому стек-трейсы браузера минифицированы. Сборка к Sentry не обращается (`telemetry: false`, релиз не создаётся). Чтобы включить загрузку, нужны `SENTRY_AUTH_TOKEN`, `org`/`project` в `withSentryConfig` и снятие `sourcemaps.disable`.
 
 ## Контент сайта
 

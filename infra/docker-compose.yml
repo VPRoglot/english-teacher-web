@@ -94,6 +94,10 @@ services:
       REVALIDATE_SECRET: ${REVALIDATE_SECRET}
       # Клиентский ключ SmartCaptcha необязателен: без него форма заявки работает без капчи.
       SMARTCAPTCHA_CLIENT_KEY: ${SMARTCAPTCHA_CLIENT_KEY:-}
+      # Серверный Sentry web (отдельный проект от backend); пусто — отключён.
+      # Браузерный DSN встраивается при сборке (NEXT_PUBLIC_SENTRY_DSN, build arg).
+      SENTRY_DSN: ${SENTRY_DSN_WEB:-}
+      SENTRY_RELEASE: ${IMAGE_TAG:-}
     depends_on:
       api:
         condition: service_healthy

@@ -75,7 +75,9 @@ jobs:
           - image: frontend
             context: frontend
             # NEXT_PUBLIC_* Next встраивает в бандл при сборке, поэтому DSN нужен именно здесь.
-            build_args: NEXT_PUBLIC_SENTRY_DSN=${{ vars.SENTRY_DSN_WEB }}
+            build_args: |
+              NEXT_PUBLIC_SENTRY_DSN=${{ vars.SENTRY_DSN_WEB }}
+              NEXT_PUBLIC_SENTRY_RELEASE=sha-${{ needs.prepare.outputs.sha }}
           - image: nginx
             context: infra/nginx
             build_args: ""

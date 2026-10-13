@@ -13,6 +13,7 @@ export function proxy(request: NextRequest) {
   );
 }
 
+// Только закрытые разделы: туннель Sentry `/monitoring` и публичные страницы не перехватываются.
 export const config = {
   matcher: ["/cabinet/:path*", "/admin/:path*"],
 };

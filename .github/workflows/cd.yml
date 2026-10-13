@@ -105,6 +105,13 @@ jobs:
           - image: backup
             context: infra/backup
             build_args: ""
+          # MinIO и mc — образы Chainguard, переложенные в GHCR: cgr.dev недоступен с сервера.
+          - image: minio
+            context: infra/minio/server
+            build_args: ""
+          - image: minio-client
+            context: infra/minio/client
+            build_args: ""
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

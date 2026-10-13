@@ -37,6 +37,30 @@ updates:
           - minor
           - patch
   - package-ecosystem: docker
+    directory: /infra/minio/server
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /infra/minio/client
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
     directory: /infra/nginx
     ignore:
       - dependency-name: "*"

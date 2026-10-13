@@ -55,6 +55,15 @@ services:
     environment:
       SENTRY_ENVIRONMENT: test
 
+  # MinIO и mc собираются локально из тех же Dockerfile, что публикует CD (local/…:e2e).
+  minio:
+    build:
+      context: minio/server
+
+  minio-init:
+    build:
+      context: minio/client
+
   nginx:
     build:
       context: nginx
